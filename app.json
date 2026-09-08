@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "GRRRR",
+    "slug": "grrrr",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FFF7EF",
+    "splash": {
+      "backgroundColor": "#FF5D73"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.grrrr.app"
+    },
+    "android": {
+      "package": "com.grrrr.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FF5D73"
+      }
+    },
+    "plugins": [
+      "expo-splash-screen"
+    ]
+  }
+}
