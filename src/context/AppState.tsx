@@ -4,12 +4,15 @@ import { ME, Pet, WILL_MATCH } from "@/data/mockPets";
 export interface ChatMessage {
   from: "me" | "them";
   text: string;
+  read?: boolean;
 }
 
 export interface Chat {
   pet: Pet;
   messages: ChatMessage[];
 }
+
+export type MeetingMarker = "pink" | "blue";
 
 interface AppStateShape {
   mode: number; // 0..100, 0 = FRIEND, 100 = HOT/LOVE
@@ -20,6 +23,9 @@ interface AppStateShape {
   clearPendingMatch: () => void;
   likePet: (pet: Pet) => void;
   sendMessage: (petId: number, text: string) => void;
+  markChatRead: (petId: number) => void;
+  meetingMarkers: Record<number, MeetingMarker | undefined>;
+  setMeetingMarker: (petId: number, marker: MeetingMarker) => void;
 }
 
 const AppStateContext = createContext<AppStateShape | undefined>(undefined);
@@ -36,6 +42,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [matches, setMatches] = useState<Pet[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [pendingMatch, setPendingMatch] = useState<Pet | null>(null);
+  const [meetingMarkers, setMeetingMarkers] = useState<Record<number, MeetingMarker | undefined>>({});
 
   const likePet = useCallback((pet: Pet) => {
     if (!WILL_MATCH.has(pet.id)) return;
@@ -47,7 +54,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
             ...prev,
             {
               pet,
-              messages: [{ from: "them", text: `Salut ! ${ME.name} et ${pet.name} se sont plu 🐾` }],
+              messages: [{ from: "them", text: `Salut ! ${ME.name} et ${pet.name} se sont plu 🐾`, read: false }],
             },
           ]
     );
@@ -71,9 +78,23 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     }, 900);
   }, []);
 
+  const markChatRead = useCallback((petId: number) => {
+    setChats((prev) =>
+      prev.map((chat) =>
+        chat.pet.id === petId
+          ? { ...chat, messages: chat.messages.map((message) => ({ ...message, read: true })) }
+          : chat
+      )
+    );
+  }, []);
+
+  const setMeetingMarker = useCallback((petId: number, marker: MeetingMarker) => {
+    setMeetingMarkers((prev) => ({ ...prev, [petId]: marker }));
+  }, []);
+
   const value = useMemo(
-    () => ({ mode, setMode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage }),
-    [mode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage]
+    () => ({ mode, setMode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, meetingMarkers, setMeetingMarker }),
+    [mode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, meetingMarkers, setMeetingMarker]
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;

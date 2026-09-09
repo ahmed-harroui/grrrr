@@ -1,6 +1,5 @@
-import React, { useRef } from "react";
-import { Animated, LayoutChangeEvent, PanResponder, StyleSheet, Text, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import React from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fonts, radii } from "@/theme/theme";
 
 interface Props {
@@ -8,54 +7,22 @@ interface Props {
   onChange: (v: number) => void;
 }
 
-const THUMB_SIZE = 42;
-const TRACK_PADDING = 5;
-
 export default function ModeSlider({ value, onChange }: Props) {
-  const trackWidth = useRef(0);
-
-  const handleLayout = (e: LayoutChangeEvent) => {
-    trackWidth.current = e.nativeEvent.layout.width;
-  };
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, g) => {
-        if (!trackWidth.current) return;
-        const usable = trackWidth.current - TRACK_PADDING * 2 - THUMB_SIZE;
-        const x = Math.min(usable, Math.max(0, g.moveX - TRACK_PADDING));
-        onChange(Math.round((x / usable) * 100));
-      },
-    })
-  ).current;
-
-  const thumbLeft = trackWidth.current
-    ? TRACK_PADDING + ((trackWidth.current - TRACK_PADDING * 2 - THUMB_SIZE) * value) / 100
-    : TRACK_PADDING;
-
-  const label =
-    value < 33 ? "My pet needs a FRIEND" : value > 66 ? "My pet needs some HOT LOVE" : "My pet is open to FRIEND or LOVE";
-
-  const thumbEmoji = value < 33 ? "🐾" : value > 66 ? "🔥" : "💞";
+  const isPlay = value < 50;
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.track} onLayout={handleLayout} {...panResponder.panHandlers}>
-        <Text style={[styles.side, { color: colors.friend }]}>🐾 FRIEND</Text>
-        <Text style={[styles.side, { color: colors.hot }]}>🔥 HOT</Text>
-        <View style={[styles.thumbPos, { left: thumbLeft }]}>
-          <LinearGradient
-            colors={[colors.friend, value > 50 ? colors.hot : colors.coral]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.thumb}
-          >
-            <Text style={styles.thumbEmoji}>{thumbEmoji}</Text>
-          </LinearGradient>
-        </View>
+      <Text style={styles.label}>{isPlay ? "Looking for a play date" : "Open to a little hot love"}</Text>
+      <View style={styles.selector}>
+        <Pressable onPress={() => onChange(0)} style={[styles.choice, isPlay && styles.playActive]}>
+          <Text style={[styles.icon, isPlay && styles.activeText]}>●</Text>
+          <Text style={[styles.choiceText, isPlay && styles.activeText]}>PLAY</Text>
+        </Pressable>
+        <View style={styles.divider} />
+        <Pressable onPress={() => onChange(100)} style={[styles.choice, !isPlay && styles.hotActive]}>
+          <Text style={[styles.icon, !isPlay && styles.hotText]}>✦</Text>
+          <Text style={[styles.choiceText, !isPlay && styles.hotText]}>HOT</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -70,30 +37,13 @@ const styles = StyleSheet.create({
     color: colors.grey,
     marginBottom: 8,
   },
-  track: {
-    height: 52,
-    borderRadius: radii.pill,
-    backgroundColor: "#F5F1EA",
-    borderWidth: 1,
-    borderColor: colors.line,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    justifyContent: "space-between",
-  },
-  side: { fontFamily: fonts.displaySemi, fontSize: 13 },
-  thumbPos: { position: "absolute", top: TRACK_PADDING },
-  thumb: {
-    width: THUMB_SIZE,
-    height: THUMB_SIZE,
-    borderRadius: THUMB_SIZE / 2,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-  },
-  thumbEmoji: { fontSize: 18 },
+  selector: { height: 48, borderRadius: radii.pill, backgroundColor: "rgba(255,255,255,0.58)", borderWidth: 1, borderColor: colors.line, flexDirection: "row", alignItems: "center", padding: 4 },
+  choice: { flex: 1, height: 38, borderRadius: radii.pill, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
+  playActive: { backgroundColor: "rgba(47,189,180,0.12)" },
+  hotActive: { backgroundColor: "rgba(255,93,115,0.12)" },
+  divider: { width: 1, height: 20, backgroundColor: colors.line },
+  icon: { fontFamily: fonts.bodyBold, fontSize: 12, color: "rgba(43,39,36,0.45)" },
+  choiceText: { fontFamily: fonts.displaySemi, fontSize: 12, color: "rgba(43,39,36,0.58)", letterSpacing: 0.6 },
+  activeText: { color: "rgba(30,112,108,0.82)" },
+  hotText: { color: "rgba(190,55,78,0.82)" },
 });

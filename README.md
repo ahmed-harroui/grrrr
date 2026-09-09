@@ -33,6 +33,18 @@ crée la table `profiles`, ses contraintes et les policies RLS qui limitent
 chaque profil à son propriétaire. Sans ces variables, l'application reste
 utilisable en mode démo et le profil reste éditable localement.
 
+## Logos du bouton Like
+
+Ajouter les deux images fournies dans `assets/` avec ces noms :
+
+```text
+assets/logo-round.png   # image 2, logo rond affiché sur le bouton
+assets/logo-broken.png  # version cassée affichée pendant 1 seconde au clic
+```
+
+Le bouton est déjà animé dans `src/components/LikeButton.tsx` et utilise un
+fallback emoji tant que les fichiers image ne sont pas encore ajoutés.
+
 ## Structure
 
 ```

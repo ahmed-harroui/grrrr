@@ -1,5 +1,6 @@
 import React, { forwardRef, useImperativeHandle, useRef } from "react";
 import { Animated, Dimensions, Image, PanResponder, StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors, fonts, radii } from "@/theme/theme";
 import { ENERGY_LABEL, Pet } from "@/data/mockPets";
 import { computeMatch } from "@/utils/matching";
@@ -61,6 +62,8 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
   });
   const likeOpacity = pan.x.interpolate({ inputRange: [20, 110], outputRange: [0, 1], extrapolate: "clamp" });
   const nopeOpacity = pan.x.interpolate({ inputRange: [-110, -20], outputRange: [1, 0], extrapolate: "clamp" });
+  const likePhotoOpacity = pan.x.interpolate({ inputRange: [20, 110], outputRange: [0, 0.13], extrapolate: "clamp" });
+  const nopePhotoOpacity = pan.x.interpolate({ inputRange: [-110, -20], outputRange: [0.13, 0], extrapolate: "clamp" });
 
   const cardStyle = isTop
     ? {
@@ -77,7 +80,13 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
     >
       <View style={styles.photoWrap}>
         <Image source={{ uri: pet.photo }} style={styles.photo} />
-        <View style={styles.photoShade} />
+        <LinearGradient colors={["transparent", "rgba(0,0,0,0.08)", "rgba(0,0,0,0.28)"]} locations={[0, 0.55, 1]} style={styles.photoShade} pointerEvents="none" />
+        {isTop && (
+          <>
+            <Animated.View style={[styles.swipeTint, styles.likeTint, { opacity: likePhotoOpacity }]} pointerEvents="none" />
+            <Animated.View style={[styles.swipeTint, styles.nopeTint, { opacity: nopePhotoOpacity }]} pointerEvents="none" />
+          </>
+        )}
 
         <View style={styles.scoreBadge}>
           <Text style={styles.scoreBadgeText}>❤️ {pct}%</Text>
@@ -134,7 +143,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
 
 export default SwipeCard;
 
-const CARD_HEIGHT_RATIO = 0.62;
+const CARD_HEIGHT_RATIO = 0.68;
 
 const styles = StyleSheet.create({
   card: {
@@ -154,14 +163,10 @@ const styles = StyleSheet.create({
   },
   photoWrap: { height: `${CARD_HEIGHT_RATIO * 100}%`, position: "relative" },
   photo: { width: "100%", height: "100%" },
-  photoShade: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: "45%",
-    backgroundColor: "rgba(0,0,0,0.35)",
-  },
+  photoShade: { position: "absolute", left: 0, right: 0, bottom: 0, height: "45%" },
+  swipeTint: StyleSheet.absoluteFill,
+  likeTint: { backgroundColor: colors.friend },
+  nopeTint: { backgroundColor: colors.coral },
   scoreBadge: {
     position: "absolute",
     top: 14,
@@ -188,15 +193,15 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   nameRow: { position: "absolute", left: 16, bottom: 12 },
-  name: { fontFamily: fonts.display, fontSize: 22, color: "#fff" },
-  nameAge: { fontFamily: fonts.body, fontSize: 14, color: "#fff" },
-  meta: { fontFamily: fonts.body, fontSize: 12.5, color: "#F1E9E2", marginTop: 2 },
-  body: { flex: 1, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10 },
-  bio: { fontFamily: fonts.body, fontSize: 13, color: colors.grey, lineHeight: 18 },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
-  tag: { backgroundColor: colors.cream2, paddingHorizontal: 9, paddingVertical: 4, borderRadius: radii.pill },
-  tagText: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.coralDark },
-  whyToggle: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.friend, marginTop: 8 },
+  name: { fontFamily: fonts.display, fontSize: 26, color: "#fff" },
+  nameAge: { fontFamily: fonts.body, fontSize: 16, color: "#fff" },
+  meta: { fontFamily: fonts.body, fontSize: 14, color: "#F1E9E2", marginTop: 3 },
+  body: { flex: 1, paddingHorizontal: 18, paddingTop: 14, paddingBottom: 14 },
+  bio: { fontFamily: fonts.body, fontSize: 14, color: colors.grey, lineHeight: 20 },
+  tags: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 11 },
+  tag: { backgroundColor: colors.cream2, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radii.pill },
+  tagText: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.coralDark },
+  whyToggle: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.friend, marginTop: 10 },
   whyPanel: { backgroundColor: "#F7FAF9", borderRadius: 12, padding: 10, marginTop: 6 },
   whyText: { fontFamily: fonts.body, fontSize: 12, color: colors.dark, lineHeight: 18 },
 });

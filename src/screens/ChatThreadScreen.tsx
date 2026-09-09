@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   FlatList,
   Image,
@@ -19,12 +19,16 @@ import { ChatMessage } from "@/context/AppState";
 export default function ChatThreadScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { chats, sendMessage } = useAppState();
+  const { chats, sendMessage, markChatRead } = useAppState();
   const [text, setText] = useState("");
   const listRef = useRef<FlatList>(null);
 
   const petId = route.params?.petId;
   const chat = chats.find((c) => c.pet.id === petId);
+
+  useEffect(() => {
+    if (petId !== undefined) markChatRead(petId);
+  }, [markChatRead, petId]);
 
   if (!chat) return null;
 

@@ -4,7 +4,7 @@ import { colors, fonts, radii } from "@/theme/theme";
 import { useAuth } from "@/context/AuthContext";
 
 export default function AuthScreen({ onDemo, onAuthenticated }: { onDemo: () => void; onAuthenticated: () => void }) {
-  const { demoMode, signIn, signUp } = useAuth();
+  const { signIn, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,11 +42,9 @@ export default function AuthScreen({ onDemo, onAuthenticated }: { onDemo: () => 
         <Pressable onPress={() => setIsSignUp((value) => !value)} style={styles.switchButton}>
           <Text style={styles.switchText}>{isSignUp ? "J'ai déjà un compte" : "Créer un compte"}</Text>
         </Pressable>
-        {demoMode && (
-          <Pressable onPress={onDemo} style={styles.demoButton}>
-            <Text style={styles.demoText}>Continuer en mode démo</Text>
-          </Pressable>
-        )}
+        <Pressable onPress={onDemo} style={styles.demoButton}>
+          <Text style={styles.demoText}>Découvrir sans compte</Text>
+        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );

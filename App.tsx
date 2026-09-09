@@ -15,11 +15,12 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import SplashScreen from "@/screens/SplashScreen";
 import OnboardingScreen from "@/screens/OnboardingScreen";
 import AuthScreen from "@/screens/AuthScreen";
+import PetProfileSetupScreen from "@/screens/PetProfileSetupScreen";
 import RootNavigator from "@/navigation/RootNavigator";
 
 SplashAPI.preventAutoHideAsync().catch(() => {});
 
-type Stage = "splash" | "auth" | "onboarding" | "app";
+type Stage = "splash" | "auth" | "onboarding" | "profileSetup" | "app";
 
 export default function App() {
   const [stage, setStage] = useState<Stage>("splash");
@@ -54,15 +55,17 @@ export default function App() {
 
 function AppContent({ stage, setStage }: { stage: Stage; setStage: (stage: Stage) => void }) {
   const { loading, session } = useAuth();
+  const [guestMode, setGuestMode] = useState(false);
 
   useEffect(() => {
-    if (!loading && !session && stage !== "splash" && stage !== "auth") setStage("auth");
-  }, [loading, session, stage, setStage]);
+    if (!loading && !session && !guestMode && stage !== "splash" && stage !== "auth") setStage("auth");
+  }, [guestMode, loading, session, stage, setStage]);
 
   if (stage === "splash") return <SplashScreen onFinish={() => setStage(session ? "app" : "auth")} />;
   if (loading) return null;
-  if (stage === "auth") return <AuthScreen onDemo={() => setStage("onboarding")} onAuthenticated={() => setStage("app")} />;
+  if (stage === "auth") return <AuthScreen onDemo={() => { setGuestMode(true); setStage("onboarding"); }} onAuthenticated={() => setStage("profileSetup")} />;
   if (stage === "onboarding") return <OnboardingScreen onDone={() => setStage("app")} />;
+  if (stage === "profileSetup") return <PetProfileSetupScreen onDone={() => setStage("app")} />;
   return <RootNavigator />;
 }
 

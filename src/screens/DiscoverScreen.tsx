@@ -8,6 +8,7 @@ import ModeSlider from "@/components/ModeSlider";
 import SwipeCard, { SwipeCardHandle } from "@/components/SwipeCard";
 import MatchModal from "@/components/MatchModal";
 import Header from "@/components/Header";
+import LikeButton from "@/components/LikeButton";
 
 export default function DiscoverScreen() {
   const { mode, setMode, likePet, pendingMatch, clearPendingMatch } = useAppState();
@@ -56,14 +57,12 @@ export default function DiscoverScreen() {
 
       <View style={styles.actions}>
         <Pressable style={[styles.actBtn, styles.skipBtn]} onPress={() => topCardRef.current?.triggerSwipe("left")}>
-          <Text style={styles.skipIcon}>✕</Text>
+          <Text style={styles.skipIcon}>×</Text>
         </Pressable>
         <Pressable style={[styles.actBtn, styles.superBtn]} onPress={() => topCardRef.current?.triggerSwipe("super")}>
           <Text style={styles.superIcon}>⭐</Text>
         </Pressable>
-        <Pressable style={[styles.actBtn, styles.likeBtn]} onPress={() => topCardRef.current?.triggerSwipe("right")}>
-          <Text style={styles.likeIcon}>❤️</Text>
-        </Pressable>
+        <LikeButton mode={mode} onLike={() => topCardRef.current?.triggerSwipe("right")} />
       </View>
 
       <MatchModal
@@ -78,10 +77,10 @@ export default function DiscoverScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
-  stackWrap: { flex: 1, marginHorizontal: 18, marginBottom: 8, position: "relative" },
+  stackWrap: { flex: 1, marginHorizontal: 14, marginBottom: 4, position: "relative" },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 30 },
   emptyText: { textAlign: "center", fontFamily: fonts.body, color: colors.grey, fontSize: 13, lineHeight: 20 },
-  actions: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 18, paddingVertical: 14 },
+  actions: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 18, paddingTop: 10, paddingBottom: 18 },
   actBtn: {
     alignItems: "center",
     justifyContent: "center",
@@ -93,7 +92,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   skipBtn: { width: 54, height: 54, borderRadius: 27 },
-  skipIcon: { fontSize: 22, color: colors.coral },
+  skipIcon: { fontFamily: fonts.body, fontSize: 32, lineHeight: 34, color: colors.dark },
   superBtn: { width: 44, height: 44, borderRadius: 22 },
   superIcon: { fontSize: 18, color: colors.hot },
   likeBtn: { width: 60, height: 60, borderRadius: 30, backgroundColor: colors.coral },

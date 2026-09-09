@@ -15,6 +15,25 @@ export default function ChatListScreen() {
       <Header />
       <Text style={styles.title}>Messages</Text>
 
+      {chats.length > 0 && (
+        <View>
+          <Text style={styles.storyHeading}>Rencontres récentes</Text>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={chats}
+            keyExtractor={(chat) => `story-${chat.pet.id}`}
+            contentContainerStyle={styles.stories}
+            renderItem={({ item }) => (
+              <Pressable style={styles.story} onPress={() => navigation.navigate("ChatThread", { petId: item.pet.id })}>
+                <View style={styles.storyRing}><Image source={{ uri: item.pet.photo }} style={styles.storyAvatar} /></View>
+                <Text style={styles.storyName} numberOfLines={1}>{item.pet.name}</Text>
+              </Pressable>
+            )}
+          />
+        </View>
+      )}
+
       {chats.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>Aucune conversation pour le moment.</Text>
@@ -47,6 +66,12 @@ export default function ChatListScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   title: { fontFamily: fonts.display, fontSize: 21, color: colors.dark, marginHorizontal: 20, marginBottom: 14, marginTop: 2 },
+  storyHeading: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.grey, marginHorizontal: 20, marginBottom: 8 },
+  stories: { paddingHorizontal: 20, gap: 14, paddingBottom: 18 },
+  story: { width: 62, alignItems: "center" },
+  storyRing: { width: 58, height: 58, borderRadius: 29, padding: 3, backgroundColor: colors.coral },
+  storyAvatar: { width: "100%", height: "100%", borderRadius: 26, borderWidth: 2, borderColor: colors.cream },
+  storyName: { fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.dark, marginTop: 5 },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 },
   emptyText: { textAlign: "center", fontFamily: fonts.body, color: colors.grey, fontSize: 13 },
   row: {
