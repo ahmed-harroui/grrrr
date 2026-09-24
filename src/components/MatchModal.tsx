@@ -97,17 +97,17 @@ function SparklePiece({ left, color, delay, duration }: { left: number; color: s
 }
 
 function getStyles(colors: ReturnType<typeof useThemedColors>) {
-  return StyleSheet.create({
-  overlay: {
+    return StyleSheet.create({
+    overlay: {
     flex: 1,
     backgroundColor: "rgba(255,93,115,0.94)",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 26,
   },
-  content: { alignItems: "center" },
-  photos: { flexDirection: "row", alignItems: "center", marginBottom: 22 },
-  photoCircle: {
+    content: { alignItems: "center" },
+    photos: { flexDirection: "row", alignItems: "center", marginBottom: 22 },
+    photoCircle: {
     width: 122,
     height: 122,
     borderRadius: 61,
@@ -120,11 +120,11 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     shadowOffset: { width: 0, height: 5 },
     elevation: 5,
   },
-  meCircle: { marginRight: -16 },
-  themCircle: { marginLeft: -16 },
-  photoImg: { width: "100%", height: "100%" },
-  title: { fontFamily: fonts.displayExtra, fontSize: 40, lineHeight: 42, color: "#fff", textAlign: "center" },
-  subtitle: { fontFamily: fonts.bodyMedium, fontSize: 14, color: "#FFE6ED", marginTop: 8, textAlign: "center" },
-  tapHint: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#fff", opacity: 0.92, marginTop: 24 },
+    meCircle: { marginRight: -16 },
+    themCircle: { marginLeft: -16 },
+    photoImg: { width: "100%", height: "100%" },
+    title: { fontFamily: fonts.displayExtra, fontSize: 40, lineHeight: 42, color: "#fff", textAlign: "center" },
+    subtitle: { fontFamily: fonts.bodyMedium, fontSize: 14, color: "#FFE6ED", marginTop: 8, textAlign: "center" },
+    tapHint: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#fff", opacity: 0.92, marginTop: 24 },
   });
 }

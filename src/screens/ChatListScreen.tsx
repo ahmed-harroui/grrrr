@@ -67,7 +67,7 @@ export default function ChatListScreen() {
 }
 
 function getStyles(colors: ReturnType<typeof useThemedColors>) {
-  return StyleSheet.create({
+    return StyleSheet.create({
     container: { flex: 1 },
     title: { fontFamily: fonts.display, fontSize: 21, marginHorizontal: 20, marginBottom: 14, marginTop: 2 },
     storyHeading: { fontFamily: fonts.bodySemi, fontSize: 12, marginHorizontal: 20, marginBottom: 8 },
