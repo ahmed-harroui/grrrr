@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 30 },
   emptyText: { textAlign: "center", fontFamily: fonts.body, fontSize: 13, lineHeight: 20 },
   modeSliderOverlay: { position: "absolute", top: 12, left: 0, right: 0, zIndex: 25, paddingHorizontal: 8 },
-  actionsOverlay: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 18, paddingTop: 12, paddingBottom: 24, backgroundColor: "transparent", zIndex: 20 },
+  actionsOverlay: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 18, paddingTop: 12, paddingBottom: 36, backgroundColor: "transparent", zIndex: 20 },
   actBtn: {
     alignItems: "center",
     justifyContent: "center",
