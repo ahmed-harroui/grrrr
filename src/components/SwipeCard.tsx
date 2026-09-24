@@ -94,8 +94,10 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
         </>
       )}
 
-      <View style={styles.scoreBadge}>
-        <Text style={styles.scoreBadgeText}>❤️ {pct}%</Text>
+      <View style={styles.topCenter}>
+        <View style={styles.scoreBadge}>
+          <Text style={styles.scoreBadgeText}>❤️ {pct}%</Text>
+        </View>
       </View>
       <View style={styles.rankBadge}><PetRankBadge level={pet.level ?? ((pet.id % 3) + 1)} /></View>
 
@@ -132,7 +134,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
             ))}
           </View>
           <Text style={styles.whyToggle} onPress={() => setWhyOpen((v) => !v)}>
-            {t.discover.why} {pct}% ? {whyOpen ? "▴" : "▾"}
+            {t.discover.why} compatible ? {whyOpen ? "▴" : "▾"}
           </Text>
           {whyOpen && (
             <View style={styles.whyPanel}>
@@ -172,18 +174,15 @@ const styles = StyleSheet.create({
   swipeTint: StyleSheet.absoluteFill,
   likeTint: { backgroundColor: "#2FBDB4" },
   nopeTint: { backgroundColor: "#FF5D73" },
+  topCenter: { position: "absolute", top: 16, left: 0, right: 0, alignItems: "center", zIndex: 3 },
   scoreBadge: {
-    position: "absolute",
-    top: 14,
-    right: 14,
     backgroundColor: "rgba(255,255,255,0.92)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: radii.pill,
-    zIndex: 3,
   },
   scoreBadgeText: { fontFamily: fonts.displaySemi, fontSize: 13, color: "#E64863" },
-  rankBadge: { position: "absolute", top: 56, right: 14, zIndex: 3 },
+  rankBadge: { position: "absolute", top: 16, left: "50%", marginLeft: -20, zIndex: 3 },
   stamp: {
     position: "absolute",
     top: 26,
@@ -204,13 +203,13 @@ const styles = StyleSheet.create({
   name: { fontFamily: fonts.display, fontSize: 26, color: "#fff" },
   nameAge: { fontFamily: fonts.body, fontSize: 16, color: "#fff" },
   meta: { fontFamily: fonts.body, fontSize: 14, color: "#F1E9E2", marginTop: 3 },
-  bodyOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, height: "60%", paddingHorizontal: 18, paddingBottom: 16, zIndex: 2 },
-  bodyContent: { flex: 1, justifyContent: "flex-end" },
+  bodyOverlay: { position: "absolute", left: 0, right: 0, bottom: 72, height: "auto", paddingHorizontal: 16, paddingVertical: 12, zIndex: 2 },
+  bodyContent: { flex: 1, justifyContent: "flex-start" },
   bio: { fontFamily: fonts.body, fontSize: 13, color: "#FFFFFF", lineHeight: 19 },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 8 },
-  tag: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: radii.pill },
+  tags: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 7 },
+  tag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.pill },
   tagText: { fontFamily: fonts.bodySemi, fontSize: 10, color: "#FFFFFF" },
-  whyToggle: { fontFamily: fonts.bodySemi, fontSize: 11, color: "#FFFFFF", marginTop: 6 },
+  whyToggle: { fontFamily: fonts.bodySemi, fontSize: 11, color: "#FFFFFF", marginTop: 5 },
   whyPanel: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 8, padding: 7, marginTop: 4, maxHeight: 100 },
   whyText: { fontFamily: fonts.body, fontSize: 10, color: "#FFFFFF", lineHeight: 15 },
 });
