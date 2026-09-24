@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, fonts, radii } from "@/theme/theme";
+import { fonts, radii } from "@/theme/theme";
+import { useThemedColors } from "@/hooks/useThemedColors";
 import { ME } from "@/data/mockPets";
 import Header from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
@@ -36,9 +37,11 @@ const PETS = [
 
 
 export default function MyPetScreen() {
+  const colors = useThemedColors();
   const { session, signOut } = useAuth();
   const { activePet, setActivePet, treats, petProgress, progressByPet } = useAppState();
   const [profile, setProfile] = useState<PetProfileDraft>(DEFAULT_PROFILE);
+  const styles = getStyles(colors);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [levelInfoOpen, setLevelInfoOpen] = useState(false);
@@ -243,8 +246,9 @@ function Stat({ big, small }: { big: string; small: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.cream },
+function getStyles(colors: ReturnType<typeof useThemedColors>) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.cream },
   scrollContent: { paddingHorizontal: 18, paddingBottom: 36 },
   hero: { alignItems: "center", paddingVertical: 8 },
   heroSticker: { color: colors.hot, fontSize: 16, marginBottom: 2 },
@@ -358,4 +362,5 @@ const styles = StyleSheet.create({
   levelRowText: { fontFamily: fonts.body, fontSize: 11, lineHeight: 16, color: colors.grey, marginTop: 2 },
   modalClose: { backgroundColor: colors.coral, borderRadius: radii.pill, alignItems: "center", paddingVertical: 14, marginTop: 10 },
   modalCloseText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 13 },
-});
+  });
+}
