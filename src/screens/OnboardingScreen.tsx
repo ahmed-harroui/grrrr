@@ -9,7 +9,8 @@ import {
   Text,
   View,
 } from "react-native";
-import { colors, fonts, radii } from "@/theme/theme";
+import { fonts, radii } from "@/theme/theme";
+import { useThemedColors } from "@/hooks/useThemedColors";
 
 interface Props {
   onDone: () => void;
@@ -42,6 +43,8 @@ const SLIDES = [
 ];
 
 export default function OnboardingScreen({ onDone }: Props) {
+  const colors = useThemedColors();
+  const styles = getStyles(colors);
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList>(null);
 
@@ -108,7 +111,8 @@ export default function OnboardingScreen({ onDone }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function getStyles(colors: ReturnType<typeof useThemedColors>) {
+  return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   skip: { alignSelf: "flex-end", marginTop: 18, marginRight: 20 },
   skipText: { fontFamily: fonts.bodySemi, fontSize: 12.5, color: colors.grey },
@@ -136,4 +140,5 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   nextText: { fontFamily: fonts.displaySemi, fontSize: 14.5, color: "#fff" },
-});
+  });
+}
