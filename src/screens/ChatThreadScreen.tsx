@@ -12,14 +12,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { colors, fonts, radii } from "@/theme/theme";
+import { fonts, radii } from "@/theme/theme";
+import { useThemedColors } from "@/hooks/useThemedColors";
 import { ChatMessage, useAppState } from "@/context/AppState";
 
 export default function ChatThreadScreen() {
+  const colors = useThemedColors();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { activePet, chats, sendMessage, markChatRead, meetingTraces, confirmMeetingTrace, deleteMeetingTrace } = useAppState();
   const [text, setText] = useState("");
+  const styles = getStyles(colors);
   const listRef = useRef<FlatList>(null);
 
   const petId = route.params?.petId;
@@ -187,7 +190,8 @@ function Bubble({ message, onOpenMap }: { message: ChatMessage; onOpenMap: () =>
   );
 }
 
-const styles = StyleSheet.create({
+function getStyles(colors: ReturnType<typeof useThemedColors>) {
+  return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   head: {
     flexDirection: "row",
@@ -309,4 +313,5 @@ const styles = StyleSheet.create({
   proposeText: { color: colors.white, fontFamily: fonts.bodyBold, fontSize: 10 },
   deleteButton: { paddingHorizontal: 5 },
   deleteText: { color: colors.coralDark, fontFamily: fonts.bodySemi, fontSize: 10 },
-});
+  });
+}
