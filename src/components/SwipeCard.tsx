@@ -121,7 +121,9 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
         </Text>
       </View>
 
-      <LinearGradient colors={["transparent", pet.gender === "F" ? "rgba(255,93,115,0.85)" : "rgba(47,189,180,0.85)"]} locations={[0, 1]} style={styles.bodyOverlay} pointerEvents="box-none">
+      <LinearGradient colors={["transparent", pet.gender === "F" ? "rgba(255,93,115,0.88)" : "rgba(47,189,180,0.88)"]} locations={[0, 1]} style={styles.gradientOverlay} pointerEvents="none" />
+
+      <View style={styles.bodyOverlay}>
         <View style={styles.bodyContent}>
           <Text style={styles.bio} numberOfLines={2}>
             {pet.bio}
@@ -146,7 +148,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
             </View>
           )}
         </View>
-      </LinearGradient>
+      </View>
     </Animated.View>
   );
 });
@@ -203,8 +205,9 @@ const styles = StyleSheet.create({
   name: { fontFamily: fonts.display, fontSize: 26, color: "#fff" },
   nameAge: { fontFamily: fonts.body, fontSize: 16, color: "#fff" },
   meta: { fontFamily: fonts.body, fontSize: 14, color: "#F1E9E2", marginTop: 3 },
-  bodyOverlay: { position: "absolute", left: 0, right: 0, bottom: 72, paddingHorizontal: 16, paddingVertical: 12, zIndex: 1, paddingBottom: 0 },
-  bodyContent: { flex: 1, justifyContent: "flex-start" },
+  gradientOverlay: { position: "absolute", left: 0, right: 0, bottom: 72, height: "55%", zIndex: 0 },
+  bodyOverlay: { position: "absolute", left: 0, right: 0, bottom: 72, paddingHorizontal: 16, paddingVertical: 12, zIndex: 2 },
+  bodyContent: { justifyContent: "flex-start" },
   bio: { fontFamily: fonts.body, fontSize: 13, color: "#FFFFFF", lineHeight: 19 },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 7 },
   tag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.pill },
