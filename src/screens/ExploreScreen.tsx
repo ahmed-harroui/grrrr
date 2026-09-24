@@ -141,13 +141,13 @@ export default function ExploreScreen() {
 
 function getStyles(colors: ReturnType<typeof useThemedColors>) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.cream },
-    content: { paddingBottom: 30 },
-    title: { fontFamily: fonts.display, fontSize: 21, color: colors.dark, marginHorizontal: 20, marginBottom: 14, marginTop: 2 },
-    tile: { flex: 1, height: 120, borderRadius: radii.md, overflow: "hidden" },
-    tileImg: { width: "100%", height: "100%" },
-    tileShade: { position: "absolute", left: 0, right: 0, bottom: 0, height: "45%", backgroundColor: "rgba(0,0,0,0.4)" },
-    tileLabel: {
+  container: { flex: 1, backgroundColor: colors.cream },
+  content: { paddingBottom: 30 },
+  title: { fontFamily: fonts.display, fontSize: 21, color: colors.dark, marginHorizontal: 20, marginBottom: 14, marginTop: 2 },
+  tile: { flex: 1, height: 120, borderRadius: radii.md, overflow: "hidden" },
+  tileImg: { width: "100%", height: "100%" },
+  tileShade: { position: "absolute", left: 0, right: 0, bottom: 0, height: "45%", backgroundColor: "rgba(0,0,0,0.4)" },
+  tileLabel: {
     position: "absolute",
     bottom: 6,
     left: 8,
