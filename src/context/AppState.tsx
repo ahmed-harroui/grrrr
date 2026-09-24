@@ -139,6 +139,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const likePet = useCallback((pet: Pet) => {
     setLikedPetIds((current) => new Set(current).add(pet.id));
     if (!LIKED_BACK.has(pet.id)) return;
+    const isHotMatch = activePet.mode >= 50 && pet.mode >= 50;
+    const matchType = isHotMatch ? "Hot" : "Friend";
+    const matchEmoji = isHotMatch ? "❤️" : "🐾";
+    const matchDescription = isHotMatch
+      ? "Coup de cœur entre ${activePet.name} et ${pet.name} !"
+      : "Amitié entre ${activePet.name} et ${pet.name} !";
     setMatches((prev) => (prev.find((p) => p.id === pet.id) ? prev : [...prev, pet]));
     setChats((prev) =>
       prev.find((c) => c.pet.id === pet.id)
@@ -147,14 +153,14 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
             ...prev,
             {
               pet,
-              messages: [{ from: "them", text: `Salut ! ${activePet.name} et ${pet.name} se sont plu 🐾`, read: false }],
+              messages: [{ from: "them", text: `Salut ! ${activePet.name} et ${pet.name} se sont plu 🐾\n\n${matchEmoji} Match ${matchType} ✦`, read: false }],
             },
           ]
     );
-    setPendingMatch(pet);
+    setPendingMatch({ ...pet, matchType } as any);
     updateProgress(activePet.id, { matches: petProgress.matches + 1 });
     void collectTreats(10, "match", `match:${activePet.id}:${pet.id}`);
-  }, [activePet.id, activePet.name, collectTreats, petProgress.matches, updateProgress]);
+  }, [activePet.id, activePet.name, activePet.mode, collectTreats, petProgress.matches, updateProgress]);
 
   const clearPendingMatch = useCallback(() => setPendingMatch(null), []);
 

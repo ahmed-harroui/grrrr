@@ -66,9 +66,11 @@ export default function MatchModal({ visible, pet, onKeepSwiping }: Props) {
               <Image source={{ uri: pet.photo }} style={styles.photoImg} />
             </Animated.View>
           </View>
-          <Text style={styles.title}>It’s a Match</Text>
+          <Text style={styles.title}>It’s a Match!</Text>
+          <Text style={styles.matchType}>{(pet as any).matchType === "Hot" ? "💕 HOT MATCH" : "🐾 FRIEND MATCH"}</Text>
           <Text style={styles.subtitle}>{ME.name} et {pet.name} se sont likés mutuellement.</Text>
-          <Text style={styles.tapHint}>Touchez l'écran pour fermer</Text>
+          <Text style={styles.matchDetail}>{(pet as any).matchType === "Hot" ? "Une belle rencontre amoureuse vous attend !" : "Une amitié fantastique commence !"}</Text>
+          <Text style={styles.tapHint}>Touchez l’écran pour fermer</Text>
         </Animated.View>
       </Pressable>
     </Modal>
@@ -124,7 +126,9 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     themCircle: { marginLeft: -16 },
     photoImg: { width: "100%", height: "100%" },
     title: { fontFamily: fonts.displayExtra, fontSize: 40, lineHeight: 42, color: "#fff", textAlign: "center" },
-    subtitle: { fontFamily: fonts.bodyMedium, fontSize: 14, color: "#FFE6ED", marginTop: 8, textAlign: "center" },
+    matchType: { fontFamily: fonts.displaySemi, fontSize: 18, color: "#fff", textAlign: "center", marginTop: 6, letterSpacing: 1.2 },
+    subtitle: { fontFamily: fonts.bodyMedium, fontSize: 14, color: "#FFE6ED", marginTop: 12, textAlign: "center" },
+    matchDetail: { fontFamily: fonts.body, fontSize: 12, color: "#FFE6ED", marginTop: 6, textAlign: "center" },
     tapHint: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#fff", opacity: 0.92, marginTop: 24 },
   });
 }
