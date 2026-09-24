@@ -2,6 +2,8 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 import { LIKED_BACK, ME, Pet } from "@/data/mockPets";
 import { awardTreats, loadTreatBalance } from "@/data/api/treats";
 import { loadMeetingTraces, removeMeetingTrace, saveMeetingTrace, updateMeetingTraceStatus } from "@/data/api/meetings";
+import { getMatches, createMatch } from "@/data/api/matches";
+import { createSwipe, getSwipeHistory } from "@/data/api/swipes";
 import { useAuth } from "@/context/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
@@ -105,6 +107,23 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
           ...Object.fromEntries(data.map((trace) => [Number(trace.matched_pet_key), { latitude: trace.latitude, longitude: trace.longitude, marker: trace.marker, status: trace.status, requestedBy: trace.requested_by }])) as Record<number, MeetingTrace>,
         }));
       });
+      (async () => {
+        try {
+          const matchesData = await getMatches(String(activePet.id));
+          const matchPetIds = new Set(matchesData.map((m) => Number(m.pet1Id === String(activePet.id) ? m.pet2Id : m.pet1Id)));
+          setLikedPetIds(matchPetIds);
+
+          const matchedPets = await Promise.all(
+            matchesData.map(async (m) => {
+              const petId = Number(m.pet1Id === String(activePet.id) ? m.pet2Id : m.pet1Id);
+              const pet = (await getSwipeHistory(String(petId)))[0];
+              return pet;
+            })
+          );
+        } catch (error) {
+          console.error("Error loading matches:", error);
+        }
+      })();
     }
   }, [activePet.id, session?.user.id, updateProgress]);
 
@@ -136,15 +155,21 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setActivePetState((current) => ({ ...current, mode: nextMode }));
   }, []);
 
-  const likePet = useCallback((pet: Pet) => {
+  const likePet = useCallback(async (pet: Pet) => {
     setLikedPetIds((current) => new Set(current).add(pet.id));
-    if (!LIKED_BACK.has(pet.id)) return;
+
+    try {
+      await createSwipe(String(activePet.id), String(pet.id), "like");
+    } catch (error) {
+      console.error("Error saving swipe:", error);
+    }
+
+    const hasLikedBack = likedPetIds.has(pet.id) || LIKED_BACK.has(pet.id);
+    if (!hasLikedBack) return;
+
     const isHotMatch = activePet.mode >= 50 && pet.mode >= 50;
     const matchType = isHotMatch ? "Hot" : "Friend";
     const matchEmoji = isHotMatch ? "❤️" : "🐾";
-    const matchDescription = isHotMatch
-      ? "Coup de cœur entre ${activePet.name} et ${pet.name} !"
-      : "Amitié entre ${activePet.name} et ${pet.name} !";
     setMatches((prev) => (prev.find((p) => p.id === pet.id) ? prev : [...prev, pet]));
     setChats((prev) =>
       prev.find((c) => c.pet.id === pet.id)
@@ -160,7 +185,13 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setPendingMatch({ ...pet, matchType } as any);
     updateProgress(activePet.id, { matches: petProgress.matches + 1 });
     void collectTreats(10, "match", `match:${activePet.id}:${pet.id}`);
-  }, [activePet.id, activePet.name, activePet.mode, collectTreats, petProgress.matches, updateProgress]);
+
+    try {
+      await createMatch(String(activePet.id), String(pet.id), 0, matchType.toLowerCase());
+    } catch (error) {
+      console.error("Error creating match:", error);
+    }
+  }, [activePet.id, activePet.name, activePet.mode, collectTreats, likedPetIds, petProgress.matches, updateProgress]);
 
   const clearPendingMatch = useCallback(() => setPendingMatch(null), []);
 
