@@ -2,7 +2,9 @@ import React from "react";
 import { Image, ImageStyle, StyleSheet, Text, View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, fonts } from "@/theme/theme";
+import { fonts } from "@/theme/theme";
+import { useThemedColors } from "@/hooks/useThemedColors";
+import { useTheme } from "@/context/ThemeContext";
 import DiscoverScreen from "@/screens/DiscoverScreen";
 import MatchesScreen from "@/screens/MatchesScreen";
 import ChatListScreen from "@/screens/ChatListScreen";
@@ -27,9 +29,9 @@ const LABELS: Record<string, string> = {
   MyPet: "My Pet",
 };
 
-function getTabBarStyle(bottomInset: number) {
+function getTabBarStyle(bottomInset: number, isDark: boolean, colors: ReturnType<typeof useThemedColors>) {
   return {
-    backgroundColor: "rgba(255,255,255,0.96)",
+    backgroundColor: isDark ? "rgba(45,38,32,0.96)" : "rgba(255,255,255,0.96)",
     borderTopColor: colors.line,
     borderTopWidth: 1,
     borderRadius: 30,
@@ -48,6 +50,8 @@ function getTabBarStyle(bottomInset: number) {
 
 export default function MainTabs() {
   const insets = useSafeAreaInsets();
+  const colors = useThemedColors();
+  const { isDark } = useTheme();
   const { chats } = useAppState();
   const unreadMessages = chats.reduce(
     (total, chat) => total + chat.messages.filter((message) => message.from === "them" && !message.read).length,
@@ -61,7 +65,7 @@ export default function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: colors.coralDark,
         tabBarInactiveTintColor: colors.grey,
-        tabBarStyle: getTabBarStyle(insets.bottom),
+        tabBarStyle: getTabBarStyle(insets.bottom, isDark, colors),
         tabBarItemStyle: { paddingHorizontal: 2 },
         tabBarLabel: ({ color }) => (
           <Text style={{ fontFamily: fonts.bodySemi, fontSize: 10.5, color }}>{LABELS[route.name]}</Text>
