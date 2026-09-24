@@ -3,7 +3,8 @@ import { FlatList, Image, Modal, Platform, Pressable, StyleSheet, Text, View } f
 import MapView, { MapPressEvent, Marker, Region } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { colors, fonts, radii } from "@/theme/theme";
+import { fonts, radii } from "@/theme/theme";
+import { useThemedColors } from "@/hooks/useThemedColors";
 import { MeetingMarker, MeetingTrace, useAppState } from "@/context/AppState";
 import Header from "@/components/Header";
 import { Pet } from "@/data/mockPets";
@@ -12,6 +13,7 @@ import PetRankBadge from "@/components/PetRankBadge";
 export default function MatchesScreen() {
   const { activePet, matches, meetingMarkers, meetingTraces, setMeetingMarker, setMeetingTrace } = useAppState();
   const navigation = useNavigation<any>();
+  const colors = useThemedColors();
   const mapRef = useRef<MapView>(null);
   const [selectedPetId, setSelectedPetId] = useState<number | null>(matches[0]?.id ?? null);
   const [selectedMarker, setSelectedMarker] = useState<MeetingMarker>("pink");
@@ -21,6 +23,7 @@ export default function MatchesScreen() {
   const [pendingAction, setPendingAction] = useState<"expand" | "click">("click");
   const [pendingClickEvent, setPendingClickEvent] = useState<{ type: "native" | "web"; event: any } | null>(null);
   const [meetingTime, setMeetingTime] = useState("18:00");
+  const styles = getStyles(colors);
 
   const [confirmModal, setConfirmModal] = useState<{
     pet: Pet;
@@ -83,7 +86,7 @@ export default function MatchesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.cream }]} edges={["top"]}>
       <Header />
 
       <FlatList
@@ -332,19 +335,20 @@ function MatchTile({ pet, marker, onMarkerChange, onPress }: { pet: Pet; marker?
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.cream },
-  headerWrap: { marginBottom: 4 },
-  title: { fontFamily: fonts.display, fontSize: 21, color: colors.dark, marginBottom: 10, marginTop: 2 },
-  empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40, paddingVertical: 40 },
-  emptyText: { textAlign: "center", fontFamily: fonts.body, color: colors.grey, fontSize: 13 },
-  tile: { height: 205, borderRadius: radii.md, overflow: "hidden" },
-  tileImg: { width: "100%", height: "100%" },
-  tileShade: { position: "absolute", left: 0, right: 0, bottom: 0, height: "50%", backgroundColor: "rgba(0,0,0,0.35)" },
-  tileNameRow: { position: "absolute", bottom: 12, left: 14, right: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  tileName: { color: "#fff", fontFamily: fonts.display, fontSize: 22 },
-  matchScore: { color: "#fff", fontFamily: fonts.bodyBold, fontSize: 11, backgroundColor: "rgba(255,93,115,0.85)", paddingHorizontal: 9, paddingVertical: 5, borderRadius: radii.pill },
-  card: { backgroundColor: colors.white, borderRadius: radii.lg, overflow: "hidden", borderWidth: 1, borderColor: colors.line, marginBottom: 12 },
+function getStyles(colors: ReturnType<typeof useThemedColors>) {
+  return StyleSheet.create({
+    container: { flex: 1 },
+    headerWrap: { marginBottom: 4 },
+    title: { fontFamily: fonts.display, fontSize: 21, color: colors.dark, marginBottom: 10, marginTop: 2 },
+    empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40, paddingVertical: 40 },
+    emptyText: { textAlign: "center", fontFamily: fonts.body, color: colors.grey, fontSize: 13 },
+    tile: { height: 205, borderRadius: radii.md, overflow: "hidden" },
+    tileImg: { width: "100%", height: "100%" },
+    tileShade: { position: "absolute", left: 0, right: 0, bottom: 0, height: "50%", backgroundColor: "rgba(0,0,0,0.35)" },
+    tileNameRow: { position: "absolute", bottom: 12, left: 14, right: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    tileName: { color: "#fff", fontFamily: fonts.display, fontSize: 22 },
+    matchScore: { color: "#fff", fontFamily: fonts.bodyBold, fontSize: 11, backgroundColor: "rgba(255,93,115,0.85)", paddingHorizontal: 9, paddingVertical: 5, borderRadius: radii.pill },
+    card: { backgroundColor: colors.white, borderRadius: radii.lg, overflow: "hidden", borderWidth: 1, borderColor: colors.line, marginBottom: 12 },
   meetingArea: { padding: 15 },
   detailLine: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.dark },
   cardBio: { fontFamily: fonts.body, fontSize: 12, lineHeight: 18, color: colors.grey, marginTop: 7 },
@@ -415,4 +419,5 @@ const styles = StyleSheet.create({
   petChipActive: { backgroundColor: colors.cream2, borderWidth: 1, borderColor: colors.coral },
   petChipImage: { width: 24, height: 24, borderRadius: 12 },
   petChipText: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.dark },
-});
+  });
+}
