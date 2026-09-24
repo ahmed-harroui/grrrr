@@ -113,22 +113,22 @@ export default function OnboardingScreen({ onDone }: Props) {
 
 function getStyles(colors: ReturnType<typeof useThemedColors>) {
   return StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.cream },
-  skip: { alignSelf: "flex-end", marginTop: 18, marginRight: 20 },
-  skipText: { fontFamily: fonts.bodySemi, fontSize: 12.5, color: colors.grey },
-  slide: { alignItems: "center", justifyContent: "center", paddingHorizontal: 34 },
-  icon: { fontSize: 56, marginBottom: 22 },
-  title: { fontFamily: fonts.display, fontSize: 23, color: colors.dark, marginBottom: 10, textAlign: "center" },
-  subtitle: { fontFamily: fonts.body, fontSize: 14, color: colors.grey, textAlign: "center", lineHeight: 21, maxWidth: 260 },
-  modeDemo: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 22 },
-  pill: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radii.pill },
-  pillText: { fontFamily: fonts.displaySemi, fontSize: 13 },
-  arrow: { color: colors.grey, fontSize: 13 },
-  footer: { paddingHorizontal: 24, paddingBottom: 26, paddingTop: 18 },
-  dotsRow: { flexDirection: "row", justifyContent: "center", gap: 7, marginBottom: 18 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.line },
-  dotActive: { width: 20, backgroundColor: colors.coral },
-  nextBtn: {
+    container: { flex: 1, backgroundColor: colors.cream },
+    skip: { alignSelf: "flex-end", marginTop: 18, marginRight: 20 },
+    skipText: { fontFamily: fonts.bodySemi, fontSize: 12.5, color: colors.grey },
+    slide: { alignItems: "center", justifyContent: "center", paddingHorizontal: 34 },
+    icon: { fontSize: 56, marginBottom: 22 },
+    title: { fontFamily: fonts.display, fontSize: 23, color: colors.dark, marginBottom: 10, textAlign: "center" },
+    subtitle: { fontFamily: fonts.body, fontSize: 14, color: colors.grey, textAlign: "center", lineHeight: 21, maxWidth: 260 },
+    modeDemo: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 22 },
+    pill: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radii.pill },
+    pillText: { fontFamily: fonts.displaySemi, fontSize: 13 },
+    arrow: { color: colors.grey, fontSize: 13 },
+    footer: { paddingHorizontal: 24, paddingBottom: 26, paddingTop: 18 },
+    dotsRow: { flexDirection: "row", justifyContent: "center", gap: 7, marginBottom: 18 },
+    dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.line },
+    dotActive: { width: 20, backgroundColor: colors.coral },
+    nextBtn: {
     backgroundColor: colors.coral,
     borderRadius: radii.lg,
     paddingVertical: 15,
@@ -139,6 +139,6 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     shadowOffset: { width: 0, height: 8 },
     elevation: 4,
   },
-  nextText: { fontFamily: fonts.displaySemi, fontSize: 14.5, color: "#fff" },
+    nextText: { fontFamily: fonts.displaySemi, fontSize: 14.5, color: "#fff" },
   });
 }
