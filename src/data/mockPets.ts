@@ -25,6 +25,7 @@ export interface Pet {
   bio: string;
   tags: string[];
   photo: string;
+  photos?: string[];
   level?: number;
 }
 
@@ -67,6 +68,11 @@ export const PETS: Pet[] = [
     bio: "Toujours prête pour une balade ou une sieste au soleil. Adore l'eau et les balles de tennis.",
     tags: ["🎾 Play", "🌊 Swim", "🍖 Food"],
     photo: "https://placedog.net/600/700?id=20",
+    photos: [
+      "https://placedog.net/600/700?id=20",
+      "https://placedog.net/600/700?id=21",
+      "https://placedog.net/600/700?id=22",
+    ],
   },
   {
     id: 2,

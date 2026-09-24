@@ -32,8 +32,10 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
   const { t } = useTranslation();
   const pan = useRef(new Animated.ValueXY()).current;
   const [showProfile, setShowProfile] = React.useState(false);
+  const [photoIndex, setPhotoIndex] = React.useState(0);
   const { pct } = computeMatch(pet, mode, activePet);
   const lastTapRef = useRef<number>(0);
+  const photos = pet.photos || [pet.photo];
 
   const panResponder = useRef(
     PanResponder.create({
@@ -154,11 +156,41 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
             <Pressable style={styles.closeButton} onPress={() => setShowProfile(false)}>
               <Text style={styles.closeIcon}>✕</Text>
             </Pressable>
-            <Image source={{ uri: pet.photo }} style={styles.profilePhoto} />
+
+            {/* Photo Carousel */}
+            <View style={styles.photoCarousel}>
+              <Image source={{ uri: photos[photoIndex] }} style={styles.profilePhoto} />
+              {photos.length > 1 && (
+                <>
+                  <Pressable style={[styles.photoNav, styles.photoNavLeft]} onPress={() => setPhotoIndex((i) => (i - 1 + photos.length) % photos.length)}>
+                    <Text style={styles.photoNavText}>‹</Text>
+                  </Pressable>
+                  <Pressable style={[styles.photoNav, styles.photoNavRight]} onPress={() => setPhotoIndex((i) => (i + 1) % photos.length)}>
+                    <Text style={styles.photoNavText}>›</Text>
+                  </Pressable>
+                  <View style={styles.photoIndicator}>
+                    <Text style={styles.photoCount}>{photoIndex + 1}/{photos.length}</Text>
+                  </View>
+                </>
+              )}
+            </View>
+
             <View style={styles.profileInfo}>
-              <Text style={[styles.profileName, { color: colors.dark }]}>{pet.name}, {pet.age}</Text>
-              <Text style={[styles.profileMeta, { color: colors.grey }]}>{pet.breed}</Text>
+              <Text style={[styles.profileName, { color: colors.dark }]}>{pet.name}, {pet.age} {t.common.years}</Text>
+              <Text style={[styles.profileMeta, { color: colors.grey }]}>{pet.breed} • {pet.gender === "F" ? t.common.female : t.common.male}</Text>
+              <Text style={[styles.profileDist, { color: colors.grey }]}>📍 {pet.dist} km away</Text>
+
               <Text style={[styles.profileBio, { color: colors.dark }]}>{pet.bio}</Text>
+
+              {pet.tags && pet.tags.length > 0 && (
+                <View style={styles.profileTags}>
+                  {pet.tags.map((tag) => (
+                    <View key={tag} style={[styles.profileTag, { backgroundColor: colors.friend + "20" }]}>
+                      <Text style={[styles.profileTagText, { color: colors.friend }]}>{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -229,12 +261,23 @@ const styles = StyleSheet.create({
   tagText: { fontFamily: fonts.bodySemi, fontSize: 10, color: "#FFFFFF" },
   whyToggle: { fontFamily: fonts.bodySemi, fontSize: 11, color: "#FFFFFF", marginTop: 6 },
   profileModal: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  profileCard: { borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg, padding: 20, maxHeight: "80%", overflow: "scroll" },
+  profileCard: { borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg, padding: 20, maxHeight: "85%", overflow: "scroll" },
   closeButton: { position: "absolute", top: 12, right: 12, zIndex: 10, width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   closeIcon: { fontSize: 24, color: "#2B2724" },
-  profilePhoto: { width: "100%", height: 300, borderRadius: radii.md, marginBottom: 16 },
+  photoCarousel: { position: "relative", width: "100%", height: 320, marginBottom: 20, borderRadius: radii.md, overflow: "hidden" },
+  profilePhoto: { width: "100%", height: "100%", borderRadius: radii.md },
+  photoNav: { position: "absolute", top: "50%", width: 44, height: 44, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 22 },
+  photoNavLeft: { left: 12 },
+  photoNavRight: { right: 12 },
+  photoNavText: { fontSize: 28, color: "#FFFFFF", fontWeight: "bold" },
+  photoIndicator: { position: "absolute", bottom: 12, right: 12, backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
+  photoCount: { fontFamily: fonts.bodySemi, fontSize: 12, color: "#FFFFFF" },
   profileInfo: { paddingHorizontal: 0 },
-  profileName: { fontFamily: fonts.display, fontSize: 24, marginBottom: 8 },
-  profileMeta: { fontFamily: fonts.body, fontSize: 14, marginBottom: 12 },
-  profileBio: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
+  profileName: { fontFamily: fonts.display, fontSize: 26, marginBottom: 4 },
+  profileMeta: { fontFamily: fonts.body, fontSize: 14, marginBottom: 4 },
+  profileDist: { fontFamily: fonts.body, fontSize: 13, marginBottom: 12 },
+  profileBio: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, marginBottom: 12 },
+  profileTags: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
+  profileTag: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radii.pill },
+  profileTagText: { fontFamily: fonts.bodySemi, fontSize: 12 },
 });
