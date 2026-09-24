@@ -38,7 +38,6 @@ export default function LikeButton({ onLike, mode }: Props) {
           <Image source={INITIAL_LOGO} style={styles.logo} resizeMode="contain" />
         ) : (
           <View style={styles.breakingOverlay}>
-            <Image source={pawLogo} style={styles.paw} resizeMode="contain" />
             <Image source={BROKEN_LOGO} style={styles.brokenLogo} resizeMode="contain" />
           </View>
         )}
@@ -52,6 +51,5 @@ const styles = StyleSheet.create({
   logoContainer: { width: 84, height: 84, alignItems: "center", justifyContent: "center" },
   logo: { width: 76, height: 76 },
   breakingOverlay: { width: 84, height: 84, alignItems: "center", justifyContent: "center" },
-  paw: { position: "absolute", width: 84, height: 84, opacity: 0.9, zIndex: 1 },
-  brokenLogo: { width: 76, height: 76, zIndex: 2 },
+  brokenLogo: { width: 92, height: 92, zIndex: 2 },
 });
