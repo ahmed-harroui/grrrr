@@ -8,7 +8,7 @@ export default function PetRankBadge({ level = 1 }: { level?: number }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "transparent", overflow: "visible", paddingHorizontal: 2, paddingVertical: 3 },
-  image: { width: 30, height: 30, shadowColor: "#FF5D73", shadowOpacity: 0.35, shadowRadius: 3, shadowOffset: { width: 0, height: 0 }, elevation: 3 },
-  text: { fontFamily: "Inter_700Bold", fontSize: 10, textShadowColor: "rgba(255,93,115,0.25)", textShadowRadius: 2, textShadowOffset: { width: 0, height: 0 } },
+  wrap: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "transparent", overflow: "visible", paddingHorizontal: 6, paddingVertical: 7 },
+  image: { width: 52, height: 52, shadowColor: "#FF5D73", shadowOpacity: 0.5, shadowRadius: 6, shadowOffset: { width: 0, height: 0 }, elevation: 5 },
+  text: { fontFamily: "Inter_700Bold", fontSize: 16, fontWeight: "bold", textShadowColor: "rgba(255,93,115,0.4)", textShadowRadius: 3, textShadowOffset: { width: 0, height: 0 } },
 });
