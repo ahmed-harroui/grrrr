@@ -249,7 +249,7 @@ function Stat({ big, small }: { big: string; small: string }) {
 function getStyles(colors: ReturnType<typeof useThemedColors>) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.cream },
-  scrollContent: { paddingHorizontal: 18, paddingBottom: 36 },
+    scrollContent: { paddingHorizontal: 18, paddingBottom: 36 },
   hero: { alignItems: "center", paddingVertical: 8 },
   heroSticker: { color: colors.hot, fontSize: 16, marginBottom: 2 },
   heroTitle: { fontFamily: fonts.displayExtra, fontSize: 27, color: colors.coralDark, textAlign: "center" },
