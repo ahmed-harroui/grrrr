@@ -1,9 +1,11 @@
 import React, { forwardRef, useImperativeHandle, useRef } from "react";
 import { Animated, Dimensions, Image, PanResponder, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { colors, fonts, radii } from "@/theme/theme";
+import { fonts, radii } from "@/theme/theme";
 import { ENERGY_LABEL, Pet } from "@/data/mockPets";
 import { computeMatch } from "@/utils/matching";
+import { useThemedColors } from "@/hooks/useThemedColors";
+import { useTranslation } from "@/i18n/useTranslation";
 import PetRankBadge from "@/components/PetRankBadge";
 
 const { width } = Dimensions.get("window");
@@ -26,6 +28,8 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
   { pet, activePet, mode, isTop, depth, onSwiped },
   ref
 ) {
+  const colors = useThemedColors();
+  const { t } = useTranslation();
   const pan = useRef(new Animated.ValueXY()).current;
   const [whyOpen, setWhyOpen] = React.useState(false);
   const { pct, reasons } = computeMatch(pet, mode, activePet);
@@ -82,7 +86,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
     >
       <View style={styles.photoWrap}>
         <Image source={{ uri: pet.photo }} style={styles.photo} />
-        <LinearGradient colors={["transparent", "rgba(0,0,0,0.08)", "rgba(0,0,0,0.28)"]} locations={[0, 0.55, 1]} style={styles.photoShade} pointerEvents="none" />
+        <LinearGradient colors={["transparent", "rgba(0,0,0,0.08)", "rgba(0,0,0,0.45)"]} locations={[0, 0.45, 1]} style={styles.photoShade} pointerEvents="none" />
         {isTop && (
           <>
             <Animated.View style={[styles.swipeTint, styles.likeTint, { opacity: likePhotoOpacity }]} pointerEvents="none" />
@@ -108,45 +112,45 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
 
         <View style={styles.nameRow}>
           <Text style={styles.name}>
-            {pet.name} <Text style={styles.nameAge}>{pet.age} ans</Text>
+            {pet.name} <Text style={styles.nameAge}>{pet.age} {t.common.years}</Text>
           </Text>
           <Text style={styles.meta}>
-            {pet.breed} · {pet.gender === "F" ? "Femelle" : "Mâle"} · 📍 {pet.dist} km
+            {pet.breed} · {pet.gender === "F" ? t.common.female : t.common.male} · 📍 {pet.dist} km
           </Text>
         </View>
-      </View>
 
-      <View style={styles.body}>
-        <Text style={styles.bio} numberOfLines={2}>
-          {pet.bio}
-        </Text>
-        <View style={styles.tags}>
-          {[...pet.tags, ENERGY_LABEL[pet.energy]].map((t) => (
-            <View key={t} style={styles.tag}>
-              <Text style={styles.tagText}>{t}</Text>
+        <LinearGradient colors={["transparent", pet.gender === "F" ? "rgba(255,93,115,0.85)" : "rgba(47,189,180,0.85)"]} locations={[0, 1]} style={styles.bodyOverlay} pointerEvents="none">
+          <View style={styles.bodyContent}>
+            <Text style={styles.bio} numberOfLines={2}>
+              {pet.bio}
+            </Text>
+            <View style={styles.tags}>
+              {[...pet.tags, ENERGY_LABEL[pet.energy]].map((t) => (
+                <View key={t} style={[styles.tag, { backgroundColor: `rgba(255,255,255,0.2)` }]}>
+                  <Text style={styles.tagText}>{t}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
-        <Text style={styles.whyToggle} onPress={() => setWhyOpen((v) => !v)}>
-          Pourquoi {pct}% compatible ? {whyOpen ? "▴" : "▾"}
-        </Text>
-        {whyOpen && (
-          <View style={styles.whyPanel}>
-            {reasons.map((r) => (
-              <Text key={r} style={styles.whyText}>
-                {r}
-              </Text>
-            ))}
+            <Text style={styles.whyToggle} onPress={() => setWhyOpen((v) => !v)}>
+              {t.discover.why} {pct}% ? {whyOpen ? "▴" : "▾"}
+            </Text>
+            {whyOpen && (
+              <View style={styles.whyPanel}>
+                {reasons.map((r) => (
+                  <Text key={r} style={styles.whyText}>
+                    {r}
+                  </Text>
+                ))}
+              </View>
+            )}
           </View>
-        )}
+        </LinearGradient>
       </View>
     </Animated.View>
   );
 });
 
 export default SwipeCard;
-
-const CARD_HEIGHT_RATIO = 0.68;
 
 const styles = StyleSheet.create({
   card: {
@@ -164,12 +168,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 8,
   },
-  photoWrap: { height: `${CARD_HEIGHT_RATIO * 100}%`, position: "relative" },
+  photoWrap: { flex: 1, position: "relative" },
   photo: { width: "100%", height: "100%" },
-  photoShade: { position: "absolute", left: 0, right: 0, bottom: 0, height: "45%" },
+  photoShade: { position: "absolute", left: 0, right: 0, bottom: 0, height: "60%" },
   swipeTint: StyleSheet.absoluteFill,
-  likeTint: { backgroundColor: colors.friend },
-  nopeTint: { backgroundColor: colors.coral },
+  likeTint: { backgroundColor: "#2FBDB4" },
+  nopeTint: { backgroundColor: "#FF5D73" },
   scoreBadge: {
     position: "absolute",
     top: 14,
@@ -179,7 +183,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radii.pill,
   },
-  scoreBadgeText: { fontFamily: fonts.displaySemi, fontSize: 13, color: colors.coralDark },
+  scoreBadgeText: { fontFamily: fonts.displaySemi, fontSize: 13, color: "#E64863" },
   rankBadge: { position: "absolute", top: 56, right: 14 },
   stamp: {
     position: "absolute",
@@ -196,16 +200,17 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     letterSpacing: 1,
   },
-  nameRow: { position: "absolute", left: 16, bottom: 12 },
+  nameRow: { position: "absolute", left: 16, bottom: 130, zIndex: 2 },
   name: { fontFamily: fonts.display, fontSize: 26, color: "#fff" },
   nameAge: { fontFamily: fonts.body, fontSize: 16, color: "#fff" },
   meta: { fontFamily: fonts.body, fontSize: 14, color: "#F1E9E2", marginTop: 3 },
-  body: { flex: 1, paddingHorizontal: 18, paddingTop: 14, paddingBottom: 14 },
-  bio: { fontFamily: fonts.body, fontSize: 14, color: colors.grey, lineHeight: 20 },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 11 },
-  tag: { backgroundColor: colors.cream2, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radii.pill },
-  tagText: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.coralDark },
-  whyToggle: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.friend, marginTop: 10 },
-  whyPanel: { backgroundColor: "#F7FAF9", borderRadius: 12, padding: 10, marginTop: 6 },
-  whyText: { fontFamily: fonts.body, fontSize: 12, color: colors.dark, lineHeight: 18 },
+  bodyOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, height: "45%", paddingHorizontal: 18, paddingVertical: 14 },
+  bodyContent: { flex: 1, justifyContent: "flex-end" },
+  bio: { fontFamily: fonts.body, fontSize: 14, color: "#FFFFFF", lineHeight: 20 },
+  tags: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  tag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: radii.pill },
+  tagText: { fontFamily: fonts.bodySemi, fontSize: 11, color: "#FFFFFF" },
+  whyToggle: { fontFamily: fonts.bodySemi, fontSize: 12, color: "#FFFFFF", marginTop: 8 },
+  whyPanel: { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 10, padding: 8, marginTop: 6, maxHeight: 120 },
+  whyText: { fontFamily: fonts.body, fontSize: 11, color: "#FFFFFF", lineHeight: 16 },
 });

@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, fonts, radii } from "@/theme/theme";
+import { fonts, radii } from "@/theme/theme";
 import { PETS } from "@/data/mockPets";
 import { useAppState } from "@/context/AppState";
+import { useThemedColors } from "@/hooks/useThemedColors";
+import { useTranslation } from "@/i18n/useTranslation";
 import ModeSlider from "@/components/ModeSlider";
 import SwipeCard, { SwipeCardHandle } from "@/components/SwipeCard";
 import MatchModal from "@/components/MatchModal";
@@ -12,6 +14,8 @@ import LikeButton from "@/components/LikeButton";
 import { computeMatch } from "@/utils/matching";
 
 export default function DiscoverScreen() {
+  const colors = useThemedColors();
+  const { t } = useTranslation();
   const { activePet, mode, setMode, likePet, pendingMatch, clearPendingMatch } = useAppState();
   const [cursor, setCursor] = useState(0);
   const [pendingMode, setPendingMode] = useState<number | null>(null);
@@ -39,15 +43,15 @@ export default function DiscoverScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.cream }]} edges={["top"]}>
       <Header />
       <ModeSlider value={mode} onChange={(nextMode) => nextMode !== mode && setPendingMode(nextMode)} />
 
       <View style={styles.stackWrap}>
         {visible.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>
-              Plus de profils pour le moment 🐾{"\n"}Élargissez la distance dans les filtres.
+            <Text style={[styles.emptyText, { color: colors.grey }]}>
+              {t.discover.noMore} 🐾{"\n"}{t.discover.expandDistance}
             </Text>
           </View>
         ) : (
@@ -87,14 +91,14 @@ export default function DiscoverScreen() {
       />
 
       <Modal visible={pendingMode !== null} transparent animationType="fade" onRequestClose={() => setPendingMode(null)}>
-        <View style={styles.confirmOverlay}>
-          <View style={styles.confirmCard}>
-            <Text style={styles.confirmTitle}>{pendingMode === 0 ? "Passer en mode PLAY ?" : "Passer en mode HOT ?"}</Text>
-            <Text style={styles.confirmText}>{activePet.name} sera affiché comme {pendingMode === 0 ? "Friend / PLAY" : "Hot"}. Les profils Discover seront immédiatement reclassés selon cette préférence.</Text>
-            <Pressable style={[styles.confirmButton, pendingMode === 0 ? styles.playButton : styles.hotButton]} onPress={() => { if (pendingMode !== null) setMode(pendingMode); setPendingMode(null); }}>
-              <Text style={styles.confirmButtonText}>Confirmer</Text>
+        <View style={[styles.confirmOverlay, { backgroundColor: "rgba(43,39,36,0.48)" }]}>
+          <View style={[styles.confirmCard, { backgroundColor: colors.cream, borderColor: colors.line }]}>
+            <Text style={[styles.confirmTitle, { color: colors.dark }]}>{pendingMode === 0 ? t.discover.switchPlay : t.discover.switchHot}</Text>
+            <Text style={[styles.confirmText, { color: colors.grey }]}>{activePet.name} {t.discover.willBeDisplayed} {pendingMode === 0 ? "Friend / PLAY" : "Hot"}. {t.discover.profilesWillReorder}</Text>
+            <Pressable style={[styles.confirmButton, pendingMode === 0 ? { backgroundColor: colors.friend } : { backgroundColor: colors.coral }]} onPress={() => { if (pendingMode !== null) setMode(pendingMode); setPendingMode(null); }}>
+              <Text style={styles.confirmButtonText}>{t.common.confirm}</Text>
             </Pressable>
-            <Pressable style={styles.cancelButton} onPress={() => setPendingMode(null)}><Text style={styles.cancelButtonText}>Annuler</Text></Pressable>
+            <Pressable style={styles.cancelButton} onPress={() => setPendingMode(null)}><Text style={[styles.cancelButtonText, { color: colors.grey }]}>{t.common.cancel}</Text></Pressable>
           </View>
         </View>
       </Modal>
@@ -103,10 +107,10 @@ export default function DiscoverScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.cream },
+  container: { flex: 1 },
   stackWrap: { flex: 1, marginHorizontal: 14, marginBottom: 4, position: "relative" },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 30 },
-  emptyText: { textAlign: "center", fontFamily: fonts.body, color: colors.grey, fontSize: 13, lineHeight: 20 },
+  emptyText: { textAlign: "center", fontFamily: fonts.body, fontSize: 13, lineHeight: 20 },
   actions: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 18, paddingTop: 10, paddingBottom: 18 },
   actBtn: {
     alignItems: "center",
@@ -119,19 +123,17 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   skipBtn: { width: 54, height: 54, borderRadius: 27 },
-  skipIcon: { fontFamily: fonts.body, fontSize: 32, lineHeight: 34, color: colors.dark },
+  skipIcon: { fontFamily: fonts.body, fontSize: 32, lineHeight: 34, color: "#2B2724" },
   superBtn: { width: 44, height: 44, borderRadius: 22 },
-  superIcon: { fontSize: 18, color: colors.hot },
-  likeBtn: { width: 60, height: 60, borderRadius: 30, backgroundColor: colors.coral },
+  superIcon: { fontSize: 18, color: "#FF9E4F" },
+  likeBtn: { width: 60, height: 60, borderRadius: 30, backgroundColor: "#FF5D73" },
   likeIcon: { fontSize: 22 },
-  confirmOverlay: { flex: 1, alignItems: "center", justifyContent: "center", padding: 22, backgroundColor: "rgba(43,39,36,0.48)" },
-  confirmCard: { width: "100%", maxWidth: 350, backgroundColor: colors.cream, borderRadius: radii.md, borderWidth: 1, borderColor: colors.line, padding: 20 },
-  confirmTitle: { fontFamily: fonts.displaySemi, fontSize: 20, textAlign: "center", color: colors.dark },
-  confirmText: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, textAlign: "center", color: colors.grey, marginTop: 8, marginBottom: 18 },
+  confirmOverlay: { flex: 1, alignItems: "center", justifyContent: "center", padding: 22 },
+  confirmCard: { width: "100%", maxWidth: 350, borderRadius: radii.md, borderWidth: 1, padding: 20 },
+  confirmTitle: { fontFamily: fonts.displaySemi, fontSize: 20, textAlign: "center" },
+  confirmText: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, textAlign: "center", marginTop: 8, marginBottom: 18 },
   confirmButton: { alignItems: "center", borderRadius: radii.pill, paddingVertical: 13 },
-  playButton: { backgroundColor: colors.friend },
-  hotButton: { backgroundColor: colors.coral },
-  confirmButtonText: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.white },
+  confirmButtonText: { fontFamily: fonts.bodyBold, fontSize: 13, color: "#FFFFFF" },
   cancelButton: { alignItems: "center", paddingVertical: 12 },
-  cancelButtonText: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.grey },
+  cancelButtonText: { fontFamily: fonts.bodySemi, fontSize: 12 },
 });
