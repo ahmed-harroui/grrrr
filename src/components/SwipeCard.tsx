@@ -106,11 +106,6 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
         </>
       )}
 
-      <View style={styles.topCenter}>
-        <View style={styles.scoreBadge}>
-          <Text style={styles.scoreBadgeText}>❤️ {pct}%</Text>
-        </View>
-      </View>
       <View style={styles.rankBadge}><PetRankBadge level={pet.level ?? ((pet.id % 3) + 1)} /></View>
 
       {isTop && (
@@ -179,6 +174,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
               <Text style={[styles.profileName, { color: colors.dark }]}>{pet.name}, {pet.age} {t.common.years}</Text>
               <Text style={[styles.profileMeta, { color: colors.grey }]}>{pet.breed} • {pet.gender === "F" ? t.common.female : t.common.male}</Text>
               <Text style={[styles.profileDist, { color: colors.grey }]}>📍 {pet.dist} km away</Text>
+              <Text style={[styles.profileCompat, { color: colors.friend }]}>❤️ {pct}% compatible</Text>
 
               <Text style={[styles.profileBio, { color: colors.dark }]}>{pet.bio}</Text>
 
@@ -223,14 +219,6 @@ const styles = StyleSheet.create({
   swipeTint: StyleSheet.absoluteFill,
   likeTint: { backgroundColor: "#2FBDB4" },
   nopeTint: { backgroundColor: "#FF5D73" },
-  topCenter: { position: "absolute", top: 16, left: 0, right: 0, alignItems: "center", zIndex: 3 },
-  scoreBadge: {
-    backgroundColor: "rgba(255,255,255,0.92)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: radii.pill,
-  },
-  scoreBadgeText: { fontFamily: fonts.displaySemi, fontSize: 13, color: "#E64863" },
   rankBadge: { position: "absolute", top: -8, right: 12, zIndex: 4 },
   stamp: {
     position: "absolute",
@@ -275,7 +263,8 @@ const styles = StyleSheet.create({
   profileInfo: { paddingHorizontal: 0 },
   profileName: { fontFamily: fonts.display, fontSize: 26, marginBottom: 4 },
   profileMeta: { fontFamily: fonts.body, fontSize: 14, marginBottom: 4 },
-  profileDist: { fontFamily: fonts.body, fontSize: 13, marginBottom: 12 },
+  profileDist: { fontFamily: fonts.body, fontSize: 13, marginBottom: 8 },
+  profileCompat: { fontFamily: fonts.displaySemi, fontSize: 14, marginBottom: 12, fontWeight: "600" },
   profileBio: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, marginBottom: 12 },
   profileTags: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
   profileTag: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radii.pill },
