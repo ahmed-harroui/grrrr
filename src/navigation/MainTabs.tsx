@@ -50,6 +50,7 @@ function getTabBarStyle(bottomInset: number, colors: ReturnType<typeof useThemed
 export default function MainTabs() {
   const insets = useSafeAreaInsets();
   const colors = useThemedColors();
+  const styles = getStaticStyles(colors);
   const { chats } = useAppState();
   const unreadMessages = chats.reduce(
     (total, chat) => total + chat.messages.filter((message) => message.from === "them" && !message.read).length,
@@ -91,14 +92,16 @@ export default function MainTabs() {
   );
 }
 
-const styles = StyleSheet.create({
-  iconBox: { width: 58, height: 38, borderRadius: 22, alignItems: "center", justifyContent: "center", position: "relative" },
-  iconBoxActive: { backgroundColor: "rgba(255,93,115,0.18)" },
-  icon: { width: 34, height: 34 } as ImageStyle,
-  chatIcon: { width: 34, height: 29, borderRadius: 17, backgroundColor: "#FFFDF9", borderWidth: 2, borderColor: "#9EA3A5", alignItems: "center", justifyContent: "center" },
-  chatIconWithMessages: { backgroundColor: colors.coral, borderColor: colors.coralDark },
-  chatDots: { color: "#8D9699", fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 1 },
-  chatDotsWithMessages: { color: colors.white },
-  badge: { position: "absolute", right: 5, top: -5, minWidth: 20, height: 20, borderRadius: 10, backgroundColor: colors.coral, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
-  badgeText: { color: colors.white, fontFamily: fonts.bodyBold, fontSize: 11 },
-});
+function getStaticStyles(colors: ReturnType<typeof useThemedColors>) {
+  return StyleSheet.create({
+    iconBox: { width: 58, height: 38, borderRadius: 22, alignItems: "center", justifyContent: "center", position: "relative" },
+    iconBoxActive: { backgroundColor: "rgba(255,93,115,0.18)" },
+    icon: { width: 34, height: 34 } as ImageStyle,
+    chatIcon: { width: 34, height: 29, borderRadius: 17, backgroundColor: "#FFFDF9", borderWidth: 2, borderColor: "#9EA3A5", alignItems: "center", justifyContent: "center" },
+    chatIconWithMessages: { backgroundColor: colors.coral, borderColor: colors.coralDark },
+    chatDots: { color: "#8D9699", fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 1 },
+    chatDotsWithMessages: { color: colors.white },
+    badge: { position: "absolute", right: 5, top: -5, minWidth: 20, height: 20, borderRadius: 10, backgroundColor: colors.coral, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
+    badgeText: { color: colors.white, fontFamily: fonts.bodyBold, fontSize: 11 },
+  });
+}
