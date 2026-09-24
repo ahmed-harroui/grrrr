@@ -121,7 +121,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
         </Text>
       </View>
 
-      <LinearGradient colors={["transparent", pet.gender === "F" ? "rgba(255,93,115,0.88)" : "rgba(47,189,180,0.88)"]} locations={[0, 1]} style={styles.gradientOverlay} pointerEvents="none" />
+      <LinearGradient colors={["transparent", "transparent", pet.gender === "F" ? "rgba(255,93,115,0.92)" : "rgba(47,189,180,0.92)"]} locations={[0, 0.4, 1]} style={styles.gradientOverlay} pointerEvents="none" />
 
       <View style={styles.bodyOverlay}>
         <View style={styles.bodyContent}>
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   name: { fontFamily: fonts.display, fontSize: 26, color: "#fff" },
   nameAge: { fontFamily: fonts.body, fontSize: 16, color: "#fff" },
   meta: { fontFamily: fonts.body, fontSize: 14, color: "#F1E9E2", marginTop: 3 },
-  gradientOverlay: { position: "absolute", left: 0, right: 0, bottom: 72, height: "38%", zIndex: 1 },
+  gradientOverlay: { position: "absolute", left: 0, right: 0, bottom: 72, height: "48%", zIndex: 1 },
   bodyOverlay: { position: "absolute", left: 0, right: 0, bottom: 72, paddingHorizontal: 16, paddingVertical: 12, zIndex: 2 },
   bodyContent: { justifyContent: "flex-start" },
   bio: { fontFamily: fonts.body, fontSize: 13, color: "#FFFFFF", lineHeight: 19 },
