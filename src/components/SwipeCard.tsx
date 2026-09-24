@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   name: { fontFamily: fonts.display, fontSize: 26, color: "#fff" },
   nameAge: { fontFamily: fonts.body, fontSize: 16, color: "#fff" },
   meta: { fontFamily: fonts.body, fontSize: 14, color: "#F1E9E2", marginTop: 3 },
-  gradientOverlay: { position: "absolute", left: 0, right: 0, bottom: 72, height: "48%", zIndex: 1 },
+  gradientOverlay: { position: "absolute", left: 0, right: 0, bottom: 72, height: "65%", zIndex: 1 },
   bodyOverlay: { position: "absolute", left: 0, right: 0, bottom: 72, paddingHorizontal: 16, paddingVertical: 12, zIndex: 2 },
   bodyContent: { justifyContent: "flex-start" },
   bio: { fontFamily: fonts.body, fontSize: 13, color: "#FFFFFF", lineHeight: 19 },
