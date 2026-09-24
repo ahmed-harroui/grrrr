@@ -31,8 +31,9 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
   const colors = useThemedColors();
   const { t } = useTranslation();
   const pan = useRef(new Animated.ValueXY()).current;
-  const [whyOpen, setWhyOpen] = React.useState(false);
-  const { pct, reasons } = computeMatch(pet, mode, activePet);
+  const [showProfile, setShowProfile] = React.useState(false);
+  const { pct } = computeMatch(pet, mode, activePet);
+  const lastTapRef = useRef<number>(0);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -61,6 +62,14 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
   };
 
   useImperativeHandle(ref, () => ({ triggerSwipe: flyOut }));
+
+  const handlePhotoTap = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      setShowProfile(true);
+    }
+    lastTapRef.current = now;
+  };
 
   const rotate = pan.x.interpolate({
     inputRange: [-width / 2, 0, width / 2],
@@ -135,18 +144,6 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
               </View>
             ))}
           </View>
-          <Text style={styles.whyToggle} onPress={() => setWhyOpen((v) => !v)}>
-            {t.discover.why} compatible ? {whyOpen ? "▴" : "▾"}
-          </Text>
-          {whyOpen && (
-            <View style={styles.whyPanel}>
-              {reasons.map((r) => (
-                <Text key={r} style={styles.whyText}>
-                  {r}
-                </Text>
-              ))}
-            </View>
-          )}
         </View>
       </View>
     </Animated.View>
