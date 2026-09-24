@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { Animated, Dimensions, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, fonts } from "@/theme/theme";
+import { fonts } from "@/theme/theme";
+import { useThemedColors } from "@/hooks/useThemedColors";
 import { ME, Pet } from "@/data/mockPets";
 
 interface Props {
@@ -14,6 +15,8 @@ const { width } = Dimensions.get("window");
 const SPARKLE_COLORS = ["#FFD7E1", "#FFC0D1", "#FFE8A3", "#BFF5E5"];
 
 export default function MatchModal({ visible, pet, onKeepSwiping }: Props) {
+  const colors = useThemedColors();
+  const styles = getStyles(colors);
   const leftX = useRef(new Animated.Value(-70)).current;
   const rightX = useRef(new Animated.Value(70)).current;
   const contentScale = useRef(new Animated.Value(0.92)).current;
@@ -93,7 +96,8 @@ function SparklePiece({ left, color, delay, duration }: { left: number; color: s
   return <Animated.View style={{ position: "absolute", left, top: 0, width: 7, height: 7, borderRadius: 2, backgroundColor: color, opacity: fade, transform: [{ translateY: y }] }} />;
 }
 
-const styles = StyleSheet.create({
+function getStyles(colors: ReturnType<typeof useThemedColors>) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(255,93,115,0.94)",
@@ -122,4 +126,5 @@ const styles = StyleSheet.create({
   title: { fontFamily: fonts.displayExtra, fontSize: 40, lineHeight: 42, color: "#fff", textAlign: "center" },
   subtitle: { fontFamily: fonts.bodyMedium, fontSize: 14, color: "#FFE6ED", marginTop: 8, textAlign: "center" },
   tapHint: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#fff", opacity: 0.92, marginTop: 24 },
-});
+  });
+}
