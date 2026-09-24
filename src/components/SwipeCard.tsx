@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef } from "react";
-import { Animated, Dimensions, Image, PanResponder, StyleSheet, Text, View } from "react-native";
+import { Animated, Dimensions, Image, Modal, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { fonts, radii } from "@/theme/theme";
 import { ENERGY_LABEL, Pet } from "@/data/mockPets";
@@ -94,6 +94,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
       {...(isTop ? panResponder.panHandlers : {})}
     >
       <Image source={{ uri: pet.photo }} style={styles.photo} />
+      <Pressable style={styles.photoTapOverlay} onPress={handlePhotoTap} pointerEvents={isTop ? "auto" : "none"} />
       <LinearGradient colors={["transparent", "rgba(0,0,0,0.15)", "rgba(0,0,0,0.55)"]} locations={[0, 0.4, 1]} style={styles.photoShade} pointerEvents="none" />
 
       {isTop && (
@@ -146,6 +147,22 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
           </View>
         </View>
       </View>
+
+      <Modal visible={showProfile} transparent animationType="slide" onRequestClose={() => setShowProfile(false)}>
+        <View style={styles.profileModal}>
+          <View style={[styles.profileCard, { backgroundColor: colors.cream }]}>
+            <Pressable style={styles.closeButton} onPress={() => setShowProfile(false)}>
+              <Text style={styles.closeIcon}>✕</Text>
+            </Pressable>
+            <Image source={{ uri: pet.photo }} style={styles.profilePhoto} />
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileName, { color: colors.dark }]}>{pet.name}, {pet.age}</Text>
+              <Text style={[styles.profileMeta, { color: colors.grey }]}>{pet.breed}</Text>
+              <Text style={[styles.profileBio, { color: colors.dark }]}>{pet.bio}</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Animated.View>
   );
 });
@@ -169,6 +186,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   photo: { width: "100%", height: "100%", position: "absolute" },
+  photoTapOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 2 },
   photoShade: { position: "absolute", left: 0, right: 0, bottom: 0, width: "100%", height: "65%" },
   swipeTint: StyleSheet.absoluteFill,
   likeTint: { backgroundColor: "#2FBDB4" },
@@ -210,6 +228,13 @@ const styles = StyleSheet.create({
   tag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.pill },
   tagText: { fontFamily: fonts.bodySemi, fontSize: 10, color: "#FFFFFF" },
   whyToggle: { fontFamily: fonts.bodySemi, fontSize: 11, color: "#FFFFFF", marginTop: 6 },
-  whyPanel: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 10, padding: 9, marginTop: 5, maxHeight: 110 },
-  whyText: { fontFamily: fonts.body, fontSize: 10, color: "#FFFFFF", lineHeight: 16 },
+  profileModal: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  profileCard: { borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg, padding: 20, maxHeight: "80%", overflow: "scroll" },
+  closeButton: { position: "absolute", top: 12, right: 12, zIndex: 10, width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  closeIcon: { fontSize: 24, color: "#2B2724" },
+  profilePhoto: { width: "100%", height: 300, borderRadius: radii.md, marginBottom: 16 },
+  profileInfo: { paddingHorizontal: 0 },
+  profileName: { fontFamily: fonts.display, fontSize: 24, marginBottom: 8 },
+  profileMeta: { fontFamily: fonts.body, fontSize: 14, marginBottom: 12 },
+  profileBio: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20 },
 });
