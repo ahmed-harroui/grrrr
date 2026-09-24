@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { Animated, Dimensions, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, fonts, radii } from "@/theme/theme";
+import { colors, fonts } from "@/theme/theme";
 import { ME, Pet } from "@/data/mockPets";
 
 interface Props {
@@ -11,34 +11,37 @@ interface Props {
 }
 
 const { width } = Dimensions.get("window");
-const CONFETTI_COLORS = [colors.coral, colors.hot, colors.friend, "#FFD166"];
+const SPARKLE_COLORS = ["#FFD7E1", "#FFC0D1", "#FFE8A3", "#BFF5E5"];
 
-export default function MatchModal({ visible, pet, onMessage, onKeepSwiping }: Props) {
-  const leftX = useRef(new Animated.Value(-80)).current;
-  const rightX = useRef(new Animated.Value(80)).current;
+export default function MatchModal({ visible, pet, onKeepSwiping }: Props) {
+  const leftX = useRef(new Animated.Value(-70)).current;
+  const rightX = useRef(new Animated.Value(70)).current;
+  const contentScale = useRef(new Animated.Value(0.92)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
-      leftX.setValue(-80);
-      rightX.setValue(80);
+      leftX.setValue(-70);
+      rightX.setValue(70);
+      contentScale.setValue(0.92);
       opacity.setValue(0);
       Animated.parallel([
-        Animated.spring(leftX, { toValue: 0, useNativeDriver: true, friction: 6 }),
-        Animated.spring(rightX, { toValue: 0, useNativeDriver: true, friction: 6 }),
-        Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.spring(leftX, { toValue: 0, useNativeDriver: true, friction: 7 }),
+        Animated.spring(rightX, { toValue: 0, useNativeDriver: true, friction: 7 }),
+        Animated.spring(contentScale, { toValue: 1, useNativeDriver: true, friction: 7 }),
+        Animated.timing(opacity, { toValue: 1, duration: 360, useNativeDriver: true }),
       ]).start();
     }
-  }, [visible]);
+  }, [visible, contentScale, leftX, opacity, rightX]);
 
-  const confetti = useMemo(
+  const sparkles = useMemo(
     () =>
-      Array.from({ length: 22 }).map((_, i) => ({
+      Array.from({ length: 20 }).map((_, i) => ({
         id: i,
         left: Math.random() * width,
-        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-        delay: Math.random() * 400,
-        duration: 1200 + Math.random() * 1200,
+        color: SPARKLE_COLORS[i % SPARKLE_COLORS.length],
+        delay: Math.random() * 500,
+        duration: 1500 + Math.random() * 1200,
       })),
     [visible]
   );
@@ -47,92 +50,76 @@ export default function MatchModal({ visible, pet, onMessage, onKeepSwiping }: P
 
   return (
     <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.overlay}>
-        {confetti.map((c) => (
-          <ConfettiPiece key={c.id} {...c} />
+      <Pressable style={styles.overlay} onPress={onKeepSwiping}>
+        {sparkles.map((piece) => (
+          <SparklePiece key={piece.id} {...piece} />
         ))}
-
-        <View style={styles.photos}>
-          <Animated.View style={[styles.photoCircle, { transform: [{ translateX: leftX }], opacity }]}>
-            <Image source={{ uri: ME.photo }} style={styles.photoImg} />
-          </Animated.View>
-          <Animated.View
-            style={[styles.photoCircle, styles.photoRight, { transform: [{ translateX: rightX }], opacity }]}
-          >
-            <Image source={{ uri: pet.photo }} style={styles.photoImg} />
-          </Animated.View>
-        </View>
-
-        <Text style={styles.title}>IT'S A MATCH! 🐾❤️</Text>
-        <Text style={styles.subtitle}>
-          {ME.name} et {pet.name} se sont likés mutuellement.
-        </Text>
-
-        <Pressable style={[styles.btn, styles.btnPrimary]} onPress={onMessage}>
-          <Text style={styles.btnPrimaryText}>Envoyer un message</Text>
-        </Pressable>
-        <Pressable style={[styles.btn, styles.btnGhost]} onPress={onKeepSwiping}>
-          <Text style={styles.btnGhostText}>Continuer à swiper</Text>
-        </Pressable>
-      </View>
+        <Animated.View style={[styles.content, { opacity, transform: [{ scale: contentScale }] }]}>
+          <View style={styles.photos}>
+            <Animated.View style={[styles.photoCircle, styles.meCircle, { transform: [{ translateX: leftX }] }]}>
+              <Image source={{ uri: ME.photo }} style={styles.photoImg} />
+            </Animated.View>
+            <Animated.View style={[styles.photoCircle, styles.themCircle, { transform: [{ translateX: rightX }] }]}>
+              <Image source={{ uri: pet.photo }} style={styles.photoImg} />
+            </Animated.View>
+          </View>
+          <Text style={styles.title}>It’s a Match</Text>
+          <Text style={styles.subtitle}>{ME.name} et {pet.name} se sont likés mutuellement.</Text>
+          <Text style={styles.tapHint}>Touchez l'écran pour fermer</Text>
+        </Animated.View>
+      </Pressable>
     </Modal>
   );
 }
 
-function ConfettiPiece({ left, color, delay, duration }: { left: number; color: string; delay: number; duration: number }) {
-  const y = useRef(new Animated.Value(-20)).current;
-  const rotate = useRef(new Animated.Value(0)).current;
+function SparklePiece({ left, color, delay, duration }: { left: number; color: string; delay: number; duration: number }) {
+  const y = useRef(new Animated.Value(-24)).current;
+  const fade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(y, { toValue: 700, duration, delay, useNativeDriver: true }).start();
-    Animated.loop(Animated.timing(rotate, { toValue: 1, duration: 900, useNativeDriver: true })).start();
-  }, []);
+    Animated.parallel([
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(fade, { toValue: 1, duration: 320, useNativeDriver: true }),
+        Animated.timing(fade, { toValue: 0, duration: 280, useNativeDriver: true }),
+      ]),
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(y, { toValue: 760, duration, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, [delay, duration, fade, y]);
 
-  const spin = rotate.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
-
-  return (
-    <Animated.View
-      style={{
-        position: "absolute",
-        left,
-        top: 0,
-        width: 8,
-        height: 8,
-        borderRadius: 2,
-        backgroundColor: color,
-        transform: [{ translateY: y }, { rotate: spin }],
-      }}
-    />
-  );
+  return <Animated.View style={{ position: "absolute", left, top: 0, width: 7, height: 7, borderRadius: 2, backgroundColor: color, opacity: fade, transform: [{ translateY: y }] }} />;
 }
 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(43,39,36,0.9)",
+    backgroundColor: "rgba(255,93,115,0.94)",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 30,
+    paddingHorizontal: 26,
   },
-  photos: { flexDirection: "row", height: 110, marginBottom: 26 },
+  content: { alignItems: "center" },
+  photos: { flexDirection: "row", alignItems: "center", marginBottom: 22 },
   photoCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 4,
+    width: 122,
+    height: 122,
+    borderRadius: 61,
+    borderWidth: 5,
     borderColor: "#fff",
     overflow: "hidden",
     shadowColor: "#000",
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 5,
   },
-  photoRight: { marginLeft: -20 },
+  meCircle: { marginRight: -16 },
+  themCircle: { marginLeft: -16 },
   photoImg: { width: "100%", height: "100%" },
-  title: { fontFamily: fonts.displayExtra, fontSize: 30, color: "#fff", marginBottom: 6, textAlign: "center" },
-  subtitle: { fontFamily: fonts.body, fontSize: 13, color: "#F0E4DA", marginBottom: 24, textAlign: "center" },
-  btn: { width: "100%", maxWidth: 260, paddingVertical: 14, borderRadius: radii.lg, alignItems: "center", marginTop: 8 },
-  btnPrimary: { backgroundColor: "#fff" },
-  btnPrimaryText: { fontFamily: fonts.displaySemi, fontSize: 14, color: colors.coralDark },
-  btnGhost: { borderWidth: 1, borderColor: "rgba(255,255,255,0.5)" },
-  btnGhostText: { fontFamily: fonts.displaySemi, fontSize: 14, color: "#fff" },
+  title: { fontFamily: fonts.displayExtra, fontSize: 40, lineHeight: 42, color: "#fff", textAlign: "center" },
+  subtitle: { fontFamily: fonts.bodyMedium, fontSize: 14, color: "#FFE6ED", marginTop: 8, textAlign: "center" },
+  tapHint: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#fff", opacity: 0.92, marginTop: 24 },
 });

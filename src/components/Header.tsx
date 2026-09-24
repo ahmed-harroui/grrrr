@@ -1,8 +1,11 @@
 import React from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { colors, fonts } from "@/theme/theme";
 
 export default function Header() {
+  const navigation = useNavigation<any>();
+
   return (
     <View style={styles.row}>
       <Text style={styles.logo}>
@@ -10,7 +13,7 @@ export default function Header() {
       </Text>
       <Pressable
         style={styles.iconBtn}
-        onPress={() => Alert.alert("Filtres", "Filtres avancés bientôt disponibles.")}
+        onPress={() => navigation.navigate("Settings")}
       >
         <Text style={{ fontSize: 16 }}>⚙️</Text>
       </Pressable>

@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { colors, fonts, radii } from "@/theme/theme";
 import { ENERGY_LABEL, Pet } from "@/data/mockPets";
 import { computeMatch } from "@/utils/matching";
+import PetRankBadge from "@/components/PetRankBadge";
 
 const { width } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 110;
@@ -14,6 +15,7 @@ export interface SwipeCardHandle {
 
 interface Props {
   pet: Pet;
+  activePet: Pet;
   mode: number;
   isTop: boolean;
   depth: number;
@@ -21,12 +23,12 @@ interface Props {
 }
 
 const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
-  { pet, mode, isTop, depth, onSwiped },
+  { pet, activePet, mode, isTop, depth, onSwiped },
   ref
 ) {
   const pan = useRef(new Animated.ValueXY()).current;
   const [whyOpen, setWhyOpen] = React.useState(false);
-  const { pct, reasons } = computeMatch(pet, mode);
+  const { pct, reasons } = computeMatch(pet, mode, activePet);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -91,6 +93,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
         <View style={styles.scoreBadge}>
           <Text style={styles.scoreBadgeText}>❤️ {pct}%</Text>
         </View>
+        <View style={styles.rankBadge}><PetRankBadge level={pet.level ?? ((pet.id % 3) + 1)} /></View>
 
         {isTop && (
           <>
@@ -177,6 +180,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
   },
   scoreBadgeText: { fontFamily: fonts.displaySemi, fontSize: 13, color: colors.coralDark },
+  rankBadge: { position: "absolute", top: 56, right: 14 },
   stamp: {
     position: "absolute",
     top: 26,

@@ -1,6 +1,14 @@
 export type Gender = "M" | "F";
 
-export type Species = "dog" | "cat";
+export type Species =
+  | "dog" | "cat" | "rabbit" | "hamster" | "guinea_pig" | "mouse" | "rat" | "ferret" | "hedgehog" | "squirrel"
+  | "pig" | "donkey" | "horse" | "sheep" | "goat" | "cow" | "llama" | "alpaca" | "camel" | "deer"
+  | "lion" | "tiger" | "leopard" | "wolf" | "fox" | "bear" | "elephant" | "giraffe" | "zebra" | "monkey" | "koala"
+  | "bird" | "parrot" | "chicken" | "duck" | "penguin"
+  | "turtle" | "lizard" | "snake" | "crocodile"
+  | "frog" | "salamander"
+  | "fish" | "shark" | "dolphin" | "whale" | "octopus" | "crab"
+  | "insect" | "bee" | "butterfly" | "beetle" | "spider" | "scorpion" | "snail";
 
 export type PetMode = "FRIEND" | "LOVE" | "BOTH";
 

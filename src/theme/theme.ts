@@ -1,4 +1,4 @@
-export const colors = {
+export const lightColors = {
   coral: "#FF5D73",
   coralDark: "#E64863",
   hot: "#FF9E4F",
@@ -9,6 +9,19 @@ export const colors = {
   grey: "#8A8078",
   line: "#EFE4D8",
   white: "#FFFFFF",
+};
+
+export const darkColors = {
+  coral: "#FF6E84",
+  coralDark: "#FF5D73",
+  hot: "#FFB366",
+  friend: "#4FD4C6",
+  cream: "#1A1815",
+  cream2: "#2D2620",
+  dark: "#F5F5F5",
+  grey: "#A89F96",
+  line: "#3D3830",
+  white: "#0D0D0D",
 };
 
 export const fonts = {
@@ -31,4 +44,9 @@ export const radii = {
 
 export const spacing = (n: number) => n * 4;
 
-export default { colors, fonts, radii, spacing };
+export const getThemeColors = (isDark: boolean) => isDark ? darkColors : lightColors;
+
+// For backwards compatibility, export lightColors as colors
+export const colors = lightColors;
+
+export default { colors, lightColors, darkColors, fonts, radii, spacing };

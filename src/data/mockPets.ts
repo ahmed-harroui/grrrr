@@ -1,8 +1,19 @@
 export type Gender = "M" | "F";
 
+export type PetSpecies =
+  | "dog" | "cat" | "rabbit" | "hamster" | "guinea_pig" | "mouse" | "rat" | "ferret" | "hedgehog" | "squirrel"
+  | "pig" | "donkey" | "horse" | "sheep" | "goat" | "cow" | "llama" | "alpaca" | "camel" | "deer"
+  | "lion" | "tiger" | "leopard" | "wolf" | "fox" | "bear" | "elephant" | "giraffe" | "zebra" | "monkey" | "koala"
+  | "bird" | "parrot" | "chicken" | "duck" | "penguin"
+  | "turtle" | "lizard" | "snake" | "crocodile"
+  | "frog" | "salamander"
+  | "fish" | "shark" | "dolphin" | "whale" | "octopus" | "crab"
+  | "insect" | "bee" | "butterfly" | "beetle" | "spider" | "scorpion" | "snail";
+
 export interface Pet {
   id: number;
   name: string;
+  species: PetSpecies;
   breed: string;
   gender: Gender;
   age: number;
@@ -14,11 +25,13 @@ export interface Pet {
   bio: string;
   tags: string[];
   photo: string;
+  level?: number;
 }
 
 export const ME: Pet = {
   id: 0,
   name: "Rocky",
+  species: "dog",
   breed: "Golden Retriever",
   gender: "M",
   age: 3,
@@ -44,6 +57,7 @@ export const PETS: Pet[] = [
   {
     id: 1,
     name: "Luna",
+    species: "dog",
     breed: "Labrador",
     gender: "F",
     age: 2,
@@ -57,6 +71,7 @@ export const PETS: Pet[] = [
   {
     id: 2,
     name: "Bella",
+    species: "dog",
     breed: "Border Collie",
     gender: "F",
     age: 1,
@@ -70,6 +85,7 @@ export const PETS: Pet[] = [
   {
     id: 3,
     name: "Max",
+    species: "dog",
     breed: "French Bulldog",
     gender: "M",
     age: 4,
@@ -83,6 +99,7 @@ export const PETS: Pet[] = [
   {
     id: 4,
     name: "Milo",
+    species: "dog",
     breed: "German Shepherd",
     gender: "M",
     age: 5,
@@ -96,6 +113,7 @@ export const PETS: Pet[] = [
   {
     id: 5,
     name: "Coco",
+    species: "dog",
     breed: "Australian Shepherd",
     gender: "F",
     age: 3,
@@ -109,6 +127,7 @@ export const PETS: Pet[] = [
   {
     id: 6,
     name: "Nala",
+    species: "cat",
     breed: "Cat (European)",
     gender: "F",
     age: 2,
@@ -121,8 +140,8 @@ export const PETS: Pet[] = [
   },
 ];
 
-/** Pets that will always produce a reciprocal like, for demo purposes. */
-export const WILL_MATCH = new Set([1, 2, 4, 5]);
+/** Demo-only reciprocal likes. A swipe is not a match unless the other pet liked back. */
+export const LIKED_BACK = new Set([1, 2, 4, 5]);
 
 export const ENERGY_LABEL: Record<number, string> = {
   1: "🐢 Chill",

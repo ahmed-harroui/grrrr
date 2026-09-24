@@ -12,6 +12,8 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } f
 
 import { AppStateProvider } from "@/context/AppState";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { LocalizationProvider } from "@/context/LocalizationContext";
+import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import SplashScreen from "@/screens/SplashScreen";
 import OnboardingScreen from "@/screens/OnboardingScreen";
 import AuthScreen from "@/screens/AuthScreen";
@@ -43,13 +45,27 @@ export default function App() {
 
   return (
     <View style={styles.fill} onLayout={onLayout}>
-      <StatusBar style="dark" />
       <AuthProvider>
-        <AppStateProvider>
-          <AppContent stage={stage} setStage={setStage} />
-        </AppStateProvider>
+        <LocalizationProvider>
+          <ThemeProvider>
+            <ThemedApp stage={stage} setStage={setStage} />
+          </ThemeProvider>
+        </LocalizationProvider>
       </AuthProvider>
     </View>
+  );
+}
+
+function ThemedApp({ stage, setStage }: { stage: Stage; setStage: (stage: Stage) => void }) {
+  const { isDark } = useTheme();
+
+  return (
+    <>
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <AppStateProvider>
+        <AppContent stage={stage} setStage={setStage} />
+      </AppStateProvider>
+    </>
   );
 }
 

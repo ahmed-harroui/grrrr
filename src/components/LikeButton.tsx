@@ -33,9 +33,10 @@ export default function LikeButton({ onLike, mode }: Props) {
 
   return (
     <Pressable style={styles.button} onPress={handlePress} disabled={isBreaking}>
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <Image source={INITIAL_LOGO} style={styles.logo} resizeMode="contain" />
-        {isBreaking && (
+      <Animated.View style={[styles.logoContainer, { transform: [{ scale }] }]}>
+        {!isBreaking ? (
+          <Image source={INITIAL_LOGO} style={styles.logo} resizeMode="contain" />
+        ) : (
           <View style={styles.breakingOverlay}>
             <Image source={pawLogo} style={styles.paw} resizeMode="contain" />
             <Image source={BROKEN_LOGO} style={styles.brokenLogo} resizeMode="contain" />
@@ -47,9 +48,10 @@ export default function LikeButton({ onLike, mode }: Props) {
 }
 
 const styles = StyleSheet.create({
-  button: { width: 76, height: 76, alignItems: "center", justifyContent: "center" },
-  logo: { width: 72, height: 72 },
-  breakingOverlay: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center" },
-  paw: { position: "absolute", width: 70, height: 70, opacity: 0.68, zIndex: 1 },
-  brokenLogo: { width: 72, height: 72, zIndex: 2 },
+  button: { width: 84, height: 84, alignItems: "center", justifyContent: "center" },
+  logoContainer: { width: 84, height: 84, alignItems: "center", justifyContent: "center" },
+  logo: { width: 76, height: 76 },
+  breakingOverlay: { width: 84, height: 84, alignItems: "center", justifyContent: "center" },
+  paw: { position: "absolute", width: 84, height: 84, opacity: 0.9, zIndex: 1 },
+  brokenLogo: { width: 76, height: 76, zIndex: 2 },
 });

@@ -6,24 +6,32 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "backgroundColor": "#FFF7EF",
-    "splash": {
-      "backgroundColor": "#FF5D73"
-    },
+    "icon": "./assets/icon.png",
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.grrrr.app"
+      "bundleIdentifier": "com.grrrr.app",
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.grrrr.app",
-      "adaptiveIcon": {
-        "backgroundColor": "#FF5D73"
-      }
+      "versionCode": 1
     },
     "plugins": [
-      "expo-splash-screen"
-    ]
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FF5D73"
+        }
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d923e8fe-1bd5-4104-8583-e64dde5df49a"
+      }
+    }
   }
 }

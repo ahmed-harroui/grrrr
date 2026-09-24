@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { colors, fonts, radii } from "@/theme/theme";
 import { useAuth } from "@/context/AuthContext";
-import { getProfile, ProfileRecord, saveProfile } from "@/data/api/profile";
+import { createPetProfile, PetRecord } from "@/data/api/profile";
 import { ME } from "@/data/mockPets";
 
-const DEFAULT_PROFILE: ProfileRecord = {
-  user_id: "",
+const DEFAULT_PROFILE: Omit<PetRecord, "owner_id" | "species" | "tags"> = {
   pet_name: ME.name,
   breed: ME.breed,
   age: ME.age,
@@ -15,6 +15,14 @@ const DEFAULT_PROFILE: ProfileRecord = {
   energy: ME.energy,
   mode: ME.mode,
   photo_url: ME.photo,
+};
+
+const DEFAULT_PET: PetRecord = {
+  ...DEFAULT_PROFILE,
+  owner_id: "",
+  species: "dog",
+  tags: ["🎾 Play", "🏃 Run"],
+  gender: "M",
 };
 
 type Step = "name" | "breed" | "age" | "city" | "bio" | "energy" | "mode";
@@ -30,18 +38,16 @@ const STEPS: { key: Step; title: string; subtitle: string; placeholder: string }
 export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }) {
   const { session } = useAuth();
   const [stepIndex, setStepIndex] = useState(0);
-  const [profile, setProfile] = useState<ProfileRecord>(DEFAULT_PROFILE);
+  const [profile, setProfile] = useState<PetRecord>(DEFAULT_PET);
   const [loading, setLoading] = useState(Boolean(session));
   const [saving, setSaving] = useState(false);
+  const [photo, setPhoto] = useState(ME.photo);
   const step = STEPS[stepIndex];
   const isChoiceStep = stepIndex >= STEPS.length;
 
   useEffect(() => {
     if (!session?.user.id) return;
-    getProfile(session.user.id).then(({ data }) => {
-      if (data) setProfile(data);
-      setLoading(false);
-    });
+    setLoading(false);
   }, [session?.user.id]);
 
   const updateText = (value: string) => {
@@ -52,7 +58,7 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
   const finish = async () => {
     setSaving(true);
     if (session?.user.id) {
-      const { error } = await saveProfile({ ...profile, user_id: session.user.id });
+      const { error } = await createPetProfile({ ...profile, photo_url: photo, owner_id: session.user.id });
       if (error) {
         setSaving(false);
         Alert.alert("Profil non enregistré", error.message);
@@ -61,6 +67,13 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
     }
     setSaving(false);
     onDone();
+  };
+
+  const choosePhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.85 });
+    if (!result.canceled) setPhoto(result.assets[0].uri);
   };
 
   const next = () => {
@@ -85,6 +98,7 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
 
       {!isChoiceStep ? (
         <View style={styles.content}>
+          <Pressable onPress={choosePhoto} style={styles.photoPicker}><Image source={{ uri: photo }} style={styles.photoPreview} /><View style={styles.cameraBadge}><Text>📸</Text></View></Pressable>
           <Text style={styles.emoji}>🐾</Text>
           <Text style={styles.title}>{step.title}</Text>
           <Text style={styles.subtitle}>{step.subtitle}</Text>
@@ -107,6 +121,11 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
           <View style={styles.options}>{([1, 2, 3, 4] as const).map((value) => <Pressable key={value} onPress={() => setProfile((current) => ({ ...current, energy: value }))} style={[styles.option, profile.energy === value && styles.optionActive]}><Text style={[styles.optionText, profile.energy === value && styles.optionTextActive]}>{value === 1 ? "Chill" : value === 2 ? "Calme" : value === 3 ? "Actif" : "Très actif"}</Text></Pressable>)}</View>
           <Text style={[styles.title, styles.secondaryTitle]}>Son intention de rencontre</Text>
           <View style={styles.modeRow}>{([0, 50, 100] as const).map((value) => <Pressable key={value} onPress={() => setProfile((current) => ({ ...current, mode: value }))} style={[styles.modeOption, profile.mode === value && styles.modeActive]}><Text style={styles.modeText}>{value === 0 ? "Friend" : value === 50 ? "Both" : "Hot"}</Text></Pressable>)}</View>
+          <Text style={[styles.title, styles.secondaryTitle]}>Son genre</Text>
+          <View style={styles.modeRow}>
+            <Pressable onPress={() => setProfile((current) => ({ ...current, gender: "M" }))} style={[styles.modeOption, profile.gender === "M" && styles.modeActive]}><Text style={styles.modeText}>♂ Mâle</Text></Pressable>
+            <Pressable onPress={() => setProfile((current) => ({ ...current, gender: "F" }))} style={[styles.modeOption, profile.gender === "F" && styles.modeActive]}><Text style={styles.modeText}>♀ Femelle</Text></Pressable>
+          </View>
         </View>
       )}
 
@@ -147,4 +166,7 @@ const styles = StyleSheet.create({
   primaryText: { fontFamily: fonts.displaySemi, color: colors.white, fontSize: 15 },
   skipBottom: { alignItems: "center", paddingTop: 16 },
   skipBottomText: { fontFamily: fonts.bodySemi, color: colors.grey, fontSize: 12 },
+  photoPicker: { width: 118, height: 118, borderRadius: 59, alignSelf: "flex-start", backgroundColor: colors.white, borderWidth: 3, borderColor: colors.coral, marginBottom: 18, overflow: "visible" },
+  photoPreview: { width: "100%", height: "100%", borderRadius: 56 },
+  cameraBadge: { position: "absolute", right: -4, bottom: -4, width: 34, height: 34, borderRadius: 17, backgroundColor: colors.white, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line },
 });

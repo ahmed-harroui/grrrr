@@ -1,5 +1,31 @@
 import { MOCK_ME, BREED_COMPATIBILITY } from "@/data/mock";
 import type { Pet } from "@/data/types";
+import type { Pet as LegacyPet } from "@/data/mockPets";
+
+type MatchPet = Pet | LegacyPet;
+
+function normalizePet(pet: MatchPet): Pet {
+  if ("birthDate" in pet) return pet;
+  return {
+    id: String(pet.id),
+    ownerId: "legacy-owner",
+    name: pet.name,
+    species: pet.species,
+    breed: pet.breed,
+    gender: pet.gender,
+    birthDate: new Date(new Date().setFullYear(new Date().getFullYear() - pet.age)).toISOString(),
+    energy: pet.energy,
+    bio: pet.bio,
+    tags: pet.tags,
+    photos: [pet.photo],
+    latitude: 48.8566,
+    longitude: 2.3522 + pet.dist / 100,
+    mode: pet.mode >= 50 ? "LOVE" : "FRIEND",
+    modePreference: pet.mode,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 export interface MatchResult {
   pct: number;
@@ -133,6 +159,10 @@ function getModeScore(pet: Pet, modeValue: number): number {
   return Math.max(0, 1 - Math.abs(pet.modePreference - modeValue) / 100);
 }
 
+function getSpeciesScore(me: Pet, pet: Pet): number {
+  return me.species === pet.species ? 1 : 0.15;
+}
+
 /**
  * Calcule la compatibilité complète.
  *
@@ -145,9 +175,9 @@ function getModeScore(pet: Pet, modeValue: number): number {
  * Mode       10%
  */
 export function computeMatch(
-  pet: Pet,
+  pet: MatchPet,
   modeValue: number,
-  me: Pet = MOCK_ME
+  me: MatchPet = MOCK_ME
 ): MatchResult {
   // Sécurité : évite le crash si un profil est manquant.
   if (!pet || !me) {
@@ -157,30 +187,34 @@ export function computeMatch(
     };
   }
 
+  const normalizedMe = normalizePet(me);
+  const normalizedPet = normalizePet(pet);
   const distance = calculateDistance(
-    me.latitude,
-    me.longitude,
-    pet.latitude,
-    pet.longitude
+    normalizedMe.latitude,
+    normalizedMe.longitude,
+    normalizedPet.latitude,
+    normalizedPet.longitude
   );
 
-  const breedScore = getBreedScore(me, pet);
+  const speciesScore = getSpeciesScore(normalizedMe, normalizedPet);
+  const breedScore = getBreedScore(normalizedMe, normalizedPet);
   const distScore = getDistanceScore(distance);
-  const ageScore = getAgeScore(me, pet);
-  const energyScore = getEnergyScore(me, pet);
-  const genderScore = getGenderScore(me, pet, modeValue);
-  const modeScore = getModeScore(pet, modeValue);
+  const ageScore = getAgeScore(normalizedMe, normalizedPet);
+  const energyScore = getEnergyScore(normalizedMe, normalizedPet);
+  const genderScore = getGenderScore(normalizedMe, normalizedPet, modeValue);
+  const modeScore = getModeScore(normalizedPet, modeValue);
 
   // IMPORTANT :
   // Chaque score est normalisé entre 0 et 1.
   // Les poids correspondent exactement à la logique originale.
   const total =
-    breedScore * 0.3 +
+    speciesScore * 0.35 +
+    breedScore * 0.2 +
     distScore * 0.2 +
-    ageScore * 0.15 +
-    energyScore * 0.15 +
-    genderScore * 0.1 +
-    modeScore * 0.1;
+    ageScore * 0.1 +
+    energyScore * 0.1 +
+    genderScore * 0.025 +
+    modeScore * 0.025;
 
   const pct = Math.round(total * 100);
 
@@ -188,7 +222,7 @@ export function computeMatch(
 
   if (breedScore >= 0.7) {
     reasons.push(
-      pet.breed === me.breed
+      normalizedPet.breed === normalizedMe.breed
         ? "🐾 Même race"
         : "🐾 Races compatibles"
     );
@@ -197,6 +231,9 @@ export function computeMatch(
   if (distance < 14) {
     reasons.push(`📍 ${distance.toFixed(1)} km`);
   }
+
+  if (speciesScore === 1) reasons.unshift(`🐾 Même espèce: ${normalizedPet.species}`);
+  else reasons.push("🌍 Découverte d'une autre espèce");
 
   if (energyScore > 0.7) {
     reasons.push("⚡ Même niveau d'énergie");
@@ -230,4 +267,9 @@ export function computeMatch(
     pct,
     reasons,
   };
+}
+
+export function calculateCompatibility(currentPet: Pet, candidate: Pet) {
+  const result = computeMatch(candidate, currentPet.modePreference, currentPet);
+  return { total: result.pct, reasons: result.reasons };
 }
