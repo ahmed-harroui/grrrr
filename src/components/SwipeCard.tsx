@@ -121,7 +121,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
         </Text>
       </View>
 
-      <LinearGradient colors={["transparent", "transparent", pet.gender === "F" ? "rgba(255,93,115,0.92)" : "rgba(47,189,180,0.92)"]} locations={[0, 0.4, 1]} style={styles.gradientOverlay} pointerEvents="none" />
+      <LinearGradient colors={["transparent", "transparent", mode < 50 ? "rgba(47,189,180,0.92)" : "rgba(255,93,115,0.92)"]} locations={[0, 0.4, 1]} style={styles.gradientOverlay} pointerEvents="none" />
 
       <View style={styles.bodyOverlay}>
         <View style={styles.bodyContent}>
