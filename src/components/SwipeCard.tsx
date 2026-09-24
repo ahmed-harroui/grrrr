@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
   },
   scoreBadgeText: { fontFamily: fonts.displaySemi, fontSize: 13, color: "#E64863" },
-  rankBadge: { position: "absolute", top: 8, right: 12, zIndex: 4 },
+  rankBadge: { position: "absolute", top: -8, right: 12, zIndex: 4 },
   stamp: {
     position: "absolute",
     top: 26,
