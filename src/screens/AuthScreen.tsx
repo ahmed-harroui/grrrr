@@ -1,9 +1,12 @@
 import React, { useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { colors, fonts, radii } from "@/theme/theme";
+import { fonts, radii } from "@/theme/theme";
+import { useThemedColors } from "@/hooks/useThemedColors";
 import { useAuth } from "@/context/AuthContext";
 
 export default function AuthScreen({ onDemo, onAuthenticated }: { onDemo: () => void; onAuthenticated: () => void }) {
+  const colors = useThemedColors();
+  const styles = getStyles(colors);
   const { signIn, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
@@ -50,7 +53,8 @@ export default function AuthScreen({ onDemo, onAuthenticated }: { onDemo: () => 
   );
 }
 
-const styles = StyleSheet.create({
+function getStyles(colors: ReturnType<typeof useThemedColors>) {
+  return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream, justifyContent: "center", padding: 24 },
   hero: { marginBottom: 34 },
   logo: { fontFamily: fonts.displayExtra, fontSize: 29, color: colors.dark, marginBottom: 34 },
@@ -67,4 +71,5 @@ const styles = StyleSheet.create({
   switchText: { color: colors.coralDark, fontFamily: fonts.bodySemi, fontSize: 13 },
   demoButton: { alignItems: "center", paddingTop: 24 },
   demoText: { color: colors.grey, fontFamily: fonts.bodyMedium, fontSize: 12 },
-});
+  });
+}
