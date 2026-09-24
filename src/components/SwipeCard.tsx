@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 7 },
   tag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.pill },
   tagText: { fontFamily: fonts.bodySemi, fontSize: 10, color: "#FFFFFF" },
-  whyToggle: { fontFamily: fonts.bodySemi, fontSize: 12, color: "#FFFFFF", marginTop: 8 },
-  whyPanel: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 12, padding: 12, marginTop: 8, maxHeight: 160 },
-  whyText: { fontFamily: fonts.body, fontSize: 11, color: "#FFFFFF", lineHeight: 18 },
+  whyToggle: { fontFamily: fonts.bodySemi, fontSize: 11, color: "#FFFFFF", marginTop: 6 },
+  whyPanel: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 10, padding: 9, marginTop: 5, maxHeight: 110 },
+  whyText: { fontFamily: fonts.body, fontSize: 10, color: "#FFFFFF", lineHeight: 16 },
 });
