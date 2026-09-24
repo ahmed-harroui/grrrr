@@ -121,7 +121,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
         </Text>
       </View>
 
-      <LinearGradient colors={["transparent", pet.gender === "F" ? "rgba(255,93,115,0.85)" : "rgba(47,189,180,0.85)"]} locations={[0, 1]} style={styles.bodyOverlay} pointerEvents="none">
+      <LinearGradient colors={["transparent", pet.gender === "F" ? "rgba(255,93,115,0.85)" : "rgba(47,189,180,0.85)"]} locations={[0, 1]} style={styles.bodyOverlay} pointerEvents="box-none">
         <View style={styles.bodyContent}>
           <Text style={styles.bio} numberOfLines={2}>
             {pet.bio}
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   name: { fontFamily: fonts.display, fontSize: 26, color: "#fff" },
   nameAge: { fontFamily: fonts.body, fontSize: 16, color: "#fff" },
   meta: { fontFamily: fonts.body, fontSize: 14, color: "#F1E9E2", marginTop: 3 },
-  bodyOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, height: "auto", paddingHorizontal: 16, paddingVertical: 12, zIndex: 1, minHeight: "65%", paddingBottom: 88 },
+  bodyOverlay: { position: "absolute", left: 0, right: 0, bottom: 72, paddingHorizontal: 16, paddingVertical: 12, zIndex: 1, paddingBottom: 0 },
   bodyContent: { flex: 1, justifyContent: "flex-start" },
   bio: { fontFamily: fonts.body, fontSize: 13, color: "#FFFFFF", lineHeight: 19 },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 7 },
