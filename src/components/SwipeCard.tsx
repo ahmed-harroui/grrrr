@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     letterSpacing: 1,
   },
-  nameRow: { position: "absolute", left: 16, bottom: 140, zIndex: 3 },
+  nameRow: { position: "absolute", left: 16, bottom: 165, zIndex: 3 },
   name: { fontFamily: fonts.display, fontSize: 26, color: "#fff" },
   nameAge: { fontFamily: fonts.body, fontSize: 16, color: "#fff" },
   meta: { fontFamily: fonts.body, fontSize: 14, color: "#F1E9E2", marginTop: 3 },
