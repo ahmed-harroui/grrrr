@@ -11,7 +11,7 @@ export default function ChatListScreen() {
   const { chats } = useAppState();
   const navigation = useNavigation<any>();
   const colors = useThemedColors();
-  const styles = getStyles(colors, fonts);
+  const styles = getStyles(colors);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.cream }]} edges={["top"]}>
@@ -66,7 +66,7 @@ export default function ChatListScreen() {
   );
 }
 
-function getStyles(colors: ReturnType<typeof useThemedColors>, fonts: any) {
+function getStyles(colors: ReturnType<typeof useThemedColors>) {
   return StyleSheet.create({
     container: { flex: 1 },
     title: { fontFamily: fonts.display, fontSize: 21, marginHorizontal: 20, marginBottom: 14, marginTop: 2 },
