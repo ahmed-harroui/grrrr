@@ -45,7 +45,6 @@ export default function DiscoverScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.cream }]} edges={["top"]}>
       <Header />
-      <ModeSlider value={mode} onChange={(nextMode) => nextMode !== mode && setPendingMode(nextMode)} />
 
       <View style={styles.stackWrap}>
         {visible.length === 0 ? (
@@ -56,6 +55,9 @@ export default function DiscoverScreen() {
           </View>
         ) : (
           <>
+            <View style={styles.modeSliderOverlay}>
+              <ModeSlider value={mode} onChange={(nextMode) => nextMode !== mode && setPendingMode(nextMode)} />
+            </View>
             {visible
               .map((pet, i) => ({ pet, depth: i }))
               .reverse()
@@ -109,9 +111,10 @@ export default function DiscoverScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  stackWrap: { flex: 1, marginHorizontal: 14, marginBottom: 0, position: "relative" },
+  stackWrap: { flex: 1, marginHorizontal: 8, marginBottom: 0, position: "relative" },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 30 },
   emptyText: { textAlign: "center", fontFamily: fonts.body, fontSize: 13, lineHeight: 20 },
+  modeSliderOverlay: { position: "absolute", top: 12, left: 0, right: 0, zIndex: 25, paddingHorizontal: 8 },
   actionsOverlay: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 18, paddingTop: 12, paddingBottom: 16, backgroundColor: "transparent", zIndex: 20 },
   actBtn: {
     alignItems: "center",
