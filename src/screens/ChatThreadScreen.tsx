@@ -264,7 +264,7 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     organizedMsgBtnText: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.white },
     bubble: { maxWidth: "75%", paddingHorizontal: 13, paddingVertical: 9, borderRadius: 16 },
     bubbleThem: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.line,
     alignSelf: "flex-start",
@@ -289,7 +289,8 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     paddingVertical: 10,
     fontFamily: fonts.body,
     fontSize: 13,
-    backgroundColor: "#fff",
+    backgroundColor: colors.white,
+    color: colors.dark,
   },
     sendBtn: {
     width: 38,
