@@ -100,7 +100,13 @@ export default function SettingsScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.cream }]} edges={["top", "bottom"]}>
         <View style={[styles.header, { borderBottomColor: colors.line }]}><Pressable onPress={() => navigation.goBack()}><Text style={[styles.back, { color: colors.dark }]}>←</Text></Pressable><Text style={[styles.headerTitle, { color: colors.dark }]}>{t.settings.title}</Text></View>
-        <View style={styles.empty}><Text style={[styles.emptyTitle, { color: colors.dark }]}>{t.settings.loginRequired}</Text><Text style={[styles.emptyText, { color: colors.grey }]}>{t.settings.loginDescription}</Text></View>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <Section title={t.settings.appearance} colors={colors}>
+            <LanguageSelector language={language} onLanguageChange={setLanguage} colors={colors} />
+            <ThemeSelector themeMode={themeMode} onThemeChange={setThemeMode} colors={colors} />
+          </Section>
+          <View style={styles.empty}><Text style={[styles.emptyTitle, { color: colors.dark }]}>{t.settings.loginRequired}</Text><Text style={[styles.emptyText, { color: colors.grey }]}>{t.settings.loginDescription}</Text></View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
