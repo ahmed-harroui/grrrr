@@ -1,6 +1,5 @@
 import React, { useRef, useState } from "react";
 import { Animated, Image, Pressable, StyleSheet, View } from "react-native";
-import { colors } from "@/theme/theme";
 
 interface Props {
   onLike: () => void;
