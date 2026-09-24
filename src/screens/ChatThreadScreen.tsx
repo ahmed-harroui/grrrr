@@ -117,6 +117,7 @@ export default function ChatThreadScreen() {
             <Bubble
               message={item}
               onOpenMap={() => navigation.navigate("MainTabs", { screen: "Matches" })}
+              styles={styles}
             />
           )}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
@@ -167,7 +168,7 @@ export default function ChatThreadScreen() {
   );
 }
 
-function Bubble({ message, onOpenMap }: { message: ChatMessage; onOpenMap: () => void }) {
+function Bubble({ message, onOpenMap, styles }: { message: ChatMessage; onOpenMap: () => void; styles: ReturnType<typeof getStyles> }) {
   const mine = message.from === "me";
   const isOrganized = message.text.includes("Sortie organisée");
 

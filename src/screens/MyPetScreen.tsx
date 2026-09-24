@@ -160,9 +160,9 @@ export default function MyPetScreen() {
         <Text style={styles.sub}>{selectedPet.species} · {profile.breed} · 🎂 {profile.age} ans · {selectedPet.gender}</Text>
 
         <View style={styles.statsRow}>
-          <Stat big={profile.energy >= 3 ? "⚡ High" : "🌿 Chill"} small="ÉNERGIE" />
-          <Stat big="🎾🏃" small="ACTIVITÉS" />
-          <Stat big={profile.mode >= 50 ? "Hot" : "Friend"} small="STATUT" />
+          <Stat big={profile.energy >= 3 ? "⚡ High" : "🌿 Chill"} small="ÉNERGIE" styles={styles} />
+          <Stat big="🎾🏃" small="ACTIVITÉS" styles={styles} />
+          <Stat big={profile.mode >= 50 ? "Hot" : "Friend"} small="STATUT" styles={styles} />
         </View>
 
         <Pressable style={styles.levelCard} onPress={() => setLevelInfoOpen(true)}>
@@ -196,7 +196,7 @@ export default function MyPetScreen() {
         <View style={styles.statsCard}>
           <Text style={styles.sectionTitle}>🔥 Son petit succès</Text>
           <View style={styles.publicSuccess}><Image source={level.rank.image} style={styles.successBadge} /><View><Text style={styles.popularTitle}>{profile.pet_name} est {level.rank.name.toLowerCase()} !</Text><Text style={styles.successText}>Un compagnon qui crée de belles connexions.</Text></View></View>
-          <View style={styles.popularRow}><Stat big={`✦ Niveau ${level.level}`} small="RÉPUTATION" /><Stat big={`💘 ${selectedPet.matches + petProgress.matches}`} small="MATCHS" /><Stat big={`🔥 ${selectedPet.top}`} small="TOP" /></View>
+          <View style={styles.popularRow}><Stat big={`✦ Niveau ${level.level}`} small="RÉPUTATION" styles={styles} /><Stat big={`💘 ${selectedPet.matches + petProgress.matches}`} small="MATCHS" styles={styles} /><Stat big={`🔥 ${selectedPet.top}`} small="TOP" styles={styles} /></View>
         </View>
 
         {editing && (
@@ -237,7 +237,7 @@ export default function MyPetScreen() {
   );
 }
 
-function Stat({ big, small }: { big: string; small: string }) {
+function Stat({ big, small, styles }: { big: string; small: string; styles: ReturnType<typeof getStyles> }) {
   return (
     <View style={{ alignItems: "center" }}>
       <Text style={styles.statBig}>{big}</Text>

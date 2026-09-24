@@ -184,6 +184,7 @@ export default function MatchesScreen() {
             marker={meetingMarkers[item.id]}
             onMarkerChange={(marker) => setConfirmModal({ pet: item, marker })}
             onPress={() => navigation.navigate("ChatThread", { petId: item.id })}
+            styles={styles}
           />
         )}
       />
@@ -310,7 +311,7 @@ export default function MatchesScreen() {
   );
 }
 
-function MatchTile({ pet, marker, onMarkerChange, onPress }: { pet: Pet; marker?: MeetingMarker; onMarkerChange: (marker: MeetingMarker) => void; onPress: () => void }) {
+function MatchTile({ pet, marker, onMarkerChange, onPress, styles }: { pet: Pet; marker?: MeetingMarker; onMarkerChange: (marker: MeetingMarker) => void; onPress: () => void; styles: ReturnType<typeof getStyles> }) {
   return (
     <View style={styles.card}>
       <Pressable style={styles.tile} onPress={onPress}>
