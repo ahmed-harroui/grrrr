@@ -55,32 +55,33 @@ export default function DiscoverScreen() {
             </Text>
           </View>
         ) : (
-          visible
-            .map((pet, i) => ({ pet, depth: i }))
-            .reverse()
-            .map(({ pet, depth }) => (
-              <SwipeCard
-                key={pet.id}
-                ref={depth === 0 ? topCardRef : undefined}
-                pet={pet}
-                activePet={activePet}
-                mode={mode}
-                isTop={depth === 0}
-                depth={depth}
-                onSwiped={handleSwiped}
-              />
-            ))
+          <>
+            {visible
+              .map((pet, i) => ({ pet, depth: i }))
+              .reverse()
+              .map(({ pet, depth }) => (
+                <SwipeCard
+                  key={pet.id}
+                  ref={depth === 0 ? topCardRef : undefined}
+                  pet={pet}
+                  activePet={activePet}
+                  mode={mode}
+                  isTop={depth === 0}
+                  depth={depth}
+                  onSwiped={handleSwiped}
+                />
+              ))}
+            <View style={styles.actionsOverlay}>
+              <Pressable style={[styles.actBtn, styles.skipBtn]} onPress={() => topCardRef.current?.triggerSwipe("left")}>
+                <Text style={styles.skipIcon}>×</Text>
+              </Pressable>
+              <Pressable style={[styles.actBtn, styles.superBtn]} onPress={() => topCardRef.current?.triggerSwipe("super")}>
+                <Text style={styles.superIcon}>⭐</Text>
+              </Pressable>
+              <LikeButton mode={mode} onLike={() => topCardRef.current?.triggerSwipe("right")} />
+            </View>
+          </>
         )}
-      </View>
-
-      <View style={styles.actions}>
-        <Pressable style={[styles.actBtn, styles.skipBtn]} onPress={() => topCardRef.current?.triggerSwipe("left")}>
-          <Text style={styles.skipIcon}>×</Text>
-        </Pressable>
-        <Pressable style={[styles.actBtn, styles.superBtn]} onPress={() => topCardRef.current?.triggerSwipe("super")}>
-          <Text style={styles.superIcon}>⭐</Text>
-        </Pressable>
-        <LikeButton mode={mode} onLike={() => topCardRef.current?.triggerSwipe("right")} />
       </View>
 
       <MatchModal
@@ -108,14 +109,14 @@ export default function DiscoverScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  stackWrap: { flex: 1, marginHorizontal: 14, marginBottom: 4, position: "relative" },
+  stackWrap: { flex: 1, marginHorizontal: 14, marginBottom: 0, position: "relative" },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 30 },
   emptyText: { textAlign: "center", fontFamily: fonts.body, fontSize: 13, lineHeight: 20 },
-  actions: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 18, paddingTop: 10, paddingBottom: 18 },
+  actionsOverlay: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 18, paddingTop: 12, paddingBottom: 16, backgroundColor: "transparent", zIndex: 20 },
   actBtn: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "rgba(255,255,255,0.95)",
     shadowColor: "#2B2724",
     shadowOpacity: 0.18,
     shadowRadius: 10,

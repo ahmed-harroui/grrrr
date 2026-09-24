@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     color: colors.grey,
     marginBottom: 8,
   },
-  selector: { height: 48, borderRadius: radii.pill, backgroundColor: "rgba(255,255,255,0.58)", borderWidth: 1, borderColor: colors.line, flexDirection: "row", alignItems: "center", padding: 4 },
+  selector: { height: 48, borderRadius: radii.pill, backgroundColor: "rgba(255,255,255,0.75)", borderWidth: 1, borderColor: colors.line, flexDirection: "row", alignItems: "center", padding: 4 },
   choice: { flex: 1, height: 38, borderRadius: radii.pill, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
   playActive: { backgroundColor: "rgba(47,189,180,0.12)" },
   hotActive: { backgroundColor: "rgba(255,93,115,0.12)" },
