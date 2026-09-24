@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, fonts, radii } from "@/theme/theme";
+import { fonts, radii } from "@/theme/theme";
+import { useThemedColors } from "@/hooks/useThemedColors";
 import { PETS, Pet } from "@/data/mockPets";
 import { computeMatch } from "@/utils/matching";
 import { rankTrendingPets } from "@/utils/trending";
@@ -51,6 +52,8 @@ function toExplorePet(record: PetRecord): Pet {
 export default function ExploreScreen() {
   const { activePet, mode, setMode } = useAppState();
   const { session } = useAuth();
+  const colors = useThemedColors();
+  const styles = getStyles(colors);
   const [selectedTrend, setSelectedTrend] = useState<Pet | null>(null);
   const [speciesFilter, setSpeciesFilter] = useState<"all" | "dog" | "cat">("all");
   const [intentFilter, setIntentFilter] = useState<"all" | "play" | "hot">("all");
@@ -136,7 +139,8 @@ export default function ExploreScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+function getStyles(colors: ReturnType<typeof useThemedColors>) {
+  return StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
   content: { paddingBottom: 30 },
   title: { fontFamily: fonts.display, fontSize: 21, color: colors.dark, marginHorizontal: 20, marginBottom: 14, marginTop: 2 },
@@ -222,4 +226,5 @@ const styles = StyleSheet.create({
     profileTag: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.coralDark, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: radii.pill, paddingHorizontal: 10, paddingVertical: 7 },
     closeProfile: { backgroundColor: colors.coral, borderRadius: radii.pill, alignItems: "center", paddingVertical: 14, marginTop: 18 },
     closeProfileText: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.white },
-});
+  });
+}
