@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { fonts, radii } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
@@ -8,8 +8,9 @@ import Header from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
 import { useAppState } from "@/context/AppState";
 import { PETS as DISCOVERY_PETS } from "@/data/mockPets";
-import { createPetProfile, PetRecord } from "@/data/api/profile";
-import AddPetSheet from "@/components/AddPetSheet";
+import { createPetProfile, LocalPhoto, PetRecord, updatePetProfile, uploadPetPhoto } from "@/data/api/profile";
+import AddPetSheet, { SPECIES } from "@/components/AddPetSheet";
+import PetProfileEditor, { PetDraft } from "@/components/PetProfileEditor";
 import type { Pet } from "@/data/mockPets";
 import TreatModel from "@/components/TreatModel";
 import { getPetLevel, PET_RANKS } from "@/utils/petProgression";
@@ -25,35 +26,84 @@ const DEFAULT_PROFILE: PetProfileDraft = {
   energy: ME.energy,
   mode: ME.mode,
   photo_url: ME.photo,
+  photos: ["https://placedog.net/600/700?id=2", "https://placedog.net/600/700?id=3"],
 };
 
-const ENERGY_OPTIONS: PetProfileDraft["energy"][] = [1, 2, 3, 4];
+interface PetItem {
+  key: string;
+  level: number;
+  profile: PetProfileDraft;
+  species: string;
+  gender: string;
+  tags: string[];
+  likes: number;
+  matches: number;
+  top: string;
+}
 
-const PETS = [
+const PETS: PetItem[] = [
   { key: "rocky", level: 2, profile: DEFAULT_PROFILE, species: "Dog", gender: "♂ Mâle", tags: ["🎾 Joueur", "⚡ Énergique", "❤️ Sociable"], likes: 128, matches: 24, top: "18%" },
-  { key: "luna", level: 3, profile: { ...DEFAULT_PROFILE, pet_name: "Luna", breed: "Labrador", age: 2, bio: "Toujours prête pour une balade ou une sieste au soleil.", mode: 80, photo_url: "https://placedog.net/600/700?id=20" }, species: "Dog", gender: "♀ Femelle", tags: ["🌊 Curieuse", "🎾 Joueuse", "🥰 Douce"], likes: 96, matches: 17, top: "24%" },
-  { key: "nala", level: 1, profile: { ...DEFAULT_PROFILE, pet_name: "Nala", breed: "Cat (European)", age: 2, bio: "Curieuse et indépendante, elle adore observer le monde depuis la fenêtre.", mode: 10, photo_url: "https://cataas.com/cat/cute?width=600&height=700" }, species: "Cat", gender: "♀ Femelle", tags: ["🛋️ Chill", "🐾 Curieuse", "✨ Indépendante"], likes: 74, matches: 12, top: "31%" },
+  { key: "luna", level: 3, profile: { ...DEFAULT_PROFILE, pet_name: "Luna", breed: "Labrador", age: 2, bio: "Toujours prête pour une balade ou une sieste au soleil.", mode: 80, photo_url: "https://placedog.net/600/700?id=20", photos: ["https://placedog.net/600/700?id=21", "https://placedog.net/600/700?id=22"] }, species: "Dog", gender: "♀ Femelle", tags: ["🌊 Curieuse", "🎾 Joueuse", "🥰 Douce"], likes: 96, matches: 17, top: "24%" },
+  { key: "nala", level: 1, profile: { ...DEFAULT_PROFILE, pet_name: "Nala", breed: "Cat (European)", age: 2, bio: "Curieuse et indépendante, elle adore observer le monde depuis la fenêtre.", mode: 10, photo_url: "https://cataas.com/cat/cute?width=600&height=700", photos: [] }, species: "Cat", gender: "♀ Femelle", tags: ["🛋️ Chill", "🐾 Curieuse", "✨ Indépendante"], likes: 74, matches: 12, top: "31%" },
 ];
 
+const speciesInfo = (species: string) => SPECIES.find((item) => item.key === species.toLowerCase());
+
+function toPetItem(pet: Pet): PetItem {
+  return {
+    key: `db-${pet.id}`,
+    level: pet.level ?? 1,
+    profile: { pet_name: pet.name, breed: pet.breed, age: pet.age, city: pet.city ?? "", bio: pet.bio, energy: pet.energy, mode: pet.mode, photo_url: pet.photo, photos: (pet.photos ?? []).filter((uri) => uri && uri !== pet.photo) },
+    species: pet.species,
+    gender: pet.gender === "F" ? "♀ Femelle" : "♂ Mâle",
+    tags: pet.tags,
+    likes: 0,
+    matches: 0,
+    top: "—",
+  };
+}
 
 export default function MyPetScreen() {
   const colors = useThemedColors();
   const { session, signOut } = useAuth();
-  const { activePet, setActivePet, treats, petProgress, progressByPet } = useAppState();
+  const { activePet, setActivePet, ownedPets, refreshOwnedPets, setMode, treats, petProgress, progressByPet } = useAppState();
   const [profile, setProfile] = useState<PetProfileDraft>(DEFAULT_PROFILE);
   const styles = getStyles(colors);
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [levelInfoOpen, setLevelInfoOpen] = useState(false);
   const [addPetOpen, setAddPetOpen] = useState(false);
-  const [customPets, setCustomPets] = useState<typeof PETS>([]);
+  const [customPets, setCustomPets] = useState<PetItem[]>([]);
+  // Guest mode: edits to demo pets live only in memory.
+  const [localEdits, setLocalEdits] = useState<Record<string, PetItem>>({});
   const [selectedKey, setSelectedKey] = useState(activePet.name.toLowerCase());
   const [pendingPetKey, setPendingPetKey] = useState<string | null>(null);
-  const allPets = useMemo(() => [...PETS, ...customPets], [customPets]);
-  const selectedPet = useMemo(() => allPets.find((pet) => pet.key === selectedKey) ?? allPets[0], [allPets, selectedKey]);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [photoWidth, setPhotoWidth] = useState(0);
+  // Signed in: only the account's own pets. Demo pets are for guest mode only.
+  const allPets = useMemo(() => (session ? ownedPets.map(toPetItem) : [...PETS, ...customPets].map((pet) => localEdits[pet.key] ?? pet)), [customPets, localEdits, ownedPets, session]);
+  const selectedPet = useMemo(() => allPets.find((pet) => pet.key === selectedKey) ?? allPets[0] ?? toPetItem(activePet), [activePet, allPets, selectedKey]);
   const selectedMode = profile.mode;
+  const gallery = useMemo(() => [profile.photo_url, ...(profile.photos ?? [])].filter(Boolean), [profile.photo_url, profile.photos]);
+  const species = speciesInfo(selectedPet.species);
   const completion = [profile.pet_name, profile.breed, profile.age, profile.city, profile.bio, profile.photo_url, selectedPet.tags.length].filter(Boolean).length / 7;
   const level = getPetLevel(treats, petProgress, completion);
+
+  useEffect(() => setPhotoIndex(0), [selectedKey, gallery.length]);
+
+  const editorInitial = useMemo<PetDraft>(() => ({
+    name: profile.pet_name,
+    species: (speciesInfo(selectedPet.species)?.key ?? "dog") as Pet["species"],
+    breed: profile.breed,
+    age: profile.age,
+    gender: selectedPet.gender.startsWith("♀") ? "F" : "M",
+    city: profile.city,
+    bio: profile.bio,
+    energy: profile.energy,
+    mode: profile.mode,
+    tags: selectedPet.tags,
+    avatar: profile.photo_url ? { uri: profile.photo_url } : null,
+    gallery: (profile.photos ?? []).map((uri) => ({ uri })),
+  }), [profile, selectedPet]);
 
   useEffect(() => {
     const nextPet = allPets.find((pet) => pet.profile.pet_name === activePet.name);
@@ -67,14 +117,27 @@ export default function MyPetScreen() {
     setProfile((current) => current.pet_name === activePet.name ? { ...current, mode: activePet.mode } : current);
   }, [activePet.mode, activePet.name]);
 
-  const createPet = async (pet: Pet) => {
+  const createPet = async (pet: Pet, photoAsset?: LocalPhoto) => {
     const profile: PetProfileDraft = { pet_name: pet.name, breed: pet.breed, age: pet.age, city: "Paris", bio: pet.bio, energy: pet.energy, mode: pet.mode, photo_url: pet.photo };
     if (session?.user.id) {
-      const { error } = await createPetProfile({ ...profile, owner_id: session.user.id, species: pet.species, tags: pet.tags });
+      if (photoAsset) {
+        const upload = await uploadPetPhoto(session.user.id, photoAsset);
+        if (upload.error) Alert.alert("Photo non envoyée", `${upload.error.message}\n\nTu pourras l'ajouter depuis « Modifier le profil ».`);
+        profile.photo_url = upload.url;
+      }
+      const { error } = await createPetProfile({ ...profile, owner_id: session.user.id, species: pet.species, tags: pet.tags, gender: pet.gender });
       if (error) {
         Alert.alert("Profil non enregistré", error.message);
         return;
       }
+      const pets = await refreshOwnedPets();
+      const created = pets[pets.length - 1];
+      if (created) {
+        setSelectedKey(toPetItem(created).key);
+        setActivePet(created);
+      }
+      setAddPetOpen(false);
+      return;
     }
     const item = { key: `custom-${pet.id}`, level: 1, profile, species: pet.species, gender: pet.gender === "F" ? "♀ Femelle" : "♂ Mâle", tags: pet.tags, likes: 0, matches: 0, top: "—" };
     setCustomPets((current) => [...current, item]);
@@ -84,16 +147,17 @@ export default function MyPetScreen() {
     setAddPetOpen(false);
   };
 
-  const update = <K extends keyof PetProfileDraft>(key: K, value: PetProfileDraft[K]) => {
-    setProfile((current) => ({ ...current, [key]: value }));
-  };
-
   const confirmPetSwitch = () => {
     const nextPet = allPets.find((pet) => pet.key === pendingPetKey);
     if (!nextPet) return;
     setSelectedKey(nextPet.key);
     setProfile(nextPet.profile);
-    setEditing(false);
+    const ownedPet = ownedPets.find((pet) => toPetItem(pet).key === nextPet.key);
+    if (ownedPet) {
+      setActivePet(ownedPet);
+      setPendingPetKey(null);
+      return;
+    }
     const basePet = DISCOVERY_PETS.find((candidate) => candidate.name === nextPet.profile.pet_name);
     const nextActivePet: Pet = {
       id: basePet?.id ?? (Number(nextPet.key.replace(/\D/g, "")) || Date.now()),
@@ -108,16 +172,60 @@ export default function MyPetScreen() {
       bio: nextPet.profile.bio,
       tags: nextPet.tags,
       photo: nextPet.profile.photo_url,
+      photos: [nextPet.profile.photo_url, ...(nextPet.profile.photos ?? [])].filter(Boolean),
+      city: nextPet.profile.city,
       level: nextPet.level,
     };
     setActivePet(nextActivePet);
     setPendingPetKey(null);
   };
 
-  const persist = async () => {
-    setSaving(true);
-    setSaving(false);
-    setEditing(false);
+  const savePetDraft = async (draft: PetDraft) => {
+    const ownerId = session?.user.id;
+    const ownedPet = ownedPets.find((pet) => toPetItem(pet).key === selectedPet.key);
+    let photoUrl = draft.avatar?.uri ?? "";
+    let photos = draft.gallery.map((photo) => photo.uri);
+
+    if (ownerId && ownedPet?.dbId) {
+      // Picked images are local files: upload them so every user can see them.
+      const uploads = await Promise.all([draft.avatar, ...draft.gallery].map((photo) => (photo ? uploadPetPhoto(ownerId, photo) : Promise.resolve({ url: "", error: null }))));
+      const failed = uploads.find((upload) => upload.error);
+      if (failed?.error) {
+        Alert.alert("Photos non envoyées", `${failed.error.message}\n\nVérifie que la migration supabase/migrations/003_pet_photos.sql a bien été exécutée.`);
+        return false;
+      }
+      photoUrl = uploads[0].url;
+      photos = uploads.slice(1).map((upload) => upload.url).filter(Boolean);
+      const { error } = await updatePetProfile(ownedPet.dbId, ownerId, {
+        pet_name: draft.name,
+        species: draft.species,
+        breed: draft.breed,
+        age: draft.age,
+        gender: draft.gender,
+        city: draft.city,
+        bio: draft.bio,
+        energy: draft.energy,
+        mode: draft.mode,
+        tags: draft.tags,
+        photo_url: photoUrl,
+        photos,
+      });
+      if (error) {
+        Alert.alert("Profil non enregistré", error.message);
+        return false;
+      }
+      await refreshOwnedPets();
+      if (ownedPet.id === activePet.id) setMode(draft.mode);
+      return true;
+    }
+
+    const nextProfile: PetProfileDraft = { ...profile, pet_name: draft.name, breed: draft.breed, age: draft.age, city: draft.city, bio: draft.bio, energy: draft.energy, mode: draft.mode, photo_url: photoUrl, photos };
+    setLocalEdits((current) => ({
+      ...current,
+      [selectedPet.key]: { ...selectedPet, profile: nextProfile, species: draft.species, gender: draft.gender === "F" ? "♀ Femelle" : "♂ Mâle", tags: draft.tags },
+    }));
+    setProfile(nextProfile);
+    return true;
   };
 
   return (
@@ -136,7 +244,7 @@ export default function MyPetScreen() {
             <Pressable key={pet.key} onPress={() => {
               if (pet.key !== selectedKey) setPendingPetKey(pet.key);
             }} style={[styles.petChoice, selectedKey === pet.key && styles.petChoiceActive]}>
-              <View style={[styles.avatarRing, { borderColor: getPetLevel(pet.key === selectedKey ? treats : 0, progressByPet[pet.key === selectedKey ? activePet.id : -1] ?? { matches: 0, outings: 0, messagesReceived: 0, sessions: 0 }, pet.key === selectedKey ? completion : 0).rank.color }]}><Image source={{ uri: pet.profile.photo_url }} style={styles.petAvatar} /></View>
+              <View style={[styles.avatarRing, { borderColor: getPetLevel(pet.key === selectedKey ? treats : 0, progressByPet[pet.key === selectedKey ? activePet.id : -1] ?? { matches: 0, outings: 0, messagesReceived: 0, sessions: 0 }, pet.key === selectedKey ? completion : 0).rank.color }]}>{pet.profile.photo_url ? <Image source={{ uri: pet.profile.photo_url }} style={styles.petAvatar} /> : <View style={[styles.petAvatar, styles.photoPlaceholder]}><Text style={styles.placeholderIconSmall}>{speciesInfo(pet.species)?.icon ?? "🐾"}</Text></View>}</View>
               <Text style={[styles.petChoiceName, selectedKey === pet.key && styles.petChoiceNameActive]}>{pet.profile.pet_name}</Text>
             </Pressable>
           ))}
@@ -147,17 +255,42 @@ export default function MyPetScreen() {
         </ScrollView>
 
         <View style={styles.profileCard}>
-        <View style={styles.photoWrap}>
-          <Image source={{ uri: profile.photo_url }} style={styles.photo} />
+        <View style={styles.photoWrap} onLayout={(event) => setPhotoWidth(event.nativeEvent.layout.width)}>
+          {gallery.length > 0 && photoWidth > 0 ? (
+            <ScrollView
+              key={selectedKey}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(event) => setPhotoIndex(Math.round(event.nativeEvent.contentOffset.x / photoWidth))}
+              style={styles.photoPager}
+            >
+              {gallery.map((uri, index) => <Image key={uri + index} source={{ uri }} style={[styles.photo, { width: photoWidth }]} />)}
+            </ScrollView>
+          ) : (
+            <Pressable onPress={() => setEditorOpen(true)} style={[styles.photo, styles.photoPlaceholder]}>
+              <Text style={styles.placeholderIcon}>📸</Text>
+              <Text style={styles.placeholderText}>Ajoute des photos de {profile.pet_name || "ton compagnon"}</Text>
+            </Pressable>
+          )}
           <View style={[styles.statusBadge, selectedMode >= 50 ? styles.hotBadge : styles.friendBadge]}>
             <Text style={styles.statusBadgeText}>{selectedMode >= 50 ? "✦ Hot" : "🐾 Friend"}</Text>
           </View>
-          <Text style={styles.photoDots}>● ○ ○</Text>
+          <Pressable onPress={() => setEditorOpen(true)} style={styles.photoEdit} hitSlop={6}><Text style={styles.photoEditText}>✎ Photos</Text></Pressable>
+          {gallery.length > 1 && (
+            <View style={styles.photoDots}>
+              {gallery.map((uri, index) => <View key={uri + index} style={[styles.photoDot, index === photoIndex && styles.photoDotActive]} />)}
+            </View>
+          )}
         </View>
-        {editing ? (
-          <TextInput value={profile.pet_name} onChangeText={(value) => update("pet_name", value)} style={styles.nameInput} placeholder="Nom de ton compagnon" />
-        ) : <Text style={styles.name}>{profile.pet_name}</Text>}
-        <Text style={styles.sub}>{selectedPet.species} · {profile.breed} · 🎂 {profile.age} ans · {selectedPet.gender}</Text>
+        {gallery.length > 1 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbs}>
+            {gallery.map((uri, index) => <Image key={uri + index} source={{ uri }} style={[styles.thumb, index === photoIndex && styles.thumbActive]} />)}
+          </ScrollView>
+        )}
+        <Text style={styles.name}>{profile.pet_name}</Text>
+        <Text style={styles.sub}>{species ? `${species.icon} ${species.label}` : selectedPet.species}{profile.breed ? ` · ${profile.breed}` : ""} · 🎂 {profile.age} {profile.age > 1 ? "ans" : "an"} · {selectedPet.gender}</Text>
+        {profile.city ? <Text style={styles.city}>📍 {profile.city}</Text> : null}
 
         <View style={styles.statsRow}>
           <Stat big={profile.energy >= 3 ? "⚡ High" : "🌿 Chill"} small="ÉNERGIE" styles={styles} />
@@ -175,16 +308,19 @@ export default function MyPetScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>À propos</Text>
-          <Pressable onPress={() => (editing ? persist() : setEditing(true))}>
-            <Text style={styles.editText}>{saving ? "..." : editing ? "Enregistrer" : "Modifier"}</Text>
+          <Pressable onPress={() => setEditorOpen(true)} hitSlop={8}>
+            <Text style={styles.editText}>✎ Modifier</Text>
           </Pressable>
         </View>
         <View style={styles.bioCard}>
-          {editing ? <TextInput value={profile.bio} onChangeText={(value) => update("bio", value)} multiline style={styles.bioInput} /> : <Text style={styles.bioText}>"{profile.bio}"</Text>}
+          {profile.bio ? <Text style={styles.bioText}>"{profile.bio}"</Text> : <Pressable onPress={() => setEditorOpen(true)}><Text style={styles.emptyText}>Ajoute une petite présentation ✦</Text></Pressable>}
         </View>
 
-        <Text style={styles.sectionTitle}>Ses petites habitudes</Text>
-        <View style={styles.tags}>{selectedPet.tags.map((tag) => <View key={tag} style={styles.tag}><Text style={styles.tagText}>{tag}</Text></View>)}</View>
+        <Text style={[styles.sectionTitle, styles.habitsTitle]}>Ses petites habitudes</Text>
+        <View style={styles.tags}>
+          {selectedPet.tags.map((tag) => <View key={tag} style={styles.tag}><Text style={styles.tagText}>{tag}</Text></View>)}
+          <Pressable onPress={() => setEditorOpen(true)} style={[styles.tag, styles.tagAdd]}><Text style={styles.tagAddText}>＋ {selectedPet.tags.length ? "Modifier" : "Ajouter"}</Text></Pressable>
+        </View>
 
         <View style={styles.infoCard}>
           <Text style={styles.sectionTitle}>💕 Ce que {profile.pet_name} recherche</Text>
@@ -199,29 +335,15 @@ export default function MyPetScreen() {
           <View style={styles.popularRow}><Stat big={`✦ Niveau ${level.level}`} small="RÉPUTATION" styles={styles} /><Stat big={`💘 ${selectedPet.matches + petProgress.matches}`} small="MATCHS" styles={styles} /><Stat big={`🔥 ${selectedPet.top}`} small="TOP" styles={styles} /></View>
         </View>
 
-        {editing && (
-          <View style={styles.editPanel}>
-            <Text style={styles.fieldLabel}>RACE</Text>
-            <TextInput value={profile.breed} onChangeText={(value) => update("breed", value)} style={styles.input} />
-            <Text style={styles.fieldLabel}>VILLE</Text>
-            <TextInput value={profile.city} onChangeText={(value) => update("city", value)} style={styles.input} />
-            <Text style={styles.fieldLabel}>NIVEAU D'ÉNERGIE</Text>
-            <View style={styles.optionsRow}>{ENERGY_OPTIONS.map((value) => <Pressable key={value} onPress={() => update("energy", value)} style={[styles.option, profile.energy === value && styles.optionActive]}><Text style={[styles.optionText, profile.energy === value && styles.optionTextActive]}>{value}</Text></Pressable>)}</View>
-            <Text style={styles.fieldLabel}>INTENTION</Text>
-            <View style={styles.optionsRow}>
-              {[0, 50, 100].map((value) => <Pressable key={value} onPress={() => update("mode", value)} style={[styles.modeOption, profile.mode === value && styles.modeOptionActive]}><Text style={[styles.modeText, profile.mode === value && styles.modeTextActive]}>{value === 0 ? "Friend" : value === 100 ? "Hot" : "Both"}</Text></Pressable>)}
-            </View>
-          </View>
-        )}
-
-        <Pressable style={styles.editButton} onPress={() => (editing ? persist() : setEditing(true))}>
-          <Text style={styles.editButtonText}>{saving ? "Enregistrement..." : editing ? "✓ Enregistrer le profil" : "✎ Modifier le profil"}</Text>
+        <Pressable style={styles.editButton} onPress={() => setEditorOpen(true)}>
+          <Text style={styles.editButtonText}>✎ Modifier le profil</Text>
         </Pressable>
         <View style={styles.addAnother}><Text style={styles.addAnotherTitle}>🐾 Un nouveau compagnon ?</Text><Text style={styles.addAnotherText}>Ajoute un autre pet à ta famille !</Text><Pressable onPress={() => setAddPetOpen(true)}><Text style={styles.addAnotherAction}>＋ Ajouter un pet</Text></Pressable></View>
         {session && <Pressable onPress={signOut} style={styles.signOut}><Text style={styles.signOutText}>Se déconnecter</Text></Pressable>}
         </View>
       </ScrollView>
       <AddPetSheet visible={addPetOpen} onClose={() => setAddPetOpen(false)} onCreate={createPet} />
+      <PetProfileEditor visible={editorOpen} initial={editorInitial} onClose={() => setEditorOpen(false)} onSave={savePetDraft} />
       <Modal visible={pendingPetKey !== null} transparent animationType="fade" onRequestClose={() => setPendingPetKey(null)}>
         <View style={styles.confirmOverlay}>
           <View style={styles.confirmCard}>
@@ -269,13 +391,30 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     addPetIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.coral, color: colors.white, textAlign: "center", fontSize: 30, lineHeight: 40 },
     addPetText: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.coralDark, marginTop: 5 },
     profileCard: { backgroundColor: colors.white, borderRadius: 30, padding: 12, borderWidth: 1, borderColor: colors.line, shadowColor: colors.dark, shadowOpacity: 0.08, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
-    photoWrap: { position: "relative" },
-    photo: { width: "100%", height: 255, borderRadius: 24, marginBottom: 14 },
+    photoWrap: { position: "relative", marginBottom: 12 },
+    photoPager: { borderRadius: 24 },
+    photo: { width: "100%", height: 300, borderRadius: 24 },
+    photoPlaceholder: { alignItems: "center", justifyContent: "center", backgroundColor: colors.cream2, borderWidth: 2, borderStyle: "dashed", borderColor: colors.coral },
+    placeholderIcon: { fontSize: 40 },
+    placeholderIconSmall: { fontSize: 24 },
+    placeholderText: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.coralDark, marginTop: 8, textAlign: "center", paddingHorizontal: 20 },
+    photoEdit: { position: "absolute", top: 14, right: 14, backgroundColor: "rgba(0,0,0,0.5)", borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 7 },
+    photoEditText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#FFFFFF" },
+    photoDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.55)" },
+    photoDotActive: { width: 20, backgroundColor: "#FFFFFF" },
+    thumbs: { gap: 8, paddingBottom: 12 },
+    thumb: { width: 52, height: 52, borderRadius: 12, opacity: 0.55 },
+    thumbActive: { opacity: 1, borderWidth: 2, borderColor: colors.coral },
+    city: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.coralDark, textAlign: "center", marginTop: 4 },
+    emptyText: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.coralDark },
+    habitsTitle: { marginTop: 16, marginBottom: 8 },
+    tagAdd: { borderStyle: "dashed", borderColor: colors.coral, backgroundColor: "transparent" },
+    tagAddText: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.coralDark },
     statusBadge: { position: "absolute", top: 14, left: 14, paddingHorizontal: 12, paddingVertical: 7, borderRadius: radii.pill, borderWidth: 2, borderColor: colors.white, shadowColor: colors.dark, shadowOpacity: 0.12, shadowRadius: 5, elevation: 2 },
     hotBadge: { backgroundColor: colors.coral },
     friendBadge: { backgroundColor: colors.friend },
     statusBadgeText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.white },
-    photoDots: { position: "absolute", bottom: 23, alignSelf: "center", color: colors.white, fontSize: 11, letterSpacing: 3 },
+    photoDots: { position: "absolute", bottom: 14, alignSelf: "center", flexDirection: "row", gap: 5 },
     name: { fontFamily: fonts.displayExtra, fontSize: 26, color: colors.dark, textAlign: "center" },
     nameInput: { fontFamily: fonts.displayExtra, fontSize: 26, color: colors.dark, textAlign: "center", borderBottomWidth: 1, borderBottomColor: colors.coral, paddingVertical: 0 },
     sub: { fontFamily: fonts.body, fontSize: 13, color: colors.grey, textAlign: "center", marginTop: 2 },

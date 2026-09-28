@@ -6,12 +6,15 @@ import { supabase } from "@/lib/supabase";
 
 const swipeHistory: Swipe[] = [];
 
+// Mock pets use numeric ids; only real (UUID) pets exist in the database.
+const isUuid = (id: string) => /^[0-9a-f-]{36}$/i.test(id);
+
 export async function createSwipe(
   fromPetId: string,
   toPetId: string,
   action: SwipeAction
 ): Promise<Swipe> {
-  if (supabase) {
+  if (supabase && isUuid(fromPetId) && isUuid(toPetId)) {
     const { data, error } = await supabase
       .from("pet_swipes")
       .upsert(
@@ -47,7 +50,7 @@ export async function createSwipe(
 export async function getSwipeHistory(
   petId: string
 ): Promise<Swipe[]> {
-  if (supabase) {
+  if (supabase && isUuid(petId)) {
     const { data, error } = await supabase
       .from("pet_swipes")
       .select("id, from_pet_id, to_pet_id, action, created_at")
@@ -76,7 +79,7 @@ export async function hasAlreadySwiped(
   fromPetId: string,
   toPetId: string
 ): Promise<boolean> {
-  if (supabase) {
+  if (supabase && isUuid(fromPetId) && isUuid(toPetId)) {
     const { data, error } = await supabase
       .from("pet_swipes")
       .select("id")

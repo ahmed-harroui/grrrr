@@ -3,3 +3,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# JVM crash logs
+hs_err_pid*.log
+replay_pid*.log

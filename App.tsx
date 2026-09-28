@@ -10,10 +10,11 @@ import {
 } from "@expo-google-fonts/baloo-2";
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
 
-import { AppStateProvider } from "@/context/AppState";
+import { AppStateProvider, useAppState } from "@/context/AppState";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { LocalizationProvider } from "@/context/LocalizationContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+import { PetSelectorProvider } from "@/context/PetSelectorContext";
 import SplashScreen from "@/screens/SplashScreen";
 import OnboardingScreen from "@/screens/OnboardingScreen";
 import AuthScreen from "@/screens/AuthScreen";
@@ -71,18 +72,31 @@ function ThemedApp({ stage, setStage }: { stage: Stage; setStage: (stage: Stage)
 
 function AppContent({ stage, setStage }: { stage: Stage; setStage: (stage: Stage) => void }) {
   const { loading, session } = useAuth();
+  const { refreshOwnedPets } = useAppState();
   const [guestMode, setGuestMode] = useState(false);
 
-  useEffect(() => {
-    if (!loading && !session && !guestMode && stage !== "splash" && stage !== "auth") setStage("auth");
-  }, [guestMode, loading, session, stage, setStage]);
+  // Signed-in accounts go straight to the app once they have a pet; new accounts create one first.
+  const enterSignedIn = useCallback(async () => {
+    const pets = await refreshOwnedPets();
+    setStage(pets.length ? "app" : "profileSetup");
+  }, [refreshOwnedPets, setStage]);
 
-  if (stage === "splash") return <SplashScreen onFinish={() => setStage(session ? "app" : "auth")} />;
+  useEffect(() => {
+    if (loading) return;
+    if (!session && !guestMode && stage !== "splash" && stage !== "auth") setStage("auth");
+    if (session && stage === "auth") void enterSignedIn();
+  }, [enterSignedIn, guestMode, loading, session, stage, setStage]);
+
+  if (stage === "splash") return <SplashScreen onFinish={() => setStage("auth")} />;
   if (loading) return null;
-  if (stage === "auth") return <AuthScreen onDemo={() => { setGuestMode(true); setStage("onboarding"); }} onAuthenticated={() => setStage("profileSetup")} />;
+  if (stage === "auth") return <AuthScreen onDemo={() => { setGuestMode(true); setStage("onboarding"); }} onAuthenticated={() => {}} />;
   if (stage === "onboarding") return <OnboardingScreen onDone={() => setStage("app")} />;
-  if (stage === "profileSetup") return <PetProfileSetupScreen onDone={() => setStage("app")} />;
-  return <RootNavigator />;
+  if (stage === "profileSetup") return <PetProfileSetupScreen onDone={() => void enterSignedIn()} />;
+  return (
+    <PetSelectorProvider>
+      <RootNavigator />
+    </PetSelectorProvider>
+  );
 }
 
 const styles = StyleSheet.create({

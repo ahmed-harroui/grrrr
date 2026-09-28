@@ -3,25 +3,21 @@ import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, TextInput
 import * as ImagePicker from "expo-image-picker";
 import { colors, fonts, radii } from "@/theme/theme";
 import { useAuth } from "@/context/AuthContext";
-import { createPetProfile, PetRecord } from "@/data/api/profile";
-import { ME } from "@/data/mockPets";
+import { createPetProfile, LocalPhoto, PetRecord, uploadPetPhoto } from "@/data/api/profile";
 
-const DEFAULT_PROFILE: Omit<PetRecord, "owner_id" | "species" | "tags"> = {
-  pet_name: ME.name,
-  breed: ME.breed,
-  age: ME.age,
-  city: "Paris",
-  bio: ME.bio,
-  energy: ME.energy,
-  mode: ME.mode,
-  photo_url: ME.photo,
-};
-
+// Start blank: never pre-fill with the demo pet, or skipped steps would save demo data.
 const DEFAULT_PET: PetRecord = {
-  ...DEFAULT_PROFILE,
+  pet_name: "",
+  breed: "",
+  age: 0,
+  city: "",
+  bio: "",
+  energy: 2,
+  mode: 50,
+  photo_url: "",
   owner_id: "",
   species: "dog",
-  tags: ["🎾 Play", "🏃 Run"],
+  tags: [],
   gender: "M",
 };
 
@@ -41,7 +37,8 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
   const [profile, setProfile] = useState<PetRecord>(DEFAULT_PET);
   const [loading, setLoading] = useState(Boolean(session));
   const [saving, setSaving] = useState(false);
-  const [photo, setPhoto] = useState(ME.photo);
+  const [photoAsset, setPhotoAsset] = useState<LocalPhoto | null>(null);
+  const photo = photoAsset?.uri ?? "";
   const step = STEPS[stepIndex];
   const isChoiceStep = stepIndex >= STEPS.length;
 
@@ -56,9 +53,20 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
   };
 
   const finish = async () => {
+    if (!profile.pet_name.trim()) {
+      Alert.alert("Il manque un nom", "Donne au moins un nom à ton compagnon pour créer son profil.");
+      setStepIndex(0);
+      return;
+    }
     setSaving(true);
     if (session?.user.id) {
-      const { error } = await createPetProfile({ ...profile, photo_url: photo, owner_id: session.user.id });
+      let photoUrl = "";
+      if (photoAsset) {
+        const upload = await uploadPetPhoto(session.user.id, photoAsset);
+        if (upload.error) Alert.alert("Photo non envoyée", `${upload.error.message}\n\nTu pourras l'ajouter depuis ton profil.`);
+        photoUrl = upload.url;
+      }
+      const { error } = await createPetProfile({ ...profile, photo_url: photoUrl, owner_id: session.user.id });
       if (error) {
         setSaving(false);
         Alert.alert("Profil non enregistré", error.message);
@@ -72,8 +80,11 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
   const choosePhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.85 });
-    if (!result.canceled) setPhoto(result.assets[0].uri);
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.7, base64: true });
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      setPhotoAsset({ uri: asset.uri, base64: asset.base64, mimeType: asset.mimeType });
+    }
   };
 
   const next = () => {
@@ -98,13 +109,13 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
 
       {!isChoiceStep ? (
         <View style={styles.content}>
-          <Pressable onPress={choosePhoto} style={styles.photoPicker}><Image source={{ uri: photo }} style={styles.photoPreview} /><View style={styles.cameraBadge}><Text>📸</Text></View></Pressable>
+          <Pressable onPress={choosePhoto} style={styles.photoPicker}>{photo ? <Image source={{ uri: photo }} style={styles.photoPreview} /> : <View style={styles.photoEmpty}><Text style={styles.photoEmptyText}>🐾</Text></View>}<View style={styles.cameraBadge}><Text>📸</Text></View></Pressable>
           <Text style={styles.emoji}>🐾</Text>
           <Text style={styles.title}>{step.title}</Text>
           <Text style={styles.subtitle}>{step.subtitle}</Text>
           <TextInput
             autoFocus
-            value={step.key === "name" ? profile.pet_name : String(profile[step.key] ?? "")}
+            value={step.key === "name" ? profile.pet_name : step.key === "age" ? (profile.age ? String(profile.age) : "") : String(profile[step.key] ?? "")}
             onChangeText={updateText}
             placeholder={step.placeholder}
             placeholderTextColor={colors.grey}
@@ -168,5 +179,7 @@ const styles = StyleSheet.create({
   skipBottomText: { fontFamily: fonts.bodySemi, color: colors.grey, fontSize: 12 },
   photoPicker: { width: 118, height: 118, borderRadius: 59, alignSelf: "flex-start", backgroundColor: colors.white, borderWidth: 3, borderColor: colors.coral, marginBottom: 18, overflow: "visible" },
   photoPreview: { width: "100%", height: "100%", borderRadius: 56 },
+  photoEmpty: { width: "100%", height: "100%", borderRadius: 56, alignItems: "center", justifyContent: "center", backgroundColor: colors.cream2 },
+  photoEmptyText: { fontSize: 40 },
   cameraBadge: { position: "absolute", right: -4, bottom: -4, width: 34, height: 34, borderRadius: 17, backgroundColor: colors.white, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line },
 });

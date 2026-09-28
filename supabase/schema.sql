@@ -74,6 +74,8 @@ alter table public.pets add column if not exists messages_received integer not n
 alter table public.pets add column if not exists sessions_count integer not null default 0;
 alter table public.pets add column if not exists level integer not null default 1;
 alter table public.pets add column if not exists xp integer not null default 0;
+-- Gallery pictures (photo_url is the avatar). Storage bucket: migrations/003_pet_photos.sql
+alter table public.pets add column if not exists photos text[] not null default '{}';
 create policy "Users can manage their own pets" on public.pets
   for all using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
 

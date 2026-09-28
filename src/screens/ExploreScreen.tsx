@@ -8,7 +8,7 @@ import { computeMatch } from "@/utils/matching";
 import { rankTrendingPets } from "@/utils/trending";
 import { useAppState } from "@/context/AppState";
 import { useAuth } from "@/context/AuthContext";
-import { getDiscoverablePetProfiles, PetRecord } from "@/data/api/profile";
+import { getDiscoverablePetProfiles, petRecordToPet } from "@/data/api/profile";
 import Header from "@/components/Header";
 import PetRankBadge from "@/components/PetRankBadge";
 import { PET_RANKS } from "@/utils/petProgression";
@@ -26,29 +26,6 @@ const EDITORIAL = [
   { type: "product", title: "La sélection du moment", text: "Des essentiels choisis pour les sorties complices.", icon: "♡" },
 ];
 
-function stablePetId(id: string) {
-  return Array.from(id).reduce((value, character) => ((value * 31) + character.charCodeAt(0)) >>> 0, 7);
-}
-
-function toExplorePet(record: PetRecord): Pet {
-  const id = stablePetId(record.id ?? record.owner_id);
-  return {
-    id,
-    name: record.pet_name,
-    species: record.species as Pet["species"],
-    breed: record.breed,
-    gender: record.gender === "M" ? "M" : "F",
-    age: record.age,
-    energy: record.energy,
-    dist: 2 + (id % 18),
-    mode: record.mode,
-    bio: record.bio,
-    tags: record.tags,
-    photo: record.photo_url,
-    level: record.level,
-  };
-}
-
 export default function ExploreScreen() {
   const { activePet, mode, setMode } = useAppState();
   const { session } = useAuth();
@@ -60,7 +37,7 @@ export default function ExploreScreen() {
   const [communityPets, setCommunityPets] = useState<Pet[]>([]);
 
   useEffect(() => {
-    getDiscoverablePetProfiles(session?.user.id).then(({ data }) => setCommunityPets(data.map(toExplorePet)));
+    getDiscoverablePetProfiles(session?.user.id).then(({ data }) => setCommunityPets(data.map(petRecordToPet)));
   }, [session?.user.id]);
 
   const sorted = useMemo(

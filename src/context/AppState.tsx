@@ -3,9 +3,13 @@ import { LIKED_BACK, ME, Pet } from "@/data/mockPets";
 import { awardTreats, loadTreatBalance } from "@/data/api/treats";
 import { loadMeetingTraces, removeMeetingTrace, saveMeetingTrace, updateMeetingTraceStatus } from "@/data/api/meetings";
 import { getMatches, createMatch } from "@/data/api/matches";
-import { createSwipe, getSwipeHistory } from "@/data/api/swipes";
+import { createSwipe } from "@/data/api/swipes";
+import { getOwnedPetProfiles, petRecordToPet, stablePetId } from "@/data/api/profile";
 import { useAuth } from "@/context/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
+
+// Database pets are addressed by their UUID; demo pets by their numeric id.
+const apiPetId = (pet: Pet) => pet.dbId ?? String(pet.id);
 
 export interface ChatMessage {
   from: "me" | "them";
@@ -44,6 +48,9 @@ interface PetSessionData {
 interface AppStateShape {
   activePet: Pet;
   setActivePet: (pet: Pet) => void;
+  /** Pets owned by the signed-in account (empty in demo/guest mode) */
+  ownedPets: Pet[];
+  refreshOwnedPets: () => Promise<Pet[]>;
   mode: number; // 0..100, 0 = FRIEND, 100 = HOT/LOVE
   setMode: (v: number) => void;
   matches: Pet[];
@@ -87,6 +94,42 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [likedPetIds, setLikedPetIds] = useState<Set<number>>(new Set());
   const [progressByPet, setProgressByPet] = useState<Record<number, PetProgress>>({});
   const [petSessions, setPetSessions] = useState<Record<number, PetSessionData>>({});
+  const [ownedPets, setOwnedPets] = useState<Pet[]>([]);
+
+  const refreshOwnedPets = useCallback(async () => {
+    if (!session?.user.id) return [];
+    const { data, error } = await getOwnedPetProfiles(session.user.id);
+    if (error) console.error("Error loading pets:", error);
+    const pets = data.map(petRecordToPet);
+    setOwnedPets(pets);
+    // Keep the current pet if it belongs to the account, otherwise switch to its first pet.
+    const next = pets.find((pet) => pet.id === activePet.id) ?? pets[0];
+    if (next) {
+      setActivePetState(next);
+      if (next.id !== activePet.id) setMode(next.mode);
+    }
+    return pets;
+  }, [activePet.id, session?.user.id]);
+
+  // Signed in: load the account's own pets. Signed out: back to a clean demo state.
+  React.useEffect(() => {
+    if (session?.user.id) {
+      void refreshOwnedPets();
+      return;
+    }
+    setOwnedPets([]);
+    setActivePetState(ME);
+    setMode(ME.mode);
+    setMatches([]);
+    setChats([]);
+    setPendingMatch(null);
+    setMeetingMarkers({});
+    setMeetingTraces({});
+    setLikedPetIds(new Set());
+    setPetSessions({});
+    setProgressByPet({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user.id]);
 
   const petProgress = progressByPet[activePet.id] ?? { matches: 0, outings: 0, messagesReceived: 0, sessions: 0 };
 
@@ -98,7 +141,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   React.useEffect(() => {
-    loadTreatBalance(String(activePet.id)).then(({ balance }) => setTreats(balance));
+    loadTreatBalance(apiPetId(activePet)).then(({ balance }) => setTreats(balance));
     updateProgress(activePet.id, { sessions: (progressByPet[activePet.id]?.sessions ?? 0) + 1 });
     if (session?.user.id) {
       loadMeetingTraces(session.user.id, activePet.id).then(({ data }) => {
@@ -109,17 +152,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       });
       (async () => {
         try {
-          const matchesData = await getMatches(String(activePet.id));
-          const matchPetIds = new Set(matchesData.map((m) => Number(m.pet1Id === String(activePet.id) ? m.pet2Id : m.pet1Id)));
-          setLikedPetIds(matchPetIds);
-
-          const matchedPets = await Promise.all(
-            matchesData.map(async (m) => {
-              const petId = Number(m.pet1Id === String(activePet.id) ? m.pet2Id : m.pet1Id);
-              const pet = (await getSwipeHistory(String(petId)))[0];
-              return pet;
-            })
-          );
+          const myId = apiPetId(activePet);
+          const matchesData = await getMatches(myId);
+          // Other pets' UUIDs → the same numeric ids petRecordToPet gives them
+          setLikedPetIds(new Set(matchesData.map((m) => stablePetId(m.pet1Id === myId ? m.pet2Id : m.pet1Id))));
         } catch (error) {
           console.error("Error loading matches:", error);
         }
@@ -130,9 +166,9 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const collectTreats = useCallback(async (amount: number, reason: "match" | "outing", contextKey: string) => {
     if (claimedTreatKeys.has(contextKey)) return;
     setClaimedTreatKeys((current) => new Set(current).add(contextKey));
-    const result = await awardTreats(String(activePet.id), amount, reason, contextKey);
+    const result = await awardTreats(apiPetId(activePet), amount, reason, contextKey);
     if (result.awarded) setTreats((current) => result.balance ?? current + amount);
-  }, [activePet.id, claimedTreatKeys]);
+  }, [activePet, claimedTreatKeys]);
 
   const setActivePet = useCallback((pet: Pet) => {
     if (pet.id === activePet.id) return;
@@ -159,7 +195,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setLikedPetIds((current) => new Set(current).add(pet.id));
 
     try {
-      await createSwipe(String(activePet.id), String(pet.id), "like");
+      await createSwipe(apiPetId(activePet), apiPetId(pet), "like");
     } catch (error) {
       console.error("Error saving swipe:", error);
     }
@@ -187,11 +223,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     void collectTreats(10, "match", `match:${activePet.id}:${pet.id}`);
 
     try {
-      await createMatch(String(activePet.id), String(pet.id), 0, matchType.toLowerCase());
+      await createMatch(apiPetId(activePet), apiPetId(pet), 0, matchType.toLowerCase());
     } catch (error) {
       console.error("Error creating match:", error);
     }
-  }, [activePet.id, activePet.name, activePet.mode, collectTreats, likedPetIds, petProgress.matches, updateProgress]);
+  }, [activePet, activePet.id, activePet.name, activePet.mode, collectTreats, likedPetIds, petProgress.matches, updateProgress]);
 
   const clearPendingMatch = useCallback(() => setPendingMatch(null), []);
 
@@ -327,8 +363,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   }, [activePet.id, session?.user.id]);
 
   const value = useMemo(
-    () => ({ activePet, setActivePet, mode, setMode: updateMode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, meetingMarkers, setMeetingMarker, meetingTraces, setMeetingTrace, confirmMeetingTrace, deleteMeetingTrace, treats, petProgress, progressByPet }),
-    [activePet, setActivePet, mode, updateMode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, meetingMarkers, setMeetingMarker, meetingTraces, setMeetingTrace, confirmMeetingTrace, deleteMeetingTrace, treats, petProgress, progressByPet]
+    () => ({ activePet, setActivePet, ownedPets, refreshOwnedPets, mode, setMode: updateMode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, meetingMarkers, setMeetingMarker, meetingTraces, setMeetingTrace, confirmMeetingTrace, deleteMeetingTrace, treats, petProgress, progressByPet }),
+    [activePet, setActivePet, ownedPets, refreshOwnedPets, mode, updateMode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, meetingMarkers, setMeetingMarker, meetingTraces, setMeetingTrace, confirmMeetingTrace, deleteMeetingTrace, treats, petProgress, progressByPet]
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;

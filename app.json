@@ -19,6 +19,10 @@
       "package": "com.grrrr.app",
       "versionCode": 1
     },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
     "plugins": [
       [
         "expo-splash-screen",
@@ -26,7 +30,14 @@
           "backgroundColor": "#FF5D73"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "GRRRR a besoin de tes photos pour ajouter des images au profil de ton compagnon.",
+          "cameraPermission": "GRRRR a besoin de l'appareil photo pour photographier ton compagnon."
+        }
+      ]
     ],
     "extra": {
       "eas": {

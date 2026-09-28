@@ -12,6 +12,8 @@ export type PetSpecies =
 
 export interface Pet {
   id: number;
+  /** UUID of the row in `pets`; undefined for demo pets */
+  dbId?: string;
   name: string;
   species: PetSpecies;
   breed: string;
@@ -26,6 +28,7 @@ export interface Pet {
   tags: string[];
   photo: string;
   photos?: string[];
+  city?: string;
   level?: number;
 }
 

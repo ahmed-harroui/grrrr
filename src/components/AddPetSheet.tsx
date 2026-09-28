@@ -3,14 +3,16 @@ import { Animated, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextIn
 import * as ImagePicker from "expo-image-picker";
 import { colors, fonts, radii } from "@/theme/theme";
 import type { Pet } from "@/data/mockPets";
+import type { LocalPhoto } from "@/data/api/profile";
 
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onCreate: (pet: Pet) => void;
+  /** photoAsset is the picked image (with base64) so the caller can upload it */
+  onCreate: (pet: Pet, photoAsset?: LocalPhoto) => void;
 }
 
-const SPECIES: { key: Pet["species"]; label: string; icon: string }[] = [
+export const SPECIES: { key: Pet["species"]; label: string; icon: string }[] = [
   { key: "dog", label: "Chien", icon: "🐶" },
   { key: "cat", label: "Chat", icon: "🐱" },
   { key: "hamster", label: "Hamster", icon: "🐹" },
@@ -81,7 +83,8 @@ export default function AddPetSheet({ visible, onClose, onCreate }: Props) {
   const [gender, setGender] = useState<Pet["gender"]>("M");
   const [tags, setTags] = useState<string[]>([]);
   const [bio, setBio] = useState("");
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoAsset, setPhotoAsset] = useState<LocalPhoto | null>(null);
+  const photo = photoAsset?.uri ?? null;
   const slide = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -100,15 +103,18 @@ export default function AddPetSheet({ visible, onClose, onCreate }: Props) {
       id: Date.now(), name: name.trim() || "Nouveau pet", species, breed: breed.trim() || "À découvrir", gender,
       age: Number(age) || 1, energy, dist: 0, mode: 0, bio: bio.trim() || "Un nouveau compagnon à découvrir.", tags: tags.length ? tags : ["🐾 À découvrir"], photo: photo || (species === "cat" ? "https://cataas.com/cat/cute?width=600&height=700" : "https://placedog.net/600/700?id=90"),
     };
-    onCreate(newPet);
+    onCreate(newPet, photoAsset ?? undefined);
     close();
   };
 
   const choosePhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.85 });
-    if (!result.canceled) setPhoto(result.assets[0].uri);
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.7, base64: true });
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      setPhotoAsset({ uri: asset.uri, base64: asset.base64, mimeType: asset.mimeType });
+    }
   };
 
   const next = () => step < 3 ? setStep((value) => value + 1) : create();
