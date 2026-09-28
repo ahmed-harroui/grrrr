@@ -26,6 +26,16 @@ export interface PetRecord {
   level?: number;
   xp?: number;
   gender?: string;
+  country?: string | null;
+  /** Test pets owned by the bot account; they like back automatically */
+  is_bot?: boolean;
+  // Health fields, also edited in GRRRR Care
+  birthday?: string | null;
+  weight?: number | null;
+  microchip?: string | null;
+  sterilized?: boolean | null;
+  color?: string | null;
+  allergies?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -91,7 +101,16 @@ export function petRecordToPet(record: PetRecord): Pet {
     photo: record.photo_url,
     photos: [record.photo_url, ...(record.photos ?? [])].filter(Boolean),
     city: record.city,
+    country: record.country ?? undefined,
     level: record.level,
+    health: {
+      birthday: record.birthday ?? null,
+      weight: record.weight ?? null,
+      microchip: record.microchip ?? null,
+      sterilized: record.sterilized ?? null,
+      color: record.color ?? null,
+      allergies: record.allergies ?? null,
+    },
   };
 }
 
@@ -100,6 +119,12 @@ export async function getDiscoverablePetProfiles(ownerId?: string) {
   let query = supabase.from("pets").select("*").order("created_at", { ascending: false });
   if (ownerId) query = query.neq("owner_id", ownerId);
   const { data, error } = await query;
+  return { data: (data ?? []) as PetRecord[], error };
+}
+
+export async function getPetsByIds(ids: string[]) {
+  if (!supabase || ids.length === 0) return { data: [] as PetRecord[], error: null };
+  const { data, error } = await supabase.from("pets").select("*").in("id", ids);
   return { data: (data ?? []) as PetRecord[], error };
 }
 

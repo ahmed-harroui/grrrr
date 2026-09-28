@@ -48,6 +48,9 @@ export const translations = {
     },
     explore: {
       title: "Explorer",
+      comingSoon: "Bientôt disponible",
+      adoptionTitle: "Adoption",
+      adoptionText: "Vos pets ont eu des bébés ? Proposez-les à l'adoption.",
     },
     myPet: {
       title: "Mon Animal",
@@ -131,6 +134,9 @@ export const translations = {
     },
     explore: {
       title: "Explore",
+      comingSoon: "Coming soon",
+      adoptionTitle: "Adoption",
+      adoptionText: "Your pets had babies? Offer them for adoption.",
     },
     myPet: {
       title: "My Pet",

@@ -15,6 +15,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { fonts, radii } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { ChatMessage, useAppState } from "@/context/AppState";
+import { useTranslation } from "@/i18n/useTranslation";
 
 export default function ChatThreadScreen() {
   const colors = useThemedColors();
@@ -23,6 +24,7 @@ export default function ChatThreadScreen() {
   const { activePet, chats, sendMessage, markChatRead, meetingTraces, confirmMeetingTrace, deleteMeetingTrace } = useAppState();
   const [text, setText] = useState("");
   const styles = getStyles(colors);
+  const { tx } = useTranslation();
   const listRef = useRef<FlatList>(null);
 
   const petId = route.params?.petId;
@@ -55,7 +57,7 @@ export default function ChatThreadScreen() {
         </Pressable>
         <Image source={{ uri: chat.pet.photo }} style={styles.avatar} />
         <Text style={styles.name}>{chat.pet.name}</Text>
-        <Pressable style={styles.locationButton} onPress={() => navigation.navigate("MainTabs", { screen: "Matches" })}>
+        <Pressable style={styles.locationButton} onPress={() => navigation.navigate("MainTabs", { screen: "Explore" })}>
           <Text style={styles.locationIcon}>⌖</Text>
         </Pressable>
       </View>
@@ -81,25 +83,25 @@ export default function ChatThreadScreen() {
                 <View style={styles.organizedHeroCopy}>
                   <View style={styles.organizedHeroRow}>
                     <Text style={styles.organizedHeroTitle}>
-                      Sortie Organisée {trace?.marker === "pink" ? "❤️ (Hot)" : "🐾 (Friend)"}
+                      {tx("Sortie Organisée", "Planned outing")} {trace?.marker === "pink" ? "❤️ (Hot)" : "🐾 (Friend)"}
                     </Text>
                     <View style={[styles.statusTag, trace?.status === "confirmed" ? styles.statusTagConfirmed : styles.statusTagPending]}>
                       <Text style={styles.statusTagText}>
-                        {trace?.status === "confirmed" ? "Confirmée ✅" : "En attente ⏳"}
+                        {trace?.status === "confirmed" ? tx("Confirmée ✅", "Confirmed ✅") : tx("En attente ⏳", "Pending ⏳")}
                       </Text>
                     </View>
                   </View>
                   <Text style={styles.organizedHeroSub}>
                     {trace?.status === "confirmed"
-                      ? `Rendez-vous validé entre ${activePet.name} et ${chat.pet.name} !`
-                      : `Proposition de rendez-vous avec ${chat.pet.name}`}
+                      ? tx(`Rendez-vous validé entre ${activePet.name} et ${chat.pet.name} !`, `Meetup confirmed between ${activePet.name} and ${chat.pet.name}!`)
+                      : tx(`Proposition de rendez-vous avec ${chat.pet.name}`, `Meetup proposal with ${chat.pet.name}`)}
                   </Text>
                 </View>
                 <Pressable
                   style={styles.heroMapBtn}
-                  onPress={() => navigation.navigate("MainTabs", { screen: "Matches" })}
+                  onPress={() => navigation.navigate("MainTabs", { screen: "Explore" })}
                 >
-                  <Text style={styles.heroMapBtnText}>📍 Voir sur la carte</Text>
+                  <Text style={styles.heroMapBtnText}>📍 {tx("Voir sur la carte", "See on the map")}</Text>
                 </Pressable>
               </View>
 
@@ -107,7 +109,7 @@ export default function ChatThreadScreen() {
               {chat.messages.length > 3 && (
                 <Pressable style={styles.condenseBar} onPress={() => setIsCondensed(!isCondensed)}>
                   <Text style={styles.condenseText}>
-                    💬 {isCondensed ? `${hiddenCount} anciens messages condensés — Touchez pour déplier` : "Masquer les anciens messages"} {isCondensed ? "▼" : "▲"}
+                    💬 {isCondensed ? tx(`${hiddenCount} anciens messages condensés — Touchez pour déplier`, `${hiddenCount} older messages hidden — Tap to expand`) : tx("Masquer les anciens messages", "Hide older messages")} {isCondensed ? "▼" : "▲"}
                   </Text>
                 </Pressable>
               )}
@@ -116,7 +118,7 @@ export default function ChatThreadScreen() {
           renderItem={({ item }) => (
             <Bubble
               message={item}
-              onOpenMap={() => navigation.navigate("MainTabs", { screen: "Matches" })}
+              onOpenMap={() => navigation.navigate("MainTabs", { screen: "Explore" })}
               styles={styles}
             />
           )}
@@ -126,25 +128,25 @@ export default function ChatThreadScreen() {
         <View style={styles.meetingRequest}>
           <View style={styles.meetingIcon}><Text style={styles.meetingIconText}>⌖</Text></View>
           <View style={styles.meetingCopy}>
-            <Text style={styles.meetingTitle}>{trace?.status === "confirmed" ? "Sortie confirmée" : "Une sortie à organiser"}</Text>
-            <Text style={styles.meetingText}>{trace?.status === "confirmed" ? "Le lieu est enregistré pour vous deux." : "Choisissez ensemble un endroit sur la carte."}</Text>
+            <Text style={styles.meetingTitle}>{trace?.status === "confirmed" ? tx("Sortie confirmée", "Outing confirmed") : tx("Une sortie à organiser", "An outing to plan")}</Text>
+            <Text style={styles.meetingText}>{trace?.status === "confirmed" ? tx("Le lieu est enregistré pour vous deux.", "The spot is saved for both of you.") : tx("Choisissez ensemble un endroit sur la carte.", "Pick a spot on the map together.")}</Text>
           </View>
           {trace?.status === "pending" ? (
             <View style={styles.meetingActions}>
               <Pressable style={styles.acceptButton} onPress={() => confirmMeetingTrace(petId)}>
-                <Text style={styles.acceptText}>Accepter</Text>
+                <Text style={styles.acceptText}>{tx("Accepter", "Accept")}</Text>
               </Pressable>
               <Pressable style={styles.rejectButton} onPress={() => deleteMeetingTrace(petId)}>
-                <Text style={styles.rejectText}>Refuser</Text>
+                <Text style={styles.rejectText}>{tx("Refuser", "Decline")}</Text>
               </Pressable>
             </View>
           ) : trace?.status === "confirmed" ? (
             <Pressable style={styles.deleteButton} onPress={() => deleteMeetingTrace(petId)}>
-              <Text style={styles.deleteText}>Supprimer</Text>
+              <Text style={styles.deleteText}>{tx("Supprimer", "Delete")}</Text>
             </Pressable>
           ) : (
-            <Pressable style={styles.proposeButton} onPress={() => navigation.navigate("MainTabs", { screen: "Matches" })}>
-              <Text style={styles.proposeText}>Choisir</Text>
+            <Pressable style={styles.proposeButton} onPress={() => navigation.navigate("MainTabs", { screen: "Explore" })}>
+              <Text style={styles.proposeText}>{tx("Choisir", "Choose")}</Text>
             </Pressable>
           )}
         </View>
@@ -152,7 +154,7 @@ export default function ChatThreadScreen() {
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
-            placeholder="Écrire un message..."
+            placeholder={tx("Écrire un message...", "Write a message...")}
             placeholderTextColor={colors.grey}
             value={text}
             onChangeText={setText}
@@ -170,15 +172,16 @@ export default function ChatThreadScreen() {
 
 function Bubble({ message, onOpenMap, styles }: { message: ChatMessage; onOpenMap: () => void; styles: ReturnType<typeof getStyles> }) {
   const mine = message.from === "me";
+  const { tx } = useTranslation();
   const isOrganized = message.text.includes("Sortie organisée");
 
   if (isOrganized) {
     return (
       <View style={styles.organizedMsgCard}>
-        <Text style={styles.organizedMsgTitle}>🐾 GRRRR — Sortie Organisée</Text>
+        <Text style={styles.organizedMsgTitle}>🐾 GRRRR — {tx("Sortie Organisée", "Planned outing")}</Text>
         <Text style={styles.organizedMsgText}>{message.text}</Text>
         <Pressable style={styles.organizedMsgBtn} onPress={onOpenMap}>
-          <Text style={styles.organizedMsgBtnText}>📍 Voir le lieu sur la carte</Text>
+          <Text style={styles.organizedMsgBtnText}>📍 {tx("Voir le lieu sur la carte", "See the spot on the map")}</Text>
         </Pressable>
       </View>
     );

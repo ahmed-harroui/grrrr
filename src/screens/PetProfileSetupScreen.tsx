@@ -23,16 +23,19 @@ const DEFAULT_PET: PetRecord = {
 
 type Step = "name" | "breed" | "age" | "city" | "bio" | "energy" | "mode";
 
-const STEPS: { key: Step; title: string; subtitle: string; placeholder: string }[] = [
-  { key: "name", title: "Comment s'appelle ton compagnon ?", subtitle: "Tu peux passer cette étape et le faire plus tard.", placeholder: "Ex. Rocky" },
-  { key: "breed", title: "Quelle est sa race ?", subtitle: "Une race approximative fonctionne aussi.", placeholder: "Ex. Golden Retriever" },
-  { key: "age", title: "Quel âge a-t-il ?", subtitle: "Cela nous aide à trouver des profils compatibles.", placeholder: "Ex. 3" },
-  { key: "city", title: "Dans quelle ville êtes-vous ?", subtitle: "Pour proposer des rencontres proches.", placeholder: "Ex. Paris" },
-  { key: "bio", title: "Présente ton compagnon", subtitle: "Quelques mots sur son caractère et ses habitudes.", placeholder: "Il adore courir et jouer..." },
+const STEPS: { key: Step; title: string; titleEn: string; subtitle: string; subtitleEn: string; placeholder: string; placeholderEn: string }[] = [
+  { key: "name", title: "Comment s'appelle ton compagnon ?", titleEn: "What's your companion's name?", subtitle: "Tu peux passer cette étape et le faire plus tard.", subtitleEn: "You can skip this step and do it later.", placeholder: "Ex. Rocky", placeholderEn: "E.g. Rocky" },
+  { key: "breed", title: "Quelle est sa race ?", titleEn: "What breed are they?", subtitle: "Une race approximative fonctionne aussi.", subtitleEn: "An approximate breed works too.", placeholder: "Ex. Golden Retriever", placeholderEn: "E.g. Golden Retriever" },
+  { key: "age", title: "Quel âge a-t-il ?", titleEn: "How old are they?", subtitle: "Cela nous aide à trouver des profils compatibles.", subtitleEn: "This helps us find compatible profiles.", placeholder: "Ex. 3", placeholderEn: "E.g. 3" },
+  { key: "city", title: "Dans quelle ville êtes-vous ?", titleEn: "Which city are you in?", subtitle: "Pour proposer des rencontres proches.", subtitleEn: "To suggest meetups nearby.", placeholder: "Ex. Paris", placeholderEn: "E.g. Paris" },
+  { key: "bio", title: "Présente ton compagnon", titleEn: "Introduce your companion", subtitle: "Quelques mots sur son caractère et ses habitudes.", subtitleEn: "A few words about their personality and habits.", placeholder: "Il adore courir et jouer...", placeholderEn: "Loves to run and play..." },
 ];
+
+import { useTranslation } from "@/i18n/useTranslation";
 
 export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }) {
   const { session } = useAuth();
+  const { tx } = useTranslation();
   const [stepIndex, setStepIndex] = useState(0);
   const [profile, setProfile] = useState<PetRecord>(DEFAULT_PET);
   const [loading, setLoading] = useState(Boolean(session));
@@ -54,7 +57,7 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
 
   const finish = async () => {
     if (!profile.pet_name.trim()) {
-      Alert.alert("Il manque un nom", "Donne au moins un nom à ton compagnon pour créer son profil.");
+      Alert.alert(tx("Il manque un nom", "Name missing"), tx("Donne au moins un nom à ton compagnon pour créer son profil.", "Give your companion at least a name to create their profile."));
       setStepIndex(0);
       return;
     }
@@ -63,13 +66,13 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
       let photoUrl = "";
       if (photoAsset) {
         const upload = await uploadPetPhoto(session.user.id, photoAsset);
-        if (upload.error) Alert.alert("Photo non envoyée", `${upload.error.message}\n\nTu pourras l'ajouter depuis ton profil.`);
+        if (upload.error) Alert.alert(tx("Photo non envoyée", "Photo not uploaded"), `${upload.error.message}\n\n${tx("Tu pourras l'ajouter depuis ton profil.", "You can add it from your profile.")}`);
         photoUrl = upload.url;
       }
       const { error } = await createPetProfile({ ...profile, photo_url: photoUrl, owner_id: session.user.id });
       if (error) {
         setSaving(false);
-        Alert.alert("Profil non enregistré", error.message);
+        Alert.alert(tx("Profil non enregistré", "Profile not saved"), error.message);
         return;
       }
     }
@@ -103,7 +106,7 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
     <View style={styles.container}>
       <View style={styles.topRow}>
         <Text style={styles.counter}>{isChoiceStep ? "6 / 7" : `${stepIndex + 1} / 7`}</Text>
-        <Pressable onPress={skip} hitSlop={10}><Text style={styles.skip}>Passer</Text></Pressable>
+        <Pressable onPress={skip} hitSlop={10}><Text style={styles.skip}>{tx("Passer", "Skip")}</Text></Pressable>
       </View>
       <View style={styles.progressTrack}><View style={[styles.progress, { width: `${((stepIndex + 1) / 7) * 100}%` }]} /></View>
 
@@ -111,13 +114,13 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
         <View style={styles.content}>
           <Pressable onPress={choosePhoto} style={styles.photoPicker}>{photo ? <Image source={{ uri: photo }} style={styles.photoPreview} /> : <View style={styles.photoEmpty}><Text style={styles.photoEmptyText}>🐾</Text></View>}<View style={styles.cameraBadge}><Text>📸</Text></View></Pressable>
           <Text style={styles.emoji}>🐾</Text>
-          <Text style={styles.title}>{step.title}</Text>
-          <Text style={styles.subtitle}>{step.subtitle}</Text>
+          <Text style={styles.title}>{tx(step.title, step.titleEn)}</Text>
+          <Text style={styles.subtitle}>{tx(step.subtitle, step.subtitleEn)}</Text>
           <TextInput
             autoFocus
             value={step.key === "name" ? profile.pet_name : step.key === "age" ? (profile.age ? String(profile.age) : "") : String(profile[step.key] ?? "")}
             onChangeText={updateText}
-            placeholder={step.placeholder}
+            placeholder={tx(step.placeholder, step.placeholderEn)}
             placeholderTextColor={colors.grey}
             keyboardType={step.key === "age" ? "number-pad" : "default"}
             multiline={step.key === "bio"}
@@ -127,22 +130,22 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
       ) : (
         <View style={styles.content}>
           <Text style={styles.emoji}>⚡</Text>
-          <Text style={styles.title}>Quel est son niveau d'énergie ?</Text>
-          <Text style={styles.subtitle}>Tu pourras modifier cette préférence depuis ton profil.</Text>
-          <View style={styles.options}>{([1, 2, 3, 4] as const).map((value) => <Pressable key={value} onPress={() => setProfile((current) => ({ ...current, energy: value }))} style={[styles.option, profile.energy === value && styles.optionActive]}><Text style={[styles.optionText, profile.energy === value && styles.optionTextActive]}>{value === 1 ? "Chill" : value === 2 ? "Calme" : value === 3 ? "Actif" : "Très actif"}</Text></Pressable>)}</View>
-          <Text style={[styles.title, styles.secondaryTitle]}>Son intention de rencontre</Text>
+          <Text style={styles.title}>{tx("Quel est son niveau d'énergie ?", "What's their energy level?")}</Text>
+          <Text style={styles.subtitle}>{tx("Tu pourras modifier cette préférence depuis ton profil.", "You can change this from your profile.")}</Text>
+          <View style={styles.options}>{([1, 2, 3, 4] as const).map((value) => <Pressable key={value} onPress={() => setProfile((current) => ({ ...current, energy: value }))} style={[styles.option, profile.energy === value && styles.optionActive]}><Text style={[styles.optionText, profile.energy === value && styles.optionTextActive]}>{value === 1 ? "Chill" : value === 2 ? tx("Calme", "Calm") : value === 3 ? tx("Actif", "Active") : tx("Très actif", "Very active")}</Text></Pressable>)}</View>
+          <Text style={[styles.title, styles.secondaryTitle]}>{tx("Son intention de rencontre", "What they're looking for")}</Text>
           <View style={styles.modeRow}>{([0, 50, 100] as const).map((value) => <Pressable key={value} onPress={() => setProfile((current) => ({ ...current, mode: value }))} style={[styles.modeOption, profile.mode === value && styles.modeActive]}><Text style={styles.modeText}>{value === 0 ? "Friend" : value === 50 ? "Both" : "Hot"}</Text></Pressable>)}</View>
-          <Text style={[styles.title, styles.secondaryTitle]}>Son genre</Text>
+          <Text style={[styles.title, styles.secondaryTitle]}>{tx("Son genre", "Their gender")}</Text>
           <View style={styles.modeRow}>
-            <Pressable onPress={() => setProfile((current) => ({ ...current, gender: "M" }))} style={[styles.modeOption, profile.gender === "M" && styles.modeActive]}><Text style={styles.modeText}>♂ Mâle</Text></Pressable>
-            <Pressable onPress={() => setProfile((current) => ({ ...current, gender: "F" }))} style={[styles.modeOption, profile.gender === "F" && styles.modeActive]}><Text style={styles.modeText}>♀ Femelle</Text></Pressable>
+            <Pressable onPress={() => setProfile((current) => ({ ...current, gender: "M" }))} style={[styles.modeOption, profile.gender === "M" && styles.modeActive]}><Text style={styles.modeText}>{tx("♂ Mâle", "♂ Male")}</Text></Pressable>
+            <Pressable onPress={() => setProfile((current) => ({ ...current, gender: "F" }))} style={[styles.modeOption, profile.gender === "F" && styles.modeActive]}><Text style={styles.modeText}>{tx("♀ Femelle", "♀ Female")}</Text></Pressable>
           </View>
         </View>
       )}
 
       <View style={styles.footer}>
-        <Pressable style={styles.primary} onPress={isChoiceStep ? finish : next} disabled={saving}><Text style={styles.primaryText}>{saving ? "Enregistrement..." : isChoiceStep ? "Terminer" : "Continuer"}</Text></Pressable>
-        {!isChoiceStep && <Pressable onPress={skip} style={styles.skipBottom}><Text style={styles.skipBottomText}>Répondre plus tard</Text></Pressable>}
+        <Pressable style={styles.primary} onPress={isChoiceStep ? finish : next} disabled={saving}><Text style={styles.primaryText}>{saving ? tx("Enregistrement...", "Saving...") : isChoiceStep ? tx("Terminer", "Finish") : tx("Continuer", "Continue")}</Text></Pressable>
+        {!isChoiceStep && <Pressable onPress={skip} style={styles.skipBottom}><Text style={styles.skipBottomText}>{tx("Répondre plus tard", "Answer later")}</Text></Pressable>}
       </View>
     </View>
   );

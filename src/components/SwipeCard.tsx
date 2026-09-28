@@ -29,7 +29,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
   ref
 ) {
   const colors = useThemedColors();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const pan = useRef(new Animated.ValueXY()).current;
   const [showProfile, setShowProfile] = React.useState(false);
   const [photoIndex, setPhotoIndex] = React.useState(0);
@@ -173,7 +173,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
             <View style={styles.profileInfo}>
               <Text style={[styles.profileName, { color: colors.dark }]}>{pet.name}, {pet.age} {t.common.years}</Text>
               <Text style={[styles.profileMeta, { color: colors.grey }]}>{pet.breed} • {pet.gender === "F" ? t.common.female : t.common.male}</Text>
-              <Text style={[styles.profileDist, { color: colors.grey }]}>📍 {pet.dist} km away</Text>
+              <Text style={[styles.profileDist, { color: colors.grey }]}>📍 {pet.dist} {language === "en" ? "km away" : "km"}</Text>
               <Text style={[styles.profileCompat, { color: colors.friend }]}>❤️ {pct}% compatible</Text>
 
               <Text style={[styles.profileBio, { color: colors.dark }]}>{pet.bio}</Text>

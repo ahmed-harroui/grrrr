@@ -2,6 +2,7 @@ import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { fonts, radii } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
+import { useTranslation } from "@/i18n/useTranslation";
 
 interface Props {
   value: number; // 0..100
@@ -15,10 +16,11 @@ export default function ModeSlider({ value, onChange }: Props) {
   const colors = useThemedColors();
   const isPlay = value < 50;
   const styles = getStyles(colors);
+  const { tx } = useTranslation();
 
   return (
     <View style={styles.wrap}>
-      <Text style={[styles.label, { color: colors.grey }]}>{isPlay ? "Looking for a play date" : "Open to a little hot love"}</Text>
+      <Text style={[styles.label, { color: colors.grey }]}>{isPlay ? tx("À la recherche d'un copain de jeu", "Looking for a play date") : tx("Ouvert à une belle rencontre", "Open to a little hot love")}</Text>
       <View style={styles.selector}>
         <Pressable onPress={() => onChange(0)} style={[styles.choice, isPlay && styles.playActive]}>
           <Image source={PLAY_PAW} style={styles.pawImage} resizeMode="contain" />

@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { Animated, Dimensions, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { fonts } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
-import { ME, Pet } from "@/data/mockPets";
+import { Pet } from "@/data/mockPets";
+import { useAppState } from "@/context/AppState";
+import { useTranslation } from "@/i18n/useTranslation";
 
 interface Props {
   visible: boolean;
@@ -17,6 +19,8 @@ const SPARKLE_COLORS = ["#FFD7E1", "#FFC0D1", "#FFE8A3", "#BFF5E5"];
 export default function MatchModal({ visible, pet, onKeepSwiping }: Props) {
   const colors = useThemedColors();
   const styles = getStyles(colors);
+  const { tx } = useTranslation();
+  const { activePet } = useAppState();
   const leftX = useRef(new Animated.Value(-70)).current;
   const rightX = useRef(new Animated.Value(70)).current;
   const contentScale = useRef(new Animated.Value(0.92)).current;
@@ -60,17 +64,17 @@ export default function MatchModal({ visible, pet, onKeepSwiping }: Props) {
         <Animated.View style={[styles.content, { opacity, transform: [{ scale: contentScale }] }]}>
           <View style={styles.photos}>
             <Animated.View style={[styles.photoCircle, styles.meCircle, { transform: [{ translateX: leftX }] }]}>
-              <Image source={{ uri: ME.photo }} style={styles.photoImg} />
+              <Image source={{ uri: activePet.photo }} style={styles.photoImg} />
             </Animated.View>
             <Animated.View style={[styles.photoCircle, styles.themCircle, { transform: [{ translateX: rightX }] }]}>
               <Image source={{ uri: pet.photo }} style={styles.photoImg} />
             </Animated.View>
           </View>
-          <Text style={styles.title}>It’s a Match!</Text>
+          <Text style={styles.title}>{tx("C'est un Match !", "It’s a Match!")}</Text>
           <Text style={styles.matchType}>{(pet as any).matchType === "Hot" ? "💕 HOT MATCH" : "🐾 FRIEND MATCH"}</Text>
-          <Text style={styles.subtitle}>{ME.name} et {pet.name} se sont likés mutuellement.</Text>
-          <Text style={styles.matchDetail}>{(pet as any).matchType === "Hot" ? "Une belle rencontre amoureuse vous attend !" : "Une amitié fantastique commence !"}</Text>
-          <Text style={styles.tapHint}>Touchez l’écran pour fermer</Text>
+          <Text style={styles.subtitle}>{tx(`${activePet.name} et ${pet.name} se sont likés mutuellement.`, `${activePet.name} and ${pet.name} liked each other.`)}</Text>
+          <Text style={styles.matchDetail}>{(pet as any).matchType === "Hot" ? tx("Une belle rencontre amoureuse vous attend !", "A lovely romance awaits!") : tx("Une amitié fantastique commence !", "A fantastic friendship begins!")}</Text>
+          <Text style={styles.tapHint}>{tx("Touchez l’écran pour fermer", "Tap the screen to close")}</Text>
         </Animated.View>
       </Pressable>
     </Modal>

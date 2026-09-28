@@ -9,11 +9,14 @@ import { useAuth } from "@/context/AuthContext";
 import { useAppState } from "@/context/AppState";
 import { PETS as DISCOVERY_PETS } from "@/data/mockPets";
 import { createPetProfile, LocalPhoto, PetRecord, updatePetProfile, uploadPetPhoto } from "@/data/api/profile";
-import AddPetSheet, { SPECIES } from "@/components/AddPetSheet";
-import PetProfileEditor, { PetDraft } from "@/components/PetProfileEditor";
+import AddPetSheet, { SPECIES, speciesLabel } from "@/components/AddPetSheet";
+import { useTranslation } from "@/i18n/useTranslation";
+import PetProfileEditor, { EMPTY_HEALTH, PetDraft } from "@/components/PetProfileEditor";
 import type { Pet } from "@/data/mockPets";
 import TreatModel from "@/components/TreatModel";
-import { getPetLevel, PET_RANKS } from "@/utils/petProgression";
+import { getPetLevel, LEVEL_THRESHOLDS, levelFromXp, PET_RANKS, XP_SOURCES } from "@/utils/petProgression";
+import { usePetProgression } from "@/hooks/usePetProgression";
+import { replayLevelCelebration } from "@/data/api/progress";
 
 type PetProfileDraft = Omit<PetRecord, "owner_id" | "species" | "tags">;
 
@@ -69,6 +72,7 @@ export default function MyPetScreen() {
   const { activePet, setActivePet, ownedPets, refreshOwnedPets, setMode, treats, petProgress, progressByPet } = useAppState();
   const [profile, setProfile] = useState<PetProfileDraft>(DEFAULT_PROFILE);
   const styles = getStyles(colors);
+  const { tx, language } = useTranslation();
   const [editorOpen, setEditorOpen] = useState(false);
   const [levelInfoOpen, setLevelInfoOpen] = useState(false);
   const [addPetOpen, setAddPetOpen] = useState(false);
@@ -86,7 +90,10 @@ export default function MyPetScreen() {
   const gallery = useMemo(() => [profile.photo_url, ...(profile.photos ?? [])].filter(Boolean), [profile.photo_url, profile.photos]);
   const species = speciesInfo(selectedPet.species);
   const completion = [profile.pet_name, profile.breed, profile.age, profile.city, profile.bio, profile.photo_url, selectedPet.tags.length].filter(Boolean).length / 7;
-  const level = getPetLevel(treats, petProgress, completion);
+  const selectedDbId = session ? ownedPets.find((pet) => `db-${pet.id}` === selectedPet.key)?.dbId : undefined;
+  // Signed in: XP computed by the server from real activity. Guest: local estimate.
+  const { progression, error: progressionError, refresh: refreshProgression } = usePetProgression(selectedDbId);
+  const level = progression ? levelFromXp(progression.xp) : getPetLevel(treats, petProgress, completion);
 
   useEffect(() => setPhotoIndex(0), [selectedKey, gallery.length]);
 
@@ -97,13 +104,15 @@ export default function MyPetScreen() {
     age: profile.age,
     gender: selectedPet.gender.startsWith("♀") ? "F" : "M",
     city: profile.city,
+    country: session ? ownedPets.find((pet) => toPetItem(pet).key === selectedPet.key)?.country ?? "" : undefined,
     bio: profile.bio,
     energy: profile.energy,
     mode: profile.mode,
     tags: selectedPet.tags,
     avatar: profile.photo_url ? { uri: profile.photo_url } : null,
     gallery: (profile.photos ?? []).map((uri) => ({ uri })),
-  }), [profile, selectedPet]);
+    health: session ? ownedPets.find((pet) => toPetItem(pet).key === selectedPet.key)?.health ?? EMPTY_HEALTH : undefined,
+  }), [ownedPets, profile, selectedPet, session]);
 
   useEffect(() => {
     const nextPet = allPets.find((pet) => pet.profile.pet_name === activePet.name);
@@ -122,12 +131,12 @@ export default function MyPetScreen() {
     if (session?.user.id) {
       if (photoAsset) {
         const upload = await uploadPetPhoto(session.user.id, photoAsset);
-        if (upload.error) Alert.alert("Photo non envoyée", `${upload.error.message}\n\nTu pourras l'ajouter depuis « Modifier le profil ».`);
+        if (upload.error) Alert.alert(tx("Photo non envoyée", "Photo not uploaded"), `${upload.error.message}\n\n${tx("Tu pourras l'ajouter depuis « Modifier le profil ».", "You can add it from \"Edit profile\".")}`);
         profile.photo_url = upload.url;
       }
       const { error } = await createPetProfile({ ...profile, owner_id: session.user.id, species: pet.species, tags: pet.tags, gender: pet.gender });
       if (error) {
-        Alert.alert("Profil non enregistré", error.message);
+        Alert.alert(tx("Profil non enregistré", "Profile not saved"), error.message);
         return;
       }
       const pets = await refreshOwnedPets();
@@ -191,7 +200,7 @@ export default function MyPetScreen() {
       const uploads = await Promise.all([draft.avatar, ...draft.gallery].map((photo) => (photo ? uploadPetPhoto(ownerId, photo) : Promise.resolve({ url: "", error: null }))));
       const failed = uploads.find((upload) => upload.error);
       if (failed?.error) {
-        Alert.alert("Photos non envoyées", `${failed.error.message}\n\nVérifie que la migration supabase/migrations/003_pet_photos.sql a bien été exécutée.`);
+        Alert.alert(tx("Photos non envoyées", "Photos not uploaded"), `${failed.error.message}\n\n${tx("Vérifie que la migration supabase/migrations/003_pet_photos.sql a bien été exécutée.", "Check that the supabase/migrations/003_pet_photos.sql migration has been run.")}`);
         return false;
       }
       photoUrl = uploads[0].url;
@@ -203,19 +212,23 @@ export default function MyPetScreen() {
         age: draft.age,
         gender: draft.gender,
         city: draft.city,
+        country: draft.country || null,
         bio: draft.bio,
         energy: draft.energy,
         mode: draft.mode,
         tags: draft.tags,
         photo_url: photoUrl,
         photos,
+        ...(draft.health ?? {}),
       });
       if (error) {
-        Alert.alert("Profil non enregistré", error.message);
+        Alert.alert(tx("Profil non enregistré", "Profile not saved"), error.message);
         return false;
       }
       await refreshOwnedPets();
       if (ownedPet.id === activePet.id) setMode(draft.mode);
+      // New photos / filled fields earn XP immediately (and can trigger the level-up animation).
+      void refreshProgression();
       return true;
     }
 
@@ -234,9 +247,9 @@ export default function MyPetScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.hero}>
           <Text style={styles.heroSticker}>🐾  ✦  ♡</Text>
-          <Text style={styles.heroTitle}>Mes petits compagnons !</Text>
-          <Text style={styles.heroSubtitle}>Tous tes pets au même endroit</Text>
-          <View style={styles.treatPill}><TreatModel /><Text style={styles.treatCount}>{treats}</Text><Text style={styles.treatLabel}>croquettes</Text></View>
+          <Text style={styles.heroTitle}>{tx("Mes petits compagnons !", "My little companions!")}</Text>
+          <Text style={styles.heroSubtitle}>{tx("Tous tes pets au même endroit", "All your pets in one place")}</Text>
+          <View style={styles.treatPill}><TreatModel /><Text style={styles.treatCount}>{treats}</Text><Text style={styles.treatLabel}>{tx("croquettes", "treats")}</Text></View>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.petSwitcher}>
@@ -250,7 +263,7 @@ export default function MyPetScreen() {
           ))}
           <Pressable style={styles.addPet} onPress={() => setAddPetOpen(true)}>
             <Text style={styles.addPetIcon}>＋</Text>
-            <Text style={styles.addPetText}>Ajouter</Text>
+            <Text style={styles.addPetText}>{tx("Ajouter", "Add")}</Text>
           </Pressable>
         </ScrollView>
 
@@ -270,7 +283,7 @@ export default function MyPetScreen() {
           ) : (
             <Pressable onPress={() => setEditorOpen(true)} style={[styles.photo, styles.photoPlaceholder]}>
               <Text style={styles.placeholderIcon}>📸</Text>
-              <Text style={styles.placeholderText}>Ajoute des photos de {profile.pet_name || "ton compagnon"}</Text>
+              <Text style={styles.placeholderText}>{tx(`Ajoute des photos de ${profile.pet_name || "ton compagnon"}`, `Add photos of ${profile.pet_name || "your companion"}`)}</Text>
             </Pressable>
           )}
           <View style={[styles.statusBadge, selectedMode >= 50 ? styles.hotBadge : styles.friendBadge]}>
@@ -289,57 +302,59 @@ export default function MyPetScreen() {
           </ScrollView>
         )}
         <Text style={styles.name}>{profile.pet_name}</Text>
-        <Text style={styles.sub}>{species ? `${species.icon} ${species.label}` : selectedPet.species}{profile.breed ? ` · ${profile.breed}` : ""} · 🎂 {profile.age} {profile.age > 1 ? "ans" : "an"} · {selectedPet.gender}</Text>
+        <Text style={styles.sub}>{species ? `${species.icon} ${speciesLabel(species, language)}` : selectedPet.species}{profile.breed ? ` · ${profile.breed}` : ""} · 🎂 {profile.age} {profile.age > 1 ? tx("ans", "yrs") : tx("an", "yr")} · {selectedPet.gender.startsWith("♀") ? tx("♀ Femelle", "♀ Female") : tx("♂ Mâle", "♂ Male")}</Text>
         {profile.city ? <Text style={styles.city}>📍 {profile.city}</Text> : null}
 
         <View style={styles.statsRow}>
-          <Stat big={profile.energy >= 3 ? "⚡ High" : "🌿 Chill"} small="ÉNERGIE" styles={styles} />
-          <Stat big="🎾🏃" small="ACTIVITÉS" styles={styles} />
-          <Stat big={profile.mode >= 50 ? "Hot" : "Friend"} small="STATUT" styles={styles} />
+          <Stat big={profile.energy >= 3 ? "⚡ High" : "🌿 Chill"} small={tx("ÉNERGIE", "ENERGY")} styles={styles} />
+          <Stat big="🎾🏃" small={tx("ACTIVITÉS", "ACTIVITIES")} styles={styles} />
+          <Stat big={profile.mode >= 50 ? "Hot" : "Friend"} small={tx("STATUT", "STATUS")} styles={styles} />
         </View>
 
-        <Pressable style={styles.levelCard} onPress={() => setLevelInfoOpen(true)}>
-          <View style={styles.levelHeader}><View><Text style={styles.levelEyebrow}>PROGRESSION DE {profile.pet_name.toUpperCase()}</Text><Text style={[styles.rankName, { color: level.rank.color }]}>{level.rank.name} · Niveau {level.level}</Text></View><Image source={level.rank.image} style={styles.rankImage} /></View>
+        <Pressable style={styles.levelCard} onPress={() => setLevelInfoOpen(true)} onLongPress={() => replayLevelCelebration(selectedDbId ?? "demo", level.level)} delayLongPress={500}>
+          <View style={styles.levelHeader}><View><Text style={styles.levelEyebrow}>{tx("PROGRESSION DE", "PROGRESS OF")} {profile.pet_name.toUpperCase()}</Text><Text style={[styles.rankName, { color: level.rank.color }]}>{tx(level.rank.name, level.rank.nameEn)} · {tx("Niveau", "Level")} {level.level}</Text></View><Image source={level.rank.image} style={styles.rankImage} /></View>
           <View style={styles.levelTrack}><View style={[styles.levelFill, { width: `${level.progress * 100}%`, backgroundColor: level.rank.color }]} /></View>
-          <Text style={styles.levelHint}>{Math.max(0, level.next - level.xp)} XP avant le niveau {Math.min(7, level.level + 1)}</Text>
+          <Text style={styles.levelHint}>{level.next === null ? `${level.xp} XP · ${tx("Niveau maximum atteint 👑", "Max level reached 👑")}` : `${level.xp} XP · ${tx(`encore ${level.next - level.xp} XP avant le niveau ${level.level + 1}`, `${level.next - level.xp} XP to level ${level.level + 1}`)}`}{progression && progression.weeks_streak > 1 ? `  ·  🔥 ${tx(`${progression.weeks_streak} semaines d'affilée`, `${progression.weeks_streak}-week streak`)}` : ""}</Text>
           <View style={styles.rankRow}>{PET_RANKS.map((rank) => <View key={rank.name} style={[styles.rankDot, { backgroundColor: rank.color }, rank.name === level.rank.name && styles.rankDotActive]} />)}</View>
-          <Text style={styles.levelTapHint}>Voir les niveaux et comment progresser ›</Text>
+          <Text style={styles.levelTapHint}>{tx("Voir les niveaux et comment progresser ›", "See levels and how to progress ›")}</Text>
+          {progressionError ? <Text style={styles.levelError}>⚠️ {tx("XP non calculée", "XP not computed")} : {progressionError}</Text> : null}
+          {session && !selectedDbId ? <Text style={styles.levelError}>⚠️ {tx("Ce pet n'est pas relié à la base de données", "This pet is not linked to the database")}</Text> : null}
         </Pressable>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>À propos</Text>
+          <Text style={styles.sectionTitle}>{tx("À propos", "About")}</Text>
           <Pressable onPress={() => setEditorOpen(true)} hitSlop={8}>
-            <Text style={styles.editText}>✎ Modifier</Text>
+            <Text style={styles.editText}>{tx("✎ Modifier", "✎ Edit")}</Text>
           </Pressable>
         </View>
         <View style={styles.bioCard}>
-          {profile.bio ? <Text style={styles.bioText}>"{profile.bio}"</Text> : <Pressable onPress={() => setEditorOpen(true)}><Text style={styles.emptyText}>Ajoute une petite présentation ✦</Text></Pressable>}
+          {profile.bio ? <Text style={styles.bioText}>"{profile.bio}"</Text> : <Pressable onPress={() => setEditorOpen(true)}><Text style={styles.emptyText}>{tx("Ajoute une petite présentation ✦", "Add a short introduction ✦")}</Text></Pressable>}
         </View>
 
-        <Text style={[styles.sectionTitle, styles.habitsTitle]}>Ses petites habitudes</Text>
+        <Text style={[styles.sectionTitle, styles.habitsTitle]}>{tx("Ses petites habitudes", "Little habits")}</Text>
         <View style={styles.tags}>
           {selectedPet.tags.map((tag) => <View key={tag} style={styles.tag}><Text style={styles.tagText}>{tag}</Text></View>)}
-          <Pressable onPress={() => setEditorOpen(true)} style={[styles.tag, styles.tagAdd]}><Text style={styles.tagAddText}>＋ {selectedPet.tags.length ? "Modifier" : "Ajouter"}</Text></Pressable>
+          <Pressable onPress={() => setEditorOpen(true)} style={[styles.tag, styles.tagAdd]}><Text style={styles.tagAddText}>＋ {selectedPet.tags.length ? tx("Modifier", "Edit") : tx("Ajouter", "Add")}</Text></Pressable>
         </View>
 
         <View style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>💕 Ce que {profile.pet_name} recherche</Text>
-          <Text style={styles.infoLine}>🐾 Compagnon de balade</Text>
-          <Text style={styles.infoLine}>🎾 Partenaire de jeu</Text>
-          <Text style={styles.infoLine}>{profile.mode >= 50 ? "✦ Faire une belle rencontre" : "❤️ Se faire un nouvel ami"}</Text>
+          <Text style={styles.sectionTitle}>💕 {tx(`Ce que ${profile.pet_name} recherche`, `What ${profile.pet_name} is looking for`)}</Text>
+          <Text style={styles.infoLine}>🐾 {tx("Compagnon de balade", "Walking buddy")}</Text>
+          <Text style={styles.infoLine}>🎾 {tx("Partenaire de jeu", "Playmate")}</Text>
+          <Text style={styles.infoLine}>{profile.mode >= 50 ? tx("✦ Faire une belle rencontre", "✦ Meet someone special") : tx("❤️ Se faire un nouvel ami", "❤️ Make a new friend")}</Text>
         </View>
 
         <View style={styles.statsCard}>
-          <Text style={styles.sectionTitle}>🔥 Son petit succès</Text>
-          <View style={styles.publicSuccess}><Image source={level.rank.image} style={styles.successBadge} /><View><Text style={styles.popularTitle}>{profile.pet_name} est {level.rank.name.toLowerCase()} !</Text><Text style={styles.successText}>Un compagnon qui crée de belles connexions.</Text></View></View>
-          <View style={styles.popularRow}><Stat big={`✦ Niveau ${level.level}`} small="RÉPUTATION" styles={styles} /><Stat big={`💘 ${selectedPet.matches + petProgress.matches}`} small="MATCHS" styles={styles} /><Stat big={`🔥 ${selectedPet.top}`} small="TOP" styles={styles} /></View>
+          <Text style={styles.sectionTitle}>🔥 {tx("Son petit succès", "Their success")}</Text>
+          <View style={styles.publicSuccess}><Image source={level.rank.image} style={styles.successBadge} /><View><Text style={styles.popularTitle}>{tx(`${profile.pet_name} est ${level.rank.name.toLowerCase()} !`, `${profile.pet_name} is ${level.rank.nameEn.toLowerCase()}!`)}</Text><Text style={styles.successText}>{tx("Un compagnon qui crée de belles connexions.", "A companion who makes great connections.")}</Text></View></View>
+          <View style={styles.popularRow}><Stat big={`✦ ${tx("Niveau", "Level")} ${level.level}`} small={tx("RÉPUTATION", "REPUTATION")} styles={styles} /><Stat big={`💘 ${selectedPet.matches + petProgress.matches}`} small={tx("MATCHS", "MATCHES")} styles={styles} /><Stat big={`🔥 ${selectedPet.top}`} small="TOP" styles={styles} /></View>
         </View>
 
         <Pressable style={styles.editButton} onPress={() => setEditorOpen(true)}>
-          <Text style={styles.editButtonText}>✎ Modifier le profil</Text>
+          <Text style={styles.editButtonText}>{tx("✎ Modifier le profil", "✎ Edit profile")}</Text>
         </Pressable>
-        <View style={styles.addAnother}><Text style={styles.addAnotherTitle}>🐾 Un nouveau compagnon ?</Text><Text style={styles.addAnotherText}>Ajoute un autre pet à ta famille !</Text><Pressable onPress={() => setAddPetOpen(true)}><Text style={styles.addAnotherAction}>＋ Ajouter un pet</Text></Pressable></View>
-        {session && <Pressable onPress={signOut} style={styles.signOut}><Text style={styles.signOutText}>Se déconnecter</Text></Pressable>}
+        <View style={styles.addAnother}><Text style={styles.addAnotherTitle}>🐾 {tx("Un nouveau compagnon ?", "A new companion?")}</Text><Text style={styles.addAnotherText}>{tx("Ajoute un autre pet à ta famille !", "Add another pet to your family!")}</Text><Pressable onPress={() => setAddPetOpen(true)}><Text style={styles.addAnotherAction}>＋ {tx("Ajouter un pet", "Add a pet")}</Text></Pressable></View>
+        {session && <Pressable onPress={signOut} style={styles.signOut}><Text style={styles.signOutText}>{tx("Se déconnecter", "Sign out")}</Text></Pressable>}
         </View>
       </ScrollView>
       <AddPetSheet visible={addPetOpen} onClose={() => setAddPetOpen(false)} onCreate={createPet} />
@@ -347,14 +362,14 @@ export default function MyPetScreen() {
       <Modal visible={pendingPetKey !== null} transparent animationType="fade" onRequestClose={() => setPendingPetKey(null)}>
         <View style={styles.confirmOverlay}>
           <View style={styles.confirmCard}>
-            <Text style={styles.confirmTitle}>Changer de compagnon ?</Text>
-            <Text style={styles.confirmText}>Discover, Matches et Chat afficheront les recommandations, matchs et messages de {allPets.find((pet) => pet.key === pendingPetKey)?.profile.pet_name ?? "ce profil"}.</Text>
-            <Pressable style={styles.confirmButton} onPress={confirmPetSwitch}><Text style={styles.confirmButtonText}>Confirmer ce profil</Text></Pressable>
-            <Pressable style={styles.cancelButton} onPress={() => setPendingPetKey(null)}><Text style={styles.cancelButtonText}>Annuler</Text></Pressable>
+            <Text style={styles.confirmTitle}>{tx("Changer de compagnon ?", "Switch companion?")}</Text>
+            <Text style={styles.confirmText}>{tx(`Discover, Matches et Chat afficheront les recommandations, matchs et messages de ${allPets.find((pet) => pet.key === pendingPetKey)?.profile.pet_name ?? "ce profil"}.`, `Discover, Matches and Chat will show the recommendations, matches and messages of ${allPets.find((pet) => pet.key === pendingPetKey)?.profile.pet_name ?? "this profile"}.`)}</Text>
+            <Pressable style={styles.confirmButton} onPress={confirmPetSwitch}><Text style={styles.confirmButtonText}>{tx("Confirmer ce profil", "Confirm this profile")}</Text></Pressable>
+            <Pressable style={styles.cancelButton} onPress={() => setPendingPetKey(null)}><Text style={styles.cancelButtonText}>{tx("Annuler", "Cancel")}</Text></Pressable>
           </View>
         </View>
       </Modal>
-      {levelInfoOpen && <View style={styles.modalLayer}><Pressable style={styles.modalBackdrop} onPress={() => setLevelInfoOpen(false)} /><View style={styles.levelModal}><View style={styles.modalHandle} /><Text style={styles.modalTitle}>Les niveaux de {profile.pet_name}</Text><Text style={styles.modalSubtitle}>Chaque pet progresse avec ses propres actions.</Text><ScrollView showsVerticalScrollIndicator={false}>{PET_RANKS.map((rank, index) => <View key={rank.name} style={[styles.levelRow, index + 1 === level.level && styles.levelRowActive]}><Image source={rank.image} style={styles.levelRowImage} /><View style={styles.levelRowCopy}><Text style={[styles.levelRowTitle, { color: rank.color }]}>{rank.name} · Niveau {index + 1}</Text><Text style={styles.levelRowText}>{index === 0 ? "Profil complété et premières connexions" : index === 1 ? "Matchs et sorties régulières" : index === 2 ? "Une vraie présence dans GRRRR" : index === 3 ? "Beaucoup de rencontres positives" : index === 4 ? "Une communauté qui le reconnaît" : "Le niveau maximum"}</Text></View></View>)}</ScrollView><Pressable style={styles.modalClose} onPress={() => setLevelInfoOpen(false)}><Text style={styles.modalCloseText}>Compris</Text></Pressable></View></View>}
+      {levelInfoOpen && <View style={styles.modalLayer}><Pressable style={styles.modalBackdrop} onPress={() => setLevelInfoOpen(false)} /><View style={styles.levelModal}><View style={styles.modalHandle} /><Text style={styles.modalTitle}>{tx(`Les niveaux de ${profile.pet_name}`, `${profile.pet_name}'s levels`)}</Text><Text style={styles.modalSubtitle}>{tx("Chaque pet progresse avec ses propres actions.", "Each pet progresses through its own actions.")}</Text><ScrollView showsVerticalScrollIndicator={false}>{PET_RANKS.map((rank, index) => <View key={rank.name} style={[styles.levelRow, index + 1 === level.level && styles.levelRowActive]}><Image source={rank.image} style={styles.levelRowImage} /><View style={styles.levelRowCopy}><Text style={[styles.levelRowTitle, { color: rank.color }]}>{tx(rank.name, rank.nameEn)} · {tx("Niveau", "Level")} {index + 1}  <Text style={styles.levelRowXp}>{LEVEL_THRESHOLDS[index].toLocaleString(language === "en" ? "en-US" : "fr-FR")} XP</Text></Text><Text style={styles.levelRowText}>{index === 0 ? tx("Profil complété et premières connexions", "Completed profile and first connections") : index === 1 ? tx("Matchs et sorties régulières", "Regular matches and outings") : index === 2 ? tx("Une vraie présence dans GRRRR", "A real presence on GRRRR") : index === 3 ? tx("Beaucoup de rencontres positives", "Lots of positive meetups") : index === 4 ? tx("Une communauté qui le reconnaît", "A community that recognizes them") : tx("Le niveau maximum", "The highest level")}</Text></View></View>)}<Text style={styles.questTitle}>{tx("Comment gagner de l'XP", "How to earn XP")}</Text>{(progression?.sources ?? Object.keys(XP_SOURCES).map((key) => ({ key, xp: 0, max: null, count: 0, goal: null }))).map((source) => { const info = XP_SOURCES[source.key as keyof typeof XP_SOURCES]; const fill = source.max ? Math.min(1, source.xp / source.max) : source.xp > 0 ? 1 : 0; return <View key={source.key} style={styles.questRow}><Text style={styles.questIcon}>{info.icon}</Text><View style={styles.levelRowCopy}><View style={styles.questHeader}><Text style={styles.questName}>{tx(info.title, info.titleEn)}</Text><Text style={styles.questXp}>{source.xp} XP{source.max ? ` / ${source.max}` : ""}</Text></View><Text style={styles.levelRowText}>{tx(info.rule, info.ruleEn)}{source.goal ? ` · ${source.count}/${source.goal}` : ""}</Text>{source.max ? <View style={styles.questTrack}><View style={[styles.questFill, { width: `${fill * 100}%` }]} /></View> : null}</View></View>; })}</ScrollView><Pressable style={styles.modalClose} onPress={() => setLevelInfoOpen(false)}><Text style={styles.modalCloseText}>{tx("Compris", "Got it")}</Text></Pressable></View></View>}
     </SafeAreaView>
   );
 }
@@ -498,6 +513,16 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     levelRowImage: { width: 43, height: 43 },
     levelRowCopy: { flex: 1 },
     levelRowTitle: { fontFamily: fonts.displaySemi, fontSize: 16 },
+    levelError: { fontFamily: fonts.bodySemi, fontSize: 11, color: "#D93838", marginTop: 8 },
+    levelRowXp: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.grey },
+    questTitle: { fontFamily: fonts.displaySemi, fontSize: 17, color: colors.dark, marginTop: 14, marginBottom: 8 },
+    questRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 10, borderRadius: radii.md, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, marginBottom: 7 },
+    questIcon: { fontSize: 20, marginTop: 1 },
+    questHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+    questName: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.dark },
+    questXp: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.coralDark },
+    questTrack: { height: 6, borderRadius: 3, backgroundColor: colors.line, marginTop: 6, overflow: "hidden" },
+    questFill: { height: "100%", borderRadius: 3, backgroundColor: colors.coral },
     levelRowText: { fontFamily: fonts.body, fontSize: 11, lineHeight: 16, color: colors.grey, marginTop: 2 },
     modalClose: { backgroundColor: colors.coral, borderRadius: radii.pill, alignItems: "center", paddingVertical: 14, marginTop: 10 },
     modalCloseText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 13 },

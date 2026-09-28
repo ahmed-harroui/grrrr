@@ -6,12 +6,14 @@ import { fonts } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { useAppState } from "@/context/AppState";
 import Header from "@/components/Header";
+import { useTranslation } from "@/i18n/useTranslation";
 
 export default function ChatListScreen() {
   const { chats } = useAppState();
   const navigation = useNavigation<any>();
   const colors = useThemedColors();
   const styles = getStyles(colors);
+  const { tx } = useTranslation();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.cream }]} edges={["top"]}>
@@ -20,7 +22,7 @@ export default function ChatListScreen() {
 
       {chats.length > 0 && (
         <View>
-          <Text style={[styles.storyHeading, { color: colors.grey }]}>Rencontres récentes</Text>
+          <Text style={[styles.storyHeading, { color: colors.grey }]}>{tx("Rencontres récentes", "Recent matches")}</Text>
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -39,7 +41,7 @@ export default function ChatListScreen() {
 
       {chats.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={[styles.emptyText, { color: colors.grey }]}>Aucune conversation pour le moment.</Text>
+          <Text style={[styles.emptyText, { color: colors.grey }]}>{tx("Aucune conversation pour le moment.", "No conversations yet.")}</Text>
         </View>
       ) : (
         <FlatList
@@ -54,7 +56,7 @@ export default function ChatListScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.name, { color: colors.dark }]}>{item.pet.name}</Text>
                   <Text style={[styles.preview, { color: colors.grey }]} numberOfLines={1}>
-                    {last.text}
+                    {last?.text ?? ""}
                   </Text>
                 </View>
               </Pressable>

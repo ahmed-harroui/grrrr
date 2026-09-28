@@ -36,6 +36,15 @@ export async function getMatches(
   );
 }
 
+// True when the database already holds a match between the two pets
+// (created server side when both liked each other, or instantly for test bots).
+export async function matchExists(petA: string, petB: string): Promise<boolean> {
+  if (!supabase || !isUuid(petA) || !isUuid(petB)) return false;
+  const [one, two] = petA < petB ? [petA, petB] : [petB, petA];
+  const { data } = await supabase.from("pet_matches").select("id").eq("pet_one_id", one).eq("pet_two_id", two).maybeSingle();
+  return Boolean(data);
+}
+
 export async function createMatch(
   pet1Id: string,
   pet2Id: string,

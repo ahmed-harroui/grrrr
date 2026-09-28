@@ -10,6 +10,15 @@ export type PetSpecies =
   | "fish" | "shark" | "dolphin" | "whale" | "octopus" | "crab"
   | "insect" | "bee" | "butterfly" | "beetle" | "spider" | "scorpion" | "snail";
 
+export interface PetHealth {
+  birthday: string | null;
+  weight: number | null;
+  microchip: string | null;
+  sterilized: boolean | null;
+  color: string | null;
+  allergies: string | null;
+}
+
 export interface Pet {
   id: number;
   /** UUID of the row in `pets`; undefined for demo pets */
@@ -29,7 +38,10 @@ export interface Pet {
   photo: string;
   photos?: string[];
   city?: string;
+  country?: string;
   level?: number;
+  /** Health fields shared with GRRRR Care (same pets row) */
+  health?: PetHealth;
 }
 
 export const ME: Pet = {

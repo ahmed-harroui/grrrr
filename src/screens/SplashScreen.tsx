@@ -2,12 +2,14 @@ import React, { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors, fonts } from "@/theme/theme";
+import { useTranslation } from "@/i18n/useTranslation";
 
 interface Props {
   onFinish: () => void;
 }
 
 export default function SplashScreen({ onFinish }: Props) {
+  const { tx } = useTranslation();
   const pawScale = useRef(new Animated.Value(1)).current;
   const fade = useRef(new Animated.Value(1)).current;
 
@@ -55,7 +57,7 @@ export default function SplashScreen({ onFinish }: Props) {
         <View style={styles.center}>
           <Animated.Text style={[styles.paw, { transform: [{ scale: pawScale }] }]}>🐾</Animated.Text>
           <Text style={styles.logo}>GRRRR</Text>
-          <Text style={styles.tag}>Find their perfect match.</Text>
+          <Text style={styles.tag}>{tx("Trouve-lui le match parfait.", "Find their perfect match.")}</Text>
           <View style={styles.dots}>
             <View style={styles.dot} />
             <View style={styles.dot} />

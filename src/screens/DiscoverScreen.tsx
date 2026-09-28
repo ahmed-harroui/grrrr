@@ -1,14 +1,19 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { fonts, radii } from "@/theme/theme";
-import { PETS } from "@/data/mockPets";
+import { PETS, Pet } from "@/data/mockPets";
+import { useAuth } from "@/context/AuthContext";
+import { getDiscoverablePetProfiles, petRecordToPet } from "@/data/api/profile";
+import { getSwipeHistory } from "@/data/api/swipes";
+import { getPetLikers } from "@/data/api/likes";
+import { proximityRank } from "@/utils/discovery";
 import { useAppState } from "@/context/AppState";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { useTranslation } from "@/i18n/useTranslation";
 import ModeSlider from "@/components/ModeSlider";
 import SwipeCard, { SwipeCardHandle } from "@/components/SwipeCard";
-import MatchModal from "@/components/MatchModal";
 import Header from "@/components/Header";
 import LikeButton from "@/components/LikeButton";
 import { computeMatch } from "@/utils/matching";
@@ -16,22 +21,61 @@ import { computeMatch } from "@/utils/matching";
 export default function DiscoverScreen() {
   const colors = useThemedColors();
   const { t } = useTranslation();
-  const { activePet, mode, setMode, likePet, pendingMatch, clearPendingMatch } = useAppState();
+  const { activePet, mode, setMode, likePet } = useAppState();
   const [cursor, setCursor] = useState(0);
   const [pendingMode, setPendingMode] = useState<number | null>(null);
   const topCardRef = useRef<SwipeCardHandle>(null);
+  const { session } = useAuth();
+  const [communityPets, setCommunityPets] = useState<Pet[]>([]);
+  const [swipedIds, setSwipedIds] = useState<Set<string>>(new Set());
+  // Pets that already liked mine: shown first, so liking back is one swipe away.
+  const [likerIds, setLikerIds] = useState<Set<string>>(new Set());
 
   useEffect(() => setCursor(0), [activePet.id]);
 
+  // Signed in: real pets from the database (other owners + test bots), minus the ones already swiped.
+  useFocusEffect(
+    useCallback(() => {
+      if (!session?.user.id) return;
+      let active = true;
+      Promise.all([
+        getDiscoverablePetProfiles(session.user.id),
+        activePet.dbId ? getSwipeHistory(activePet.dbId) : Promise.resolve([]),
+        getPetLikers(activePet.dbId),
+      ])
+        .then(([pets, swipes, likers]) => {
+          if (!active) return;
+          setLikerIds(new Set(likers.map((liker) => liker.id)));
+          setCommunityPets(pets.data.map(petRecordToPet));
+          setSwipedIds(new Set(swipes.map((swipe) => swipe.toPetId)));
+          setCursor(0);
+        })
+        .catch((error) => console.warn("Discover could not load pets", error));
+      return () => {
+        active = false;
+      };
+    }, [activePet.dbId, session?.user.id])
+  );
+
+  // Everyone is shown, best fits first: same species, then closest (city, country, world),
+  // then same mood (PLAY / HOT), then most compatible. Only HOT mode hides same-gender pets of the same species.
   const recommendations = useMemo(() => {
-    return PETS
-      .filter((pet) =>
-        pet.species === activePet.species &&
-        pet.id !== activePet.id &&
-        (mode < 50 ? pet.mode < 50 : pet.mode >= 50 && pet.gender !== activePet.gender)
-      )
-      .sort((a, b) => computeMatch(b, mode, activePet).pct - computeMatch(a, mode, activePet).pct);
-  }, [activePet, mode]);
+    const fresh = communityPets.filter((pet) => !pet.dbId || !swipedIds.has(pet.dbId));
+    // Demo profiles when signed out, or when the database has nobody left to show.
+    const pool = session && fresh.length > 0 ? fresh : PETS;
+    const sameSpecies = (pet: Pet) => (pet.species === activePet.species ? 0 : 1);
+    const sameMood = (pet: Pet) => ((mode < 50) === (pet.mode < 50) ? 0 : 1);
+    const likedMe = (pet: Pet) => (pet.dbId && likerIds.has(pet.dbId) ? 0 : 1);
+    return pool
+      .filter((pet) => pet.id !== activePet.id && !(mode >= 50 && pet.species === activePet.species && pet.gender === activePet.gender))
+      .sort((a, b) =>
+        likedMe(a) - likedMe(b) ||
+        sameSpecies(a) - sameSpecies(b) ||
+        proximityRank(a, activePet) - proximityRank(b, activePet) ||
+        sameMood(a) - sameMood(b) ||
+        computeMatch(b, mode, activePet).pct - computeMatch(a, mode, activePet).pct
+      );
+  }, [activePet, communityPets, likerIds, mode, session, swipedIds]);
   const visible = recommendations.slice(cursor, cursor + 3);
 
   const handleSwiped = (direction: "left" | "right" | "super") => {
@@ -85,13 +129,6 @@ export default function DiscoverScreen() {
           </>
         )}
       </View>
-
-      <MatchModal
-        visible={!!pendingMatch}
-        pet={pendingMatch}
-        onMessage={clearPendingMatch}
-        onKeepSwiping={clearPendingMatch}
-      />
 
       <Modal visible={pendingMode !== null} transparent animationType="fade" onRequestClose={() => setPendingMode(null)}>
         <View style={[styles.confirmOverlay, { backgroundColor: "rgba(43,39,36,0.48)" }]}>

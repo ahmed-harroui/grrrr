@@ -4,6 +4,8 @@ import * as ImagePicker from "expo-image-picker";
 import { colors, fonts, radii } from "@/theme/theme";
 import type { Pet } from "@/data/mockPets";
 import type { LocalPhoto } from "@/data/api/profile";
+import { useTranslation } from "@/i18n/useTranslation";
+import type { Language } from "@/i18n/translations";
 
 interface Props {
   visible: boolean;
@@ -12,67 +14,75 @@ interface Props {
   onCreate: (pet: Pet, photoAsset?: LocalPhoto) => void;
 }
 
-export const SPECIES: { key: Pet["species"]; label: string; icon: string }[] = [
-  { key: "dog", label: "Chien", icon: "🐶" },
-  { key: "cat", label: "Chat", icon: "🐱" },
-  { key: "hamster", label: "Hamster", icon: "🐹" },
-  { key: "rabbit", label: "Lapin", icon: "🐰" },
-  { key: "guinea_pig", label: "Cochon d'Inde", icon: "🐹" },
-  { key: "mouse", label: "Souris", icon: "🐭" },
-  { key: "rat", label: "Rat", icon: "🐀" },
-  { key: "ferret", label: "Furet", icon: "🦦" },
-  { key: "hedgehog", label: "Hérisson", icon: "🦔" },
-  { key: "squirrel", label: "Écureuil", icon: "🐿️" },
-  { key: "pig", label: "Cochon", icon: "🐷" },
-  { key: "donkey", label: "Âne", icon: "🫏" },
-  { key: "horse", label: "Cheval", icon: "🐴" },
-  { key: "sheep", label: "Mouton", icon: "🐑" },
-  { key: "goat", label: "Chèvre", icon: "🐐" },
-  { key: "cow", label: "Vache", icon: "🐮" },
-  { key: "llama", label: "Lama", icon: "🦙" },
-  { key: "alpaca", label: "Alpaga", icon: "🦙" },
-  { key: "camel", label: "Chameau", icon: "🐪" },
-  { key: "deer", label: "Cerf", icon: "🦌" },
-  { key: "lion", label: "Lion", icon: "🦁" },
-  { key: "tiger", label: "Tigre", icon: "🐯" },
-  { key: "leopard", label: "Léopard", icon: "🐆" },
-  { key: "wolf", label: "Loup", icon: "🐺" },
-  { key: "fox", label: "Renard", icon: "🦊" },
-  { key: "bear", label: "Ours", icon: "🐻" },
-  { key: "elephant", label: "Éléphant", icon: "🐘" },
-  { key: "giraffe", label: "Girafe", icon: "🦒" },
-  { key: "zebra", label: "Zèbre", icon: "🦓" },
-  { key: "monkey", label: "Singe", icon: "🐒" },
-  { key: "koala", label: "Koala", icon: "🐨" },
-  { key: "bird", label: "Oiseau", icon: "🐦" },
-  { key: "parrot", label: "Perroquet", icon: "🦜" },
-  { key: "chicken", label: "Poule", icon: "🐔" },
-  { key: "duck", label: "Canard", icon: "🦆" },
-  { key: "penguin", label: "Manchot", icon: "🐧" },
-  { key: "turtle", label: "Tortue", icon: "🐢" },
-  { key: "lizard", label: "Lézard", icon: "🦎" },
-  { key: "snake", label: "Serpent", icon: "🐍" },
-  { key: "crocodile", label: "Crocodile", icon: "🐊" },
-  { key: "frog", label: "Grenouille", icon: "🐸" },
-  { key: "salamander", label: "Salamandre", icon: "🦎" },
-  { key: "fish", label: "Poisson", icon: "🐠" },
-  { key: "shark", label: "Requin", icon: "🦈" },
-  { key: "dolphin", label: "Dauphin", icon: "🐬" },
-  { key: "whale", label: "Baleine", icon: "🐋" },
-  { key: "octopus", label: "Pieuvre", icon: "🐙" },
-  { key: "crab", label: "Crabe", icon: "🦀" },
-  { key: "insect", label: "Insecte", icon: "🐛" },
-  { key: "bee", label: "Abeille", icon: "🐝" },
-  { key: "butterfly", label: "Papillon", icon: "🦋" },
-  { key: "beetle", label: "Scarabée", icon: "🪲" },
-  { key: "spider", label: "Araignée", icon: "🕷️" },
-  { key: "scorpion", label: "Scorpion", icon: "🦂" },
-  { key: "snail", label: "Escargot", icon: "🐌" },
+export const SPECIES: { key: Pet["species"]; label: string; labelEn: string; icon: string }[] = [
+  { key: "dog", label: "Chien", labelEn: "Dog", icon: "🐶" },
+  { key: "cat", label: "Chat", labelEn: "Cat", icon: "🐱" },
+  { key: "hamster", label: "Hamster", labelEn: "Hamster", icon: "🐹" },
+  { key: "rabbit", label: "Lapin", labelEn: "Rabbit", icon: "🐰" },
+  { key: "guinea_pig", label: "Cochon d'Inde", labelEn: "Guinea pig", icon: "🐹" },
+  { key: "mouse", label: "Souris", labelEn: "Mouse", icon: "🐭" },
+  { key: "rat", label: "Rat", labelEn: "Rat", icon: "🐀" },
+  { key: "ferret", label: "Furet", labelEn: "Ferret", icon: "🦦" },
+  { key: "hedgehog", label: "Hérisson", labelEn: "Hedgehog", icon: "🦔" },
+  { key: "squirrel", label: "Écureuil", labelEn: "Squirrel", icon: "🐿️" },
+  { key: "pig", label: "Cochon", labelEn: "Pig", icon: "🐷" },
+  { key: "donkey", label: "Âne", labelEn: "Donkey", icon: "🫏" },
+  { key: "horse", label: "Cheval", labelEn: "Horse", icon: "🐴" },
+  { key: "sheep", label: "Mouton", labelEn: "Sheep", icon: "🐑" },
+  { key: "goat", label: "Chèvre", labelEn: "Goat", icon: "🐐" },
+  { key: "cow", label: "Vache", labelEn: "Cow", icon: "🐮" },
+  { key: "llama", label: "Lama", labelEn: "Llama", icon: "🦙" },
+  { key: "alpaca", label: "Alpaga", labelEn: "Alpaca", icon: "🦙" },
+  { key: "camel", label: "Chameau", labelEn: "Camel", icon: "🐪" },
+  { key: "deer", label: "Cerf", labelEn: "Deer", icon: "🦌" },
+  { key: "lion", label: "Lion", labelEn: "Lion", icon: "🦁" },
+  { key: "tiger", label: "Tigre", labelEn: "Tiger", icon: "🐯" },
+  { key: "leopard", label: "Léopard", labelEn: "Leopard", icon: "🐆" },
+  { key: "wolf", label: "Loup", labelEn: "Wolf", icon: "🐺" },
+  { key: "fox", label: "Renard", labelEn: "Fox", icon: "🦊" },
+  { key: "bear", label: "Ours", labelEn: "Bear", icon: "🐻" },
+  { key: "elephant", label: "Éléphant", labelEn: "Elephant", icon: "🐘" },
+  { key: "giraffe", label: "Girafe", labelEn: "Giraffe", icon: "🦒" },
+  { key: "zebra", label: "Zèbre", labelEn: "Zebra", icon: "🦓" },
+  { key: "monkey", label: "Singe", labelEn: "Monkey", icon: "🐒" },
+  { key: "koala", label: "Koala", labelEn: "Koala", icon: "🐨" },
+  { key: "bird", label: "Oiseau", labelEn: "Bird", icon: "🐦" },
+  { key: "parrot", label: "Perroquet", labelEn: "Parrot", icon: "🦜" },
+  { key: "chicken", label: "Poule", labelEn: "Chicken", icon: "🐔" },
+  { key: "duck", label: "Canard", labelEn: "Duck", icon: "🦆" },
+  { key: "penguin", label: "Manchot", labelEn: "Penguin", icon: "🐧" },
+  { key: "turtle", label: "Tortue", labelEn: "Turtle", icon: "🐢" },
+  { key: "lizard", label: "Lézard", labelEn: "Lizard", icon: "🦎" },
+  { key: "snake", label: "Serpent", labelEn: "Snake", icon: "🐍" },
+  { key: "crocodile", label: "Crocodile", labelEn: "Crocodile", icon: "🐊" },
+  { key: "frog", label: "Grenouille", labelEn: "Frog", icon: "🐸" },
+  { key: "salamander", label: "Salamandre", labelEn: "Salamander", icon: "🦎" },
+  { key: "fish", label: "Poisson", labelEn: "Fish", icon: "🐠" },
+  { key: "shark", label: "Requin", labelEn: "Shark", icon: "🦈" },
+  { key: "dolphin", label: "Dauphin", labelEn: "Dolphin", icon: "🐬" },
+  { key: "whale", label: "Baleine", labelEn: "Whale", icon: "🐋" },
+  { key: "octopus", label: "Pieuvre", labelEn: "Octopus", icon: "🐙" },
+  { key: "crab", label: "Crabe", labelEn: "Crab", icon: "🦀" },
+  { key: "insect", label: "Insecte", labelEn: "Insect", icon: "🐛" },
+  { key: "bee", label: "Abeille", labelEn: "Bee", icon: "🐝" },
+  { key: "butterfly", label: "Papillon", labelEn: "Butterfly", icon: "🦋" },
+  { key: "beetle", label: "Scarabée", labelEn: "Beetle", icon: "🪲" },
+  { key: "spider", label: "Araignée", labelEn: "Spider", icon: "🕷️" },
+  { key: "scorpion", label: "Scorpion", labelEn: "Scorpion", icon: "🦂" },
+  { key: "snail", label: "Escargot", labelEn: "Snail", icon: "🐌" },
 ];
 
-const TAGS = ["🎾 Joueur", "⚡ Énergique", "🥰 Câlin", "🛋️ Chill", "🌿 Curieux", "❤️ Sociable"];
+const TAGS = {
+  fr: ["🎾 Joueur", "⚡ Énergique", "🥰 Câlin", "🛋️ Chill", "🌿 Curieux", "❤️ Sociable"],
+  en: ["🎾 Playful", "⚡ Energetic", "🥰 Cuddly", "🛋️ Chill", "🌿 Curious", "❤️ Sociable"],
+};
+
+export function speciesLabel(item: { label: string; labelEn: string }, language: Language) {
+  return language === "en" ? item.labelEn : item.label;
+}
 
 export default function AddPetSheet({ visible, onClose, onCreate }: Props) {
+  const { tx, language } = useTranslation();
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [species, setSpecies] = useState<Pet["species"]>("dog");
@@ -100,8 +110,8 @@ export default function AddPetSheet({ visible, onClose, onCreate }: Props) {
 
   const create = () => {
     const newPet: Pet = {
-      id: Date.now(), name: name.trim() || "Nouveau pet", species, breed: breed.trim() || "À découvrir", gender,
-      age: Number(age) || 1, energy, dist: 0, mode: 0, bio: bio.trim() || "Un nouveau compagnon à découvrir.", tags: tags.length ? tags : ["🐾 À découvrir"], photo: photo || (species === "cat" ? "https://cataas.com/cat/cute?width=600&height=700" : "https://placedog.net/600/700?id=90"),
+      id: Date.now(), name: name.trim() || tx("Nouveau pet", "New pet"), species, breed: breed.trim() || tx("À découvrir", "To discover"), gender,
+      age: Number(age) || 1, energy, dist: 0, mode: 0, bio: bio.trim() || tx("Un nouveau compagnon à découvrir.", "A new companion to discover."), tags: tags.length ? tags : [tx("🐾 À découvrir", "🐾 To discover")], photo: photo || (species === "cat" ? "https://cataas.com/cat/cute?width=600&height=700" : "https://placedog.net/600/700?id=90"),
     };
     onCreate(newPet, photoAsset ?? undefined);
     close();
@@ -126,15 +136,15 @@ export default function AddPetSheet({ visible, onClose, onCreate }: Props) {
         <Pressable style={StyleSheet.absoluteFill} onPress={close} />
         <Animated.View style={[styles.sheet, { transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [620, 0] }) }] }]}>
           <View style={styles.handle} />
-          <View style={styles.header}><View><Text style={styles.eyebrow}>NOUVEAU COMPAGNON · {step + 1}/4</Text><Text style={styles.title}>Faisons connaissance ✦</Text></View><Pressable onPress={close}><Text style={styles.close}>×</Text></Pressable></View>
+          <View style={styles.header}><View><Text style={styles.eyebrow}>{tx("NOUVEAU COMPAGNON", "NEW COMPANION")} · {step + 1}/4</Text><Text style={styles.title}>{tx("Faisons connaissance ✦", "Let's get acquainted ✦")}</Text></View><Pressable onPress={close}><Text style={styles.close}>×</Text></Pressable></View>
           <View style={styles.progress}><View style={[styles.progressFill, { width: `${((step + 1) / 4) * 100}%` }]} /></View>
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            {step === 0 && <><Text style={styles.question}>Quel est son petit nom ?</Text><Text style={styles.hint}>Une photo aide les bons compagnons à le reconnaître.</Text><Pressable style={styles.photoPicker} onPress={choosePhoto}>{photo ? <Image source={{ uri: photo }} style={styles.photoPreview} /> : <><Text style={styles.photoIcon}>📸</Text><Text style={styles.photoText}>Ajouter une photo</Text></>}</Pressable><TextInput autoFocus value={name} onChangeText={setName} placeholder="Ex. Cookie" placeholderTextColor={colors.grey} style={styles.input} /><View style={styles.speciesGrid}>{SPECIES.map((item) => <Pressable key={item.key} onPress={() => setSpecies(item.key)} style={[styles.species, species === item.key && styles.selected]}><Text style={styles.speciesIcon}>{item.icon}</Text><Text style={styles.speciesText}>{item.label}</Text></Pressable>)}</View></>}
-            {step === 1 && <><Text style={styles.question}>Son profil de vie</Text><Text style={styles.hint}>Ces informations aident à trouver les bons compagnons.</Text><TextInput value={breed} onChangeText={setBreed} placeholder="Race ou type (ex. Labrador)" placeholderTextColor={colors.grey} style={styles.input} /><TextInput value={age} onChangeText={setAge} keyboardType="number-pad" placeholder="Âge" placeholderTextColor={colors.grey} style={styles.input} /><TextInput value={city} onChangeText={setCity} placeholder="Ville" placeholderTextColor={colors.grey} style={styles.input} /><Text style={styles.fieldLabel}>GENRE</Text><View style={styles.genderRow}><Pressable onPress={() => setGender("M")} style={[styles.genderChoice, gender === "M" && styles.selected]}><Text style={styles.choiceText}>♂ Mâle</Text></Pressable><Pressable onPress={() => setGender("F")} style={[styles.genderChoice, gender === "F" && styles.selected]}><Text style={styles.choiceText}>♀ Femelle</Text></Pressable></View></>}
-            {step === 2 && <><Text style={styles.question}>Quelle est son énergie ?</Text><Text style={styles.hint}>Cela aide à proposer des compagnons avec le même rythme.</Text><View style={styles.choiceList}>{([1, 2, 3, 4] as Pet["energy"][]).map((value) => <Pressable key={value} onPress={() => setEnergy(value)} style={[styles.choice, energy === value && styles.selected]}><Text style={styles.choiceText}>{value === 1 ? "🌿 Très chill" : value === 2 ? "🙂 Doux" : value === 3 ? "⚡ Actif" : "🔥 Toujours en mouvement"}</Text></Pressable>)}</View></>}
-            {step === 3 && <><Text style={styles.question}>Son petit caractère</Text><Text style={styles.hint}>Choisis ce qui lui ressemble le plus.</Text><View style={styles.tags}>{TAGS.map((tag) => <Pressable key={tag} onPress={() => toggleTag(tag)} style={[styles.tag, tags.includes(tag) && styles.tagSelected]}><Text style={styles.tagText}>{tag}</Text></Pressable>)}</View><TextInput value={bio} onChangeText={setBio} multiline placeholder="Un petit mot sur lui..." placeholderTextColor={colors.grey} style={[styles.input, styles.bio]} /></>}
+            {step === 0 && <><Text style={styles.question}>{tx("Quel est son petit nom ?", "What's their name?")}</Text><Text style={styles.hint}>{tx("Une photo aide les bons compagnons à le reconnaître.", "A photo helps the right companions recognize them.")}</Text><Pressable style={styles.photoPicker} onPress={choosePhoto}>{photo ? <Image source={{ uri: photo }} style={styles.photoPreview} /> : <><Text style={styles.photoIcon}>📸</Text><Text style={styles.photoText}>{tx("Ajouter une photo", "Add a photo")}</Text></>}</Pressable><TextInput autoFocus value={name} onChangeText={setName} placeholder={tx("Ex. Cookie", "E.g. Cookie")} placeholderTextColor={colors.grey} style={styles.input} /><View style={styles.speciesGrid}>{SPECIES.map((item) => <Pressable key={item.key} onPress={() => setSpecies(item.key)} style={[styles.species, species === item.key && styles.selected]}><Text style={styles.speciesIcon}>{item.icon}</Text><Text style={styles.speciesText}>{speciesLabel(item, language)}</Text></Pressable>)}</View></>}
+            {step === 1 && <><Text style={styles.question}>{tx("Son profil de vie", "Their lifestyle")}</Text><Text style={styles.hint}>{tx("Ces informations aident à trouver les bons compagnons.", "This helps find the right companions.")}</Text><TextInput value={breed} onChangeText={setBreed} placeholder={tx("Race ou type (ex. Labrador)", "Breed or type (e.g. Labrador)")} placeholderTextColor={colors.grey} style={styles.input} /><TextInput value={age} onChangeText={setAge} keyboardType="number-pad" placeholder={tx("Âge", "Age")} placeholderTextColor={colors.grey} style={styles.input} /><TextInput value={city} onChangeText={setCity} placeholder={tx("Ville", "City")} placeholderTextColor={colors.grey} style={styles.input} /><Text style={styles.fieldLabel}>{tx("GENRE", "GENDER")}</Text><View style={styles.genderRow}><Pressable onPress={() => setGender("M")} style={[styles.genderChoice, gender === "M" && styles.selected]}><Text style={styles.choiceText}>♂ {tx("Mâle", "Male")}</Text></Pressable><Pressable onPress={() => setGender("F")} style={[styles.genderChoice, gender === "F" && styles.selected]}><Text style={styles.choiceText}>♀ {tx("Femelle", "Female")}</Text></Pressable></View></>}
+            {step === 2 && <><Text style={styles.question}>{tx("Quelle est son énergie ?", "How energetic are they?")}</Text><Text style={styles.hint}>{tx("Cela aide à proposer des compagnons avec le même rythme.", "This helps suggest companions with the same pace.")}</Text><View style={styles.choiceList}>{([1, 2, 3, 4] as Pet["energy"][]).map((value) => <Pressable key={value} onPress={() => setEnergy(value)} style={[styles.choice, energy === value && styles.selected]}><Text style={styles.choiceText}>{value === 1 ? tx("🌿 Très chill", "🌿 Very chill") : value === 2 ? tx("🙂 Doux", "🙂 Gentle") : value === 3 ? tx("⚡ Actif", "⚡ Active") : tx("🔥 Toujours en mouvement", "🔥 Always on the move")}</Text></Pressable>)}</View></>}
+            {step === 3 && <><Text style={styles.question}>{tx("Son petit caractère", "Their personality")}</Text><Text style={styles.hint}>{tx("Choisis ce qui lui ressemble le plus.", "Pick what fits them best.")}</Text><View style={styles.tags}>{TAGS[language].map((tag) => <Pressable key={tag} onPress={() => toggleTag(tag)} style={[styles.tag, tags.includes(tag) && styles.tagSelected]}><Text style={styles.tagText}>{tag}</Text></Pressable>)}</View><TextInput value={bio} onChangeText={setBio} multiline placeholder={tx("Un petit mot sur lui...", "A few words about them...")} placeholderTextColor={colors.grey} style={[styles.input, styles.bio]} /></>}
           </ScrollView>
-          <View style={styles.footer}><Pressable style={styles.primary} onPress={next}><Text style={styles.primaryText}>{step === 3 ? "Créer son profil" : "Continuer"}</Text></Pressable><Pressable onPress={step === 3 ? create : next}><Text style={styles.later}>{step === 3 ? "Enregistrer avec ces informations" : "Passer cette étape"}</Text></Pressable></View>
+          <View style={styles.footer}><Pressable style={styles.primary} onPress={next}><Text style={styles.primaryText}>{step === 3 ? tx("Créer son profil", "Create their profile") : tx("Continuer", "Continue")}</Text></Pressable><Pressable onPress={step === 3 ? create : next}><Text style={styles.later}>{step === 3 ? tx("Enregistrer avec ces informations", "Save with this information") : tx("Passer cette étape", "Skip this step")}</Text></Pressable></View>
         </Animated.View>
       </View>
     </Modal>

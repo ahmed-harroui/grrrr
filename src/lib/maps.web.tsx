@@ -2,6 +2,7 @@
 // metro.config.js points "react-native-maps" here for web builds.
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "@/i18n/useTranslation";
 
 export type Region = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
 export type MapPressEvent = { nativeEvent: { coordinate: { latitude: number; longitude: number } } };
@@ -11,10 +12,11 @@ export function Marker(_props: Record<string, unknown>) {
 }
 
 export default function MapView({ style }: { style?: object; children?: React.ReactNode } & Record<string, unknown>) {
+  const { tx } = useTranslation();
   return (
     <View style={[styles.placeholder, style]}>
       <Text style={styles.icon}>🗺️</Text>
-      <Text style={styles.text}>La carte est disponible dans l'application mobile.</Text>
+      <Text style={styles.text}>{tx("La carte est disponible dans l'application mobile.", "The map is available in the mobile app.")}</Text>
     </View>
   );
 }

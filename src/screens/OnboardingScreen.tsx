@@ -21,30 +21,41 @@ const { width } = Dimensions.get("window");
 const SLIDES = [
   {
     icon: "🐾",
-    title: "Welcome to GRRRR",
-    subtitle: "Find the perfect friend for your pet.",
+    title: "Bienvenue sur GRRRR",
+    titleEn: "Welcome to GRRRR",
+    subtitle: "Trouve l'ami parfait pour ton compagnon.",
+    subtitleEn: "Find the perfect friend for your pet.",
   },
   {
     icon: "📸",
-    title: "Create your pet's profile",
-    subtitle: "Add photos, bio, breed and personality.",
+    title: "Crée le profil de ton compagnon",
+    titleEn: "Create your pet's profile",
+    subtitle: "Ajoute photos, présentation, race et caractère.",
+    subtitleEn: "Add photos, bio, breed and personality.",
   },
   {
     icon: "❤️",
-    title: "What does your pet need?",
-    subtitle: "Slide between the two moods to change what GRRRR looks for.",
+    title: "De quoi ton compagnon a-t-il besoin ?",
+    titleEn: "What does your pet need?",
+    subtitle: "Glisse entre les deux humeurs pour changer ce que GRRRR recherche.",
+    subtitleEn: "Slide between the two moods to change what GRRRR looks for.",
     showModeDemo: true,
   },
   {
     icon: "🐶",
-    title: "Let's find their perfect match!",
-    subtitle: "Swipe, match, and set up playdates with new friends nearby.",
+    title: "Trouvons-lui le match parfait !",
+    titleEn: "Let's find their perfect match!",
+    subtitle: "Swipe, matche et organise des rencontres avec de nouveaux amis près de chez toi.",
+    subtitleEn: "Swipe, match, and set up playdates with new friends nearby.",
   },
 ];
+
+import { useTranslation } from "@/i18n/useTranslation";
 
 export default function OnboardingScreen({ onDone }: Props) {
   const colors = useThemedColors();
   const styles = getStyles(colors);
+  const { tx } = useTranslation();
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList>(null);
 
@@ -66,7 +77,7 @@ export default function OnboardingScreen({ onDone }: Props) {
   return (
     <View style={styles.container}>
       <Pressable style={styles.skip} onPress={onDone} hitSlop={10}>
-        <Text style={styles.skipText}>Passer</Text>
+        <Text style={styles.skipText}>{tx("Passer", "Skip")}</Text>
       </Pressable>
 
       <FlatList
@@ -80,8 +91,8 @@ export default function OnboardingScreen({ onDone }: Props) {
         renderItem={({ item }) => (
           <View style={[styles.slide, { width }]}>
             <Text style={styles.icon}>{item.icon}</Text>
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.subtitle}>{item.subtitle}</Text>
+            <Text style={styles.title}>{tx(item.title, item.titleEn)}</Text>
+            <Text style={styles.subtitle}>{tx(item.subtitle, item.subtitleEn)}</Text>
             {item.showModeDemo && (
               <View style={styles.modeDemo}>
                 <View style={[styles.pill, { backgroundColor: "#E4F7F5" }]}>
@@ -104,7 +115,7 @@ export default function OnboardingScreen({ onDone }: Props) {
           ))}
         </View>
         <Pressable style={styles.nextBtn} onPress={goNext}>
-          <Text style={styles.nextText}>{index === SLIDES.length - 1 ? "Get Started" : "Continue"}</Text>
+          <Text style={styles.nextText}>{index === SLIDES.length - 1 ? tx("C'est parti", "Get Started") : tx("Continuer", "Continue")}</Text>
         </Pressable>
       </View>
     </View>

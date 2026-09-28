@@ -1,12 +1,15 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import { LIKED_BACK, ME, Pet } from "@/data/mockPets";
 import { awardTreats, loadTreatBalance } from "@/data/api/treats";
 import { loadMeetingTraces, removeMeetingTrace, saveMeetingTrace, updateMeetingTraceStatus } from "@/data/api/meetings";
-import { getMatches, createMatch } from "@/data/api/matches";
+import { getMatches, createMatch, matchExists } from "@/data/api/matches";
 import { createSwipe } from "@/data/api/swipes";
-import { getOwnedPetProfiles, petRecordToPet, stablePetId } from "@/data/api/profile";
+import { getOwnedPetProfiles, getPetsByIds, petRecordToPet, stablePetId } from "@/data/api/profile";
 import { useAuth } from "@/context/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { refreshPetProgress } from "@/data/api/progress";
+import { Conversation, loadConversations, sendMatchMessage, subscribeToMessages } from "@/data/api/chat";
+import { subscribeToNewMatches } from "@/data/api/likes";
 
 // Database pets are addressed by their UUID; demo pets by their numeric id.
 const apiPetId = (pet: Pet) => pet.dbId ?? String(pet.id);
@@ -95,6 +98,71 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const [progressByPet, setProgressByPet] = useState<Record<number, PetProgress>>({});
   const [petSessions, setPetSessions] = useState<Record<number, PetSessionData>>({});
   const [ownedPets, setOwnedPets] = useState<Pet[]>([]);
+  // Database conversation id per matched pet (keyed by the pet's numeric id).
+  const [matchIds, setMatchIds] = useState<Record<number, string>>({});
+  const matchIdsRef = useRef(matchIds);
+  matchIdsRef.current = matchIds;
+
+  // Loads every database match of the active pet with its messages into matches + chats.
+  const loadDbConversations = useCallback(async (myDbId: string) => {
+    const conversations = await loadConversations(myDbId);
+    if (!conversations.length) return;
+    const { data: records } = await getPetsByIds(conversations.map((c) => c.otherPetId));
+    const petsByDbId = new Map(records.map((record) => [record.id, petRecordToPet(record)]));
+    const loaded = conversations
+      .map((c) => ({ conversation: c, pet: petsByDbId.get(c.otherPetId) }))
+      .filter((entry): entry is { conversation: Conversation; pet: Pet } => Boolean(entry.pet));
+    setMatchIds((current) => ({ ...current, ...Object.fromEntries(loaded.map(({ conversation, pet }) => [pet.id, conversation.matchId])) }));
+    setMatches((current) => [...current, ...loaded.map((l) => l.pet).filter((pet) => !current.some((existing) => existing.id === pet.id))]);
+    setChats((current) => {
+      const next = [...current];
+      for (const { conversation, pet } of loaded) {
+        const messages: ChatMessage[] = conversation.messages.map((m) => ({ from: m.sender_pet_id === myDbId ? "me" : "them", text: m.body, read: true }));
+        const index = next.findIndex((chat) => chat.pet.id === pet.id);
+        if (index >= 0) next[index] = { pet, messages: messages.length ? messages : next[index].messages };
+        else next.push({ pet, messages });
+      }
+      return next;
+    });
+  }, []);
+
+  // Saves a message in the database conversation with this pet (when there is one).
+  const persistMessage = useCallback((petId: number, text: string) => {
+    const matchId = matchIdsRef.current[petId];
+    if (matchId && activePet.dbId) void sendMatchMessage(matchId, activePet.dbId, text);
+  }, [activePet.dbId]);
+
+  // Pets this device just liked: their match is announced by likePet, not by the live listener.
+  const recentlyLikedRef = useRef<Set<string>>(new Set());
+
+  // A pet I liked earlier likes back: the match is created server side and announced here, live.
+  React.useEffect(() => {
+    const myDbId = activePet.dbId;
+    if (!session?.user.id || !myDbId) return;
+    return subscribeToNewMatches(myDbId, async (otherId) => {
+      if (recentlyLikedRef.current.has(otherId)) return;
+      const { data } = await getPetsByIds([otherId]);
+      if (!data[0]) return;
+      const other = petRecordToPet(data[0]);
+      const isHot = activePet.mode >= 50 && other.mode >= 50;
+      setPendingMatch({ ...other, matchType: isHot ? "Hot" : "Friend" } as any);
+      void loadDbConversations(myDbId);
+    });
+  }, [activePet.dbId, activePet.mode, loadDbConversations, session?.user.id]);
+
+  // New messages from the other pets arrive in real time.
+  React.useEffect(() => {
+    const myDbId = activePet.dbId;
+    const ids = Object.values(matchIds);
+    if (!myDbId || ids.length === 0) return;
+    const petByMatch = new Map(Object.entries(matchIds).map(([petId, matchId]) => [matchId, Number(petId)]));
+    return subscribeToMessages(ids, (message) => {
+      if (message.sender_pet_id === myDbId) return;
+      const petId = petByMatch.get(message.match_id);
+      if (petId === undefined) return;
+      setChats((prev) => prev.map((chat) => (chat.pet.id === petId ? { ...chat, messages: [...chat.messages, { from: "them", text: message.body, read: false }] } : chat)));
+    });
+  }, [activePet.dbId, matchIds]);
 
   const refreshOwnedPets = useCallback(async () => {
     if (!session?.user.id) return [];
@@ -144,6 +212,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     loadTreatBalance(apiPetId(activePet)).then(({ balance }) => setTreats(balance));
     updateProgress(activePet.id, { sessions: (progressByPet[activePet.id]?.sessions ?? 0) + 1 });
     if (session?.user.id) {
+      // Counts this week's connection for the pet's streak and recomputes its XP.
+      if (activePet.dbId) void refreshPetProgress(activePet.dbId);
       loadMeetingTraces(session.user.id, activePet.id).then(({ data }) => {
         setMeetingTraces((current) => ({
           ...current,
@@ -154,8 +224,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         try {
           const myId = apiPetId(activePet);
           const matchesData = await getMatches(myId);
+          const otherIds = matchesData.map((m) => (m.pet1Id === myId ? m.pet2Id : m.pet1Id));
           // Other pets' UUIDs → the same numeric ids petRecordToPet gives them
-          setLikedPetIds(new Set(matchesData.map((m) => stablePetId(m.pet1Id === myId ? m.pet2Id : m.pet1Id))));
+          setLikedPetIds(new Set(otherIds.map(stablePetId)));
+          // Matches and chats saved in the database (they survive app restarts).
+          if (activePet.dbId) await loadDbConversations(activePet.dbId);
         } catch (error) {
           console.error("Error loading matches:", error);
         }
@@ -168,6 +241,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setClaimedTreatKeys((current) => new Set(current).add(contextKey));
     const result = await awardTreats(apiPetId(activePet), amount, reason, contextKey);
     if (result.awarded) setTreats((current) => result.balance ?? current + amount);
+    // A match or outing can push the pet to a new level.
+    if (activePet.dbId) void refreshPetProgress(activePet.dbId, false);
   }, [activePet, claimedTreatKeys]);
 
   const setActivePet = useCallback((pet: Pet) => {
@@ -183,6 +258,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setChats(savedSession?.chats ?? []);
     setMeetingMarkers(savedSession?.meetingMarkers ?? {});
     setMeetingTraces(savedSession?.meetingTraces ?? {});
+    setMatchIds({});
     setPendingMatch(null);
   }, [activePet.id, chats, matches, meetingMarkers, meetingTraces, petSessions]);
 
@@ -193,15 +269,18 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
 
   const likePet = useCallback(async (pet: Pet) => {
     setLikedPetIds((current) => new Set(current).add(pet.id));
+    if (pet.dbId) recentlyLikedRef.current.add(pet.dbId);
 
+    // Demo pets match from a fixed list; database pets match when the database says so
+    // (both owners liked each other, or instantly for test bots).
+    let isMatch = LIKED_BACK.has(pet.id);
     try {
-      await createSwipe(apiPetId(activePet), apiPetId(pet), "like");
+      await createSwipe(apiPetId(activePet), apiPetId(pet), "LIKE");
+      if (activePet.dbId && pet.dbId) isMatch = await matchExists(activePet.dbId, pet.dbId);
     } catch (error) {
       console.error("Error saving swipe:", error);
     }
-
-    const hasLikedBack = likedPetIds.has(pet.id) || LIKED_BACK.has(pet.id);
-    if (!hasLikedBack) return;
+    if (!isMatch) return;
 
     const isHotMatch = activePet.mode >= 50 && pet.mode >= 50;
     const matchType = isHotMatch ? "Hot" : "Friend";
@@ -222,12 +301,17 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     updateProgress(activePet.id, { matches: petProgress.matches + 1 });
     void collectTreats(10, "match", `match:${activePet.id}:${pet.id}`);
 
+    // Database matches are created server side: load the conversation (e.g. the bot's hello).
+    if (pet.dbId) {
+      if (activePet.dbId) void loadDbConversations(activePet.dbId);
+      return;
+    }
     try {
-      await createMatch(apiPetId(activePet), apiPetId(pet), 0, matchType.toLowerCase());
+      await createMatch(apiPetId(activePet), apiPetId(pet), 0, isHotMatch ? "LOVE" : "FRIEND");
     } catch (error) {
       console.error("Error creating match:", error);
     }
-  }, [activePet, activePet.id, activePet.name, activePet.mode, collectTreats, likedPetIds, petProgress.matches, updateProgress]);
+  }, [activePet, collectTreats, petProgress.matches, updateProgress]);
 
   const clearPendingMatch = useCallback(() => setPendingMatch(null), []);
 
@@ -236,6 +320,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setChats((prev) =>
       prev.map((c) => (c.pet.id === petId ? { ...c, messages: [...c.messages, { from: "me", text }] } : c))
     );
+    persistMessage(petId, text);
     if (isSupabaseConfigured) return;
 
     setTimeout(() => {
@@ -247,7 +332,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       );
       updateProgress(activePet.id, { messagesReceived: petProgress.messagesReceived + 1 });
     }, 900);
-  }, [activePet.id, petProgress.messagesReceived, updateProgress]);
+  }, [activePet.id, persistMessage, petProgress.messagesReceived, updateProgress]);
 
   const markChatRead = useCallback((petId: number) => {
     setChats((prev) =>
@@ -282,6 +367,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     });
     const modeText = marker === "pink" ? "Amoureux ❤️ (Hot)" : "Amical 🐾 (Friend)";
     const messageText = `📍 Sortie organisée : Rendez-vous ${modeText} sélectionné ! Retrouvons-nous sur la carte.`;
+    persistMessage(petId, messageText);
     setChats((prev) => {
       const existing = prev.find((c) => c.pet.id === petId);
       if (existing) {
@@ -303,7 +389,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         },
       ];
     });
-  }, [matches]);
+  }, [matches, persistMessage]);
 
   const setMeetingTrace = useCallback((petId: number, trace: MeetingTrace) => {
     const lat = (typeof trace?.latitude === "number" && !isNaN(trace.latitude))

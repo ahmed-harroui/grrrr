@@ -10,6 +10,9 @@ import ChatListScreen from "@/screens/ChatListScreen";
 import ExploreScreen from "@/screens/ExploreScreen";
 import MyPetScreen from "@/screens/MyPetScreen";
 import { useAppState } from "@/context/AppState";
+import { useTranslation } from "@/i18n/useTranslation";
+import LevelUpCelebration from "@/components/LevelUpCelebration";
+import MatchModal from "@/components/MatchModal";
 
 const Tab = createBottomTabNavigator();
 
@@ -20,12 +23,12 @@ const ICONS: Record<string, number> = {
   MyPet: require("../../assets/navbar/my_pet.png"),
 };
 
-const LABELS: Record<string, string> = {
-  Discover: "Discover",
-  Matches: "Matches",
-  Chat: "Chat",
-  Explore: "Explore",
-  MyPet: "My Pet",
+const LABELS: Record<string, [string, string]> = {
+  Discover: ["Découvrir", "Discover"],
+  Matches: ["Matchs", "Matches"],
+  Chat: ["Chat", "Chat"],
+  Explore: ["Explorer", "Explore"],
+  MyPet: ["Mon pet", "My Pet"],
 };
 
 function getTabBarStyle(bottomInset: number, colors: ReturnType<typeof useThemedColors>) {
@@ -51,7 +54,8 @@ export default function MainTabs() {
   const insets = useSafeAreaInsets();
   const colors = useThemedColors();
   const styles = getStaticStyles(colors);
-  const { chats } = useAppState();
+  const { chats, pendingMatch, clearPendingMatch } = useAppState();
+  const { tx } = useTranslation();
   const unreadMessages = chats.reduce(
     (total, chat) => total + chat.messages.filter((message) => message.from === "them" && !message.read).length,
     0
@@ -59,6 +63,7 @@ export default function MainTabs() {
   const hasMessages = chats.some((chat) => chat.messages.length > 0);
 
   return (
+    <>
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
@@ -67,7 +72,7 @@ export default function MainTabs() {
         tabBarStyle: getTabBarStyle(insets.bottom, colors),
         tabBarItemStyle: { paddingHorizontal: 2 },
         tabBarLabel: ({ color }) => (
-          <Text style={{ fontFamily: fonts.bodySemi, fontSize: 10.5, color }}>{LABELS[route.name]}</Text>
+          <Text style={{ fontFamily: fonts.bodySemi, fontSize: 10.5, color }}>{tx(...LABELS[route.name])}</Text>
         ),
         tabBarIcon: ({ focused }) => (
           <View style={[styles.iconBox, focused && styles.iconBoxActive]}>
@@ -89,6 +94,10 @@ export default function MainTabs() {
       <Tab.Screen name="Explore" component={ExploreScreen} />
       <Tab.Screen name="MyPet" component={MyPetScreen} />
     </Tab.Navigator>
+    {/* Shown on any tab: a like back can arrive while browsing elsewhere */}
+    <MatchModal visible={!!pendingMatch} pet={pendingMatch} onMessage={clearPendingMatch} onKeepSwiping={clearPendingMatch} />
+    <LevelUpCelebration />
+    </>
   );
 }
 
