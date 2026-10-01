@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { fonts, radii } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { MeetingMarker, useAppState } from "@/context/AppState";
@@ -10,18 +10,35 @@ import { Pet } from "@/data/mockPets";
 import PetRankBadge from "@/components/PetRankBadge";
 import TrendingProfiles from "@/components/TrendingProfiles";
 import PetProfileSheet from "@/components/PetProfileSheet";
-import LikedYouTeaser from "@/components/LikedYouTeaser";
 import { MeetingConfirmModal, MeetingRequest } from "@/components/MeetingMap";
 import { useTranslation } from "@/i18n/useTranslation";
+import { getPetLikers, Liker } from "@/data/api/likes";
+
+const HOT = "#FF5D73";
+const FRIEND = "#2FBDB4";
 
 export default function MatchesScreen() {
-  const { matches, meetingMarkers } = useAppState();
+  const { matches, meetingMarkers, activePet } = useAppState();
   const navigation = useNavigation<any>();
   const colors = useThemedColors();
   const styles = getStyles(colors);
   const { tx } = useTranslation();
   const [confirmRequest, setConfirmRequest] = useState<MeetingRequest | null>(null);
   const [profilePet, setProfilePet] = useState<Pet | null>(null);
+  const [likers, setLikers] = useState<Liker[]>([]);
+
+  // One-sided likes: listed like matches but blurred until my pet likes back in Discover.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      getPetLikers(activePet.dbId).then((result) => active && setLikers(result));
+      return () => {
+        active = false;
+      };
+    }, [activePet.dbId])
+  );
+  const matchedIds = new Set(matches.map((pet) => pet.dbId));
+  const pendingLikers = likers.filter((liker) => !matchedIds.has(liker.id));
 
   const openChat = (pet: Pet) => {
     setProfilePet(null);
@@ -40,14 +57,22 @@ export default function MatchesScreen() {
         ListHeaderComponent={
           <View style={styles.headerWrap}>
             <TrendingProfiles />
-            <LikedYouTeaser />
             <Text style={styles.title}>{tx("Vos matchs", "Your matches")}</Text>
+            {pendingLikers.length > 0 && (
+              <View style={styles.pendingList}>
+                {pendingLikers.map((liker) => (
+                  <MysteryTile key={liker.id} liker={liker} petName={activePet.name} onPress={() => navigation.navigate("Discover")} styles={styles} />
+                ))}
+              </View>
+            )}
           </View>
         }
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>{tx("Pas encore de match. Swipez à droite sur Discover 🐾", "No matches yet. Swipe right on Discover 🐾")}</Text>
-          </View>
+          pendingLikers.length > 0 ? null : (
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>{tx("Pas encore de match. Swipez à droite sur Discover 🐾", "No matches yet. Swipe right on Discover 🐾")}</Text>
+            </View>
+          )
         }
         renderItem={({ item }) => (
           <MatchTile
@@ -91,6 +116,30 @@ function MatchTile({ pet, marker, onMarkerChange, onPress, onChat, styles }: { p
   );
 }
 
+// A pet that liked mine: same row as a match, but photo and identity stay blurred until the like back.
+function MysteryTile({ liker, petName, onPress, styles }: { liker: Liker; petName: string; onPress: () => void; styles: ReturnType<typeof getStyles> }) {
+  const { tx } = useTranslation();
+  const hot = liker.intent === "HOT";
+  const tint = hot ? HOT : FRIEND;
+  return (
+    <Pressable style={[styles.card, { borderColor: tint }]} onPress={onPress}>
+      <View style={styles.mysteryAvatar}>
+        <Image source={{ uri: liker.photo_url || undefined }} style={styles.mysteryPhoto} blurRadius={7} />
+      </View>
+      <View style={styles.info}>
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={1}>{liker.pet_name ?? tx("Un pet", "A pet")}</Text>
+          <Text style={[styles.intentPill, { backgroundColor: tint }]}>{hot ? "✦ Hot" : "🐾 Friend"}</Text>
+          {liker.super_like && <Text style={styles.superLike}>⭐</Text>}
+        </View>
+        {!!liker.breed && <Text style={styles.detailLine} numberOfLines={1}>{liker.breed}</Text>}
+        <Text style={styles.meetingPlace} numberOfLines={1}>{tx(`A liké ${petName} · like en retour dans Discover 👀`, `Liked ${petName} · like back in Discover 👀`)}</Text>
+      </View>
+      <View style={styles.chatButton}><Text style={styles.chatButtonText}>💌</Text></View>
+    </Pressable>
+  );
+}
+
 function getStyles(colors: ReturnType<typeof useThemedColors>) {
   return StyleSheet.create({
     container: { flex: 1 },
@@ -110,5 +159,10 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     markerButton: { width: 26, height: 26, alignItems: "center", justifyContent: "center", borderRadius: 13 },
     markerSelected: { backgroundColor: colors.cream2 },
     markerImage: { width: 22, height: 22 },
+    pendingList: { gap: 8, marginBottom: 4 },
+    mysteryAvatar: { width: 52, height: 52, borderRadius: 26, overflow: "hidden", backgroundColor: colors.line, alignItems: "center", justifyContent: "center" },
+    mysteryPhoto: { ...StyleSheet.absoluteFill },
+    intentPill: { fontFamily: fonts.bodyBold, fontSize: 9, color: "#FFFFFF", paddingHorizontal: 7, paddingVertical: 2, borderRadius: radii.pill, overflow: "hidden" },
+    superLike: { fontSize: 12 },
   });
 }
