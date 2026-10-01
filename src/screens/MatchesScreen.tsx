@@ -9,6 +9,7 @@ import Header from "@/components/Header";
 import { Pet } from "@/data/mockPets";
 import PetRankBadge from "@/components/PetRankBadge";
 import TrendingProfiles from "@/components/TrendingProfiles";
+import PetProfileSheet from "@/components/PetProfileSheet";
 import LikedYouTeaser from "@/components/LikedYouTeaser";
 import { MeetingConfirmModal, MeetingRequest } from "@/components/MeetingMap";
 import { useTranslation } from "@/i18n/useTranslation";
@@ -20,6 +21,12 @@ export default function MatchesScreen() {
   const styles = getStyles(colors);
   const { tx } = useTranslation();
   const [confirmRequest, setConfirmRequest] = useState<MeetingRequest | null>(null);
+  const [profilePet, setProfilePet] = useState<Pet | null>(null);
+
+  const openChat = (pet: Pet) => {
+    setProfilePet(null);
+    navigation.navigate("ChatThread", { petId: pet.id });
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.cream }]} edges={["top"]}>
@@ -29,7 +36,7 @@ export default function MatchesScreen() {
         data={matches}
         keyExtractor={(p) => String(p.id)}
         numColumns={1}
-        contentContainerStyle={{ gap: 12, paddingHorizontal: 20, paddingBottom: 30 }}
+        contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingBottom: 30 }}
         ListHeaderComponent={
           <View style={styles.headerWrap}>
             <TrendingProfiles />
@@ -47,39 +54,40 @@ export default function MatchesScreen() {
             pet={item}
             marker={meetingMarkers[item.id]}
             onMarkerChange={(marker) => setConfirmRequest({ pet: item, marker })}
-            onPress={() => navigation.navigate("ChatThread", { petId: item.id })}
+            onPress={() => setProfilePet(item)}
+            onChat={() => openChat(item)}
             styles={styles}
           />
         )}
       />
 
       <MeetingConfirmModal request={confirmRequest} onClose={() => setConfirmRequest(null)} />
+      <PetProfileSheet
+        pet={profilePet}
+        onClose={() => setProfilePet(null)}
+        action={profilePet ? { label: tx(`💬 Écrire à ${profilePet.name}`, `💬 Message ${profilePet.name}`), onPress: () => openChat(profilePet) } : undefined}
+      />
     </SafeAreaView>
   );
 }
-function MatchTile({ pet, marker, onMarkerChange, onPress, styles }: { pet: Pet; marker?: MeetingMarker; onMarkerChange: (marker: MeetingMarker) => void; onPress: () => void; styles: ReturnType<typeof getStyles> }) {
+function MatchTile({ pet, marker, onMarkerChange, onPress, onChat, styles }: { pet: Pet; marker?: MeetingMarker; onMarkerChange: (marker: MeetingMarker) => void; onPress: () => void; onChat: () => void; styles: ReturnType<typeof getStyles> }) {
   const { tx } = useTranslation();
+  // Compact row: the full profile (photos, bio, tags) opens on tap.
   return (
-    <View style={styles.card}>
-      <Pressable style={styles.tile} onPress={onPress}>
-        <Image source={{ uri: pet.photo }} style={styles.tileImg} />
-        <View style={styles.tileShade} />
-        <View style={styles.tileNameRow}><View><Text style={styles.tileName}>{pet.name}, {pet.age}</Text><PetRankBadge level={pet.level ?? ((pet.id % 3) + 1)} /></View><Text style={styles.matchScore}>✦ Match</Text></View>
-      </Pressable>
-      <View style={styles.meetingArea}>
-        <Text style={styles.detailLine}>{pet.breed} · {pet.gender === "F" ? tx("Femelle", "Female") : tx("Mâle", "Male")} · 📍 {pet.dist} km</Text>
-        <Text style={styles.cardBio} numberOfLines={2}>{pet.bio}</Text>
-        <View style={styles.cardTags}>{pet.tags.slice(0, 3).map((tag) => <Text key={tag} style={styles.cardTag}>{tag}</Text>)}</View>
-        <View style={styles.routeLine}><Text style={styles.routeDot}>●</Text><View style={styles.line} /><Text style={styles.routeDot}>●</Text></View>
-        <Text style={styles.meetingLabel}>{tx("Point de rencontre", "Meeting point")}</Text>
-        <Text style={styles.meetingPlace}>{marker ? tx("📍 Trace enregistrée", "📍 Spot saved") : tx("📍 À définir ensemble", "📍 To decide together")}</Text>
-        <View style={styles.markerRow}>
-          <Text style={styles.markerHint}>{tx("Choisir une patte", "Pick a paw")}</Text>
-          <Pressable onPress={() => onMarkerChange("blue")} style={[styles.markerButton, marker === "blue" && styles.markerSelected]}><Image source={require("../../assets/bleue_clic.png")} style={styles.markerImage} /></Pressable>
-          <Pressable onPress={() => onMarkerChange("pink")} style={[styles.markerButton, marker === "pink" && styles.markerSelected]}><Image source={require("../../assets/pink_clic.png")} style={styles.markerImage} /></Pressable>
+    <Pressable style={styles.card} onPress={onPress}>
+      <Image source={{ uri: pet.photo }} style={styles.avatar} />
+      <View style={styles.info}>
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={1}>{pet.name}, {pet.age}</Text>
+          <PetRankBadge level={pet.level ?? ((pet.id % 3) + 1)} />
         </View>
+        <Text style={styles.detailLine} numberOfLines={1}>{pet.breed} · {pet.gender === "F" ? tx("Femelle", "Female") : tx("Mâle", "Male")} · 📍 {pet.dist} km</Text>
+        <Text style={styles.meetingPlace} numberOfLines={1}>{marker ? tx("📍 Trace enregistrée", "📍 Spot saved") : tx("📍 Point de rencontre à définir", "📍 Meeting point to decide")}</Text>
       </View>
-    </View>
+      <Pressable onPress={() => onMarkerChange("blue")} hitSlop={4} style={[styles.markerButton, marker === "blue" && styles.markerSelected]}><Image source={require("../../assets/bleue_clic.png")} style={styles.markerImage} /></Pressable>
+      <Pressable onPress={() => onMarkerChange("pink")} hitSlop={4} style={[styles.markerButton, marker === "pink" && styles.markerSelected]}><Image source={require("../../assets/pink_clic.png")} style={styles.markerImage} /></Pressable>
+      <Pressable onPress={onChat} hitSlop={8} style={styles.chatButton}><Text style={styles.chatButtonText}>💬</Text></Pressable>
+    </Pressable>
   );
 }
 
@@ -90,27 +98,17 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     title: { fontFamily: fonts.display, fontSize: 21, color: colors.dark, marginBottom: 10, marginTop: 10 },
     empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40, paddingVertical: 40 },
     emptyText: { textAlign: "center", fontFamily: fonts.body, color: colors.grey, fontSize: 13 },
-    tile: { height: 205, borderRadius: radii.md, overflow: "hidden" },
-    tileImg: { width: "100%", height: "100%" },
-    tileShade: { position: "absolute", left: 0, right: 0, bottom: 0, height: "50%", backgroundColor: "rgba(0,0,0,0.35)" },
-    tileNameRow: { position: "absolute", bottom: 12, left: 14, right: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    tileName: { color: "#fff", fontFamily: fonts.display, fontSize: 22 },
-    matchScore: { color: "#fff", fontFamily: fonts.bodyBold, fontSize: 11, backgroundColor: "rgba(255,93,115,0.85)", paddingHorizontal: 9, paddingVertical: 5, borderRadius: radii.pill },
-    card: { backgroundColor: colors.white, borderRadius: radii.lg, overflow: "hidden", borderWidth: 1, borderColor: colors.line, marginBottom: 12 },
-    meetingArea: { padding: 15 },
-    detailLine: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.dark },
-    cardBio: { fontFamily: fonts.body, fontSize: 12, lineHeight: 18, color: colors.grey, marginTop: 7 },
-    cardTags: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 9 },
-    cardTag: { fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.coralDark, backgroundColor: colors.cream2, paddingHorizontal: 8, paddingVertical: 5, borderRadius: radii.pill },
-    routeLine: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
-    routeDot: { color: colors.coral, fontSize: 9 },
-    line: { flex: 1, borderTopWidth: 1, borderStyle: "dashed", borderColor: colors.line, marginHorizontal: 5 },
-    meetingLabel: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.dark },
-    meetingPlace: { fontFamily: fonts.body, fontSize: 10, color: colors.grey, marginTop: 3 },
-    markerRow: { flexDirection: "row", alignItems: "center", marginTop: 7, gap: 4 },
-    markerHint: { flex: 1, fontFamily: fonts.body, fontSize: 9, color: colors.grey },
-    markerButton: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 14 },
+    card: { flexDirection: "row", alignItems: "center", gap: 8, padding: 9, backgroundColor: colors.white, borderRadius: radii.md, borderWidth: 1, borderColor: colors.line },
+    avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.line },
+    info: { flex: 1, minWidth: 0, marginLeft: 3 },
+    nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    name: { flexShrink: 1, fontFamily: fonts.display, fontSize: 16, color: colors.dark },
+    detailLine: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.dark, marginTop: 1 },
+    meetingPlace: { fontFamily: fonts.body, fontSize: 10, color: colors.grey, marginTop: 2 },
+    chatButton: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.cream2, alignItems: "center", justifyContent: "center" },
+    chatButtonText: { fontSize: 15 },
+    markerButton: { width: 26, height: 26, alignItems: "center", justifyContent: "center", borderRadius: 13 },
     markerSelected: { backgroundColor: colors.cream2 },
-    markerImage: { width: 27, height: 27 },
+    markerImage: { width: 22, height: 22 },
   });
 }

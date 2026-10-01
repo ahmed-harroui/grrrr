@@ -36,13 +36,13 @@ export async function getMatches(
   );
 }
 
-// True when the database already holds a match between the two pets
+// The match type when the database holds a match between the two pets, null otherwise
 // (created server side when both liked each other, or instantly for test bots).
-export async function matchExists(petA: string, petB: string): Promise<boolean> {
-  if (!supabase || !isUuid(petA) || !isUuid(petB)) return false;
+export async function getMatchType(petA: string, petB: string): Promise<Match["type"] | null> {
+  if (!supabase || !isUuid(petA) || !isUuid(petB)) return null;
   const [one, two] = petA < petB ? [petA, petB] : [petB, petA];
-  const { data } = await supabase.from("pet_matches").select("id").eq("pet_one_id", one).eq("pet_two_id", two).maybeSingle();
-  return Boolean(data);
+  const { data } = await supabase.from("pet_matches").select("match_type").eq("pet_one_id", one).eq("pet_two_id", two).maybeSingle();
+  return (data?.match_type as Match["type"] | undefined) ?? null;
 }
 
 export async function createMatch(

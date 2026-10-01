@@ -8,7 +8,7 @@ import Header from "@/components/Header";
 import { useAuth } from "@/context/AuthContext";
 import { useAppState } from "@/context/AppState";
 import { PETS as DISCOVERY_PETS } from "@/data/mockPets";
-import { createPetProfile, LocalPhoto, PetRecord, updatePetProfile, uploadPetPhoto } from "@/data/api/profile";
+import { createPetProfile, deletePetProfile, LocalPhoto, PetRecord, updatePetProfile, uploadPetPhoto } from "@/data/api/profile";
 import AddPetSheet, { SPECIES, speciesLabel } from "@/components/AddPetSheet";
 import { useTranslation } from "@/i18n/useTranslation";
 import PetProfileEditor, { EMPTY_HEALTH, PetDraft } from "@/components/PetProfileEditor";
@@ -81,10 +81,16 @@ export default function MyPetScreen() {
   const [localEdits, setLocalEdits] = useState<Record<string, PetItem>>({});
   const [selectedKey, setSelectedKey] = useState(activePet.name.toLowerCase());
   const [pendingPetKey, setPendingPetKey] = useState<string | null>(null);
+  // Long press on an avatar: confirm deleting that pet.
+  const [deleteKey, setDeleteKey] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  // Guest mode: demo pets removed from the list (in memory only).
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
   const [photoIndex, setPhotoIndex] = useState(0);
   const [photoWidth, setPhotoWidth] = useState(0);
   // Signed in: only the account's own pets. Demo pets are for guest mode only.
-  const allPets = useMemo(() => (session ? ownedPets.map(toPetItem) : [...PETS, ...customPets].map((pet) => localEdits[pet.key] ?? pet)), [customPets, localEdits, ownedPets, session]);
+  const allPets = useMemo(() => (session ? ownedPets.map(toPetItem) : [...PETS, ...customPets].filter((pet) => !hiddenKeys.has(pet.key)).map((pet) => localEdits[pet.key] ?? pet)), [customPets, hiddenKeys, localEdits, ownedPets, session]);
+  const petToDelete = allPets.find((pet) => pet.key === deleteKey) ?? null;
   const selectedPet = useMemo(() => allPets.find((pet) => pet.key === selectedKey) ?? allPets[0] ?? toPetItem(activePet), [activePet, allPets, selectedKey]);
   const selectedMode = profile.mode;
   const gallery = useMemo(() => [profile.photo_url, ...(profile.photos ?? [])].filter(Boolean), [profile.photo_url, profile.photos]);
@@ -189,6 +195,34 @@ export default function MyPetScreen() {
     setPendingPetKey(null);
   };
 
+  const deletePet = async () => {
+    if (!petToDelete) return;
+    const ownerId = session?.user.id;
+    if (ownerId) {
+      const ownedPet = ownedPets.find((pet) => toPetItem(pet).key === petToDelete.key);
+      if (!ownedPet?.dbId) return setDeleteKey(null);
+      setDeleting(true);
+      const { error } = await deletePetProfile(ownedPet.dbId, ownerId);
+      setDeleting(false);
+      if (error) {
+        Alert.alert(tx("Suppression impossible", "Could not delete"), error.message);
+        return;
+      }
+      // Switches to another pet when the deleted one was active.
+      await refreshOwnedPets();
+      setDeleteKey(null);
+      return;
+    }
+    const remaining = allPets.filter((pet) => pet.key !== petToDelete.key);
+    setHiddenKeys((current) => new Set(current).add(petToDelete.key));
+    setCustomPets((current) => current.filter((pet) => pet.key !== petToDelete.key));
+    if (petToDelete.key === selectedKey && remaining[0]) {
+      setSelectedKey(remaining[0].key);
+      setProfile(remaining[0].profile);
+    }
+    setDeleteKey(null);
+  };
+
   const savePetDraft = async (draft: PetDraft) => {
     const ownerId = session?.user.id;
     const ownedPet = ownedPets.find((pet) => toPetItem(pet).key === selectedPet.key);
@@ -256,7 +290,7 @@ export default function MyPetScreen() {
           {allPets.map((pet) => (
             <Pressable key={pet.key} onPress={() => {
               if (pet.key !== selectedKey) setPendingPetKey(pet.key);
-            }} style={[styles.petChoice, selectedKey === pet.key && styles.petChoiceActive]}>
+            }} onLongPress={() => setDeleteKey(pet.key)} delayLongPress={450} style={[styles.petChoice, selectedKey === pet.key && styles.petChoiceActive]}>
               <View style={[styles.avatarRing, { borderColor: getPetLevel(pet.key === selectedKey ? treats : 0, progressByPet[pet.key === selectedKey ? activePet.id : -1] ?? { matches: 0, outings: 0, messagesReceived: 0, sessions: 0 }, pet.key === selectedKey ? completion : 0).rank.color }]}>{pet.profile.photo_url ? <Image source={{ uri: pet.profile.photo_url }} style={styles.petAvatar} /> : <View style={[styles.petAvatar, styles.photoPlaceholder]}><Text style={styles.placeholderIconSmall}>{speciesInfo(pet.species)?.icon ?? "🐾"}</Text></View>}</View>
               <Text style={[styles.petChoiceName, selectedKey === pet.key && styles.petChoiceNameActive]}>{pet.profile.pet_name}</Text>
             </Pressable>
@@ -369,7 +403,36 @@ export default function MyPetScreen() {
           </View>
         </View>
       </Modal>
-      {levelInfoOpen && <View style={styles.modalLayer}><Pressable style={styles.modalBackdrop} onPress={() => setLevelInfoOpen(false)} /><View style={styles.levelModal}><View style={styles.modalHandle} /><Text style={styles.modalTitle}>{tx(`Les niveaux de ${profile.pet_name}`, `${profile.pet_name}'s levels`)}</Text><Text style={styles.modalSubtitle}>{tx("Chaque pet progresse avec ses propres actions.", "Each pet progresses through its own actions.")}</Text><ScrollView showsVerticalScrollIndicator={false}>{PET_RANKS.map((rank, index) => <View key={rank.name} style={[styles.levelRow, index + 1 === level.level && styles.levelRowActive]}><Image source={rank.image} style={styles.levelRowImage} /><View style={styles.levelRowCopy}><Text style={[styles.levelRowTitle, { color: rank.color }]}>{tx(rank.name, rank.nameEn)} · {tx("Niveau", "Level")} {index + 1}  <Text style={styles.levelRowXp}>{LEVEL_THRESHOLDS[index].toLocaleString(language === "en" ? "en-US" : "fr-FR")} XP</Text></Text><Text style={styles.levelRowText}>{index === 0 ? tx("Profil complété et premières connexions", "Completed profile and first connections") : index === 1 ? tx("Matchs et sorties régulières", "Regular matches and outings") : index === 2 ? tx("Une vraie présence dans GRRRR", "A real presence on GRRRR") : index === 3 ? tx("Beaucoup de rencontres positives", "Lots of positive meetups") : index === 4 ? tx("Une communauté qui le reconnaît", "A community that recognizes them") : tx("Le niveau maximum", "The highest level")}</Text></View></View>)}<Text style={styles.questTitle}>{tx("Comment gagner de l'XP", "How to earn XP")}</Text>{(progression?.sources ?? Object.keys(XP_SOURCES).map((key) => ({ key, xp: 0, max: null, count: 0, goal: null }))).map((source) => { const info = XP_SOURCES[source.key as keyof typeof XP_SOURCES]; const fill = source.max ? Math.min(1, source.xp / source.max) : source.xp > 0 ? 1 : 0; return <View key={source.key} style={styles.questRow}><Text style={styles.questIcon}>{info.icon}</Text><View style={styles.levelRowCopy}><View style={styles.questHeader}><Text style={styles.questName}>{tx(info.title, info.titleEn)}</Text><Text style={styles.questXp}>{source.xp} XP{source.max ? ` / ${source.max}` : ""}</Text></View><Text style={styles.levelRowText}>{tx(info.rule, info.ruleEn)}{source.goal ? ` · ${source.count}/${source.goal}` : ""}</Text>{source.max ? <View style={styles.questTrack}><View style={[styles.questFill, { width: `${fill * 100}%` }]} /></View> : null}</View></View>; })}</ScrollView><Pressable style={styles.modalClose} onPress={() => setLevelInfoOpen(false)}><Text style={styles.modalCloseText}>{tx("Compris", "Got it")}</Text></Pressable></View></View>}
+      <Modal visible={petToDelete !== null} transparent animationType="slide" onRequestClose={() => !deleting && setDeleteKey(null)}>
+        <View style={styles.deleteLayer}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => !deleting && setDeleteKey(null)} />
+          {petToDelete && (
+            <View style={styles.deleteSheet}>
+              <View style={styles.modalHandle} />
+              {petToDelete.profile.photo_url
+                ? <Image source={{ uri: petToDelete.profile.photo_url }} style={styles.deleteAvatar} />
+                : <View style={[styles.deleteAvatar, styles.photoPlaceholder]}><Text style={styles.placeholderIconSmall}>{speciesInfo(petToDelete.species)?.icon ?? "🐾"}</Text></View>}
+              {allPets.length <= 1 ? (
+                <>
+                  <Text style={styles.confirmTitle}>{tx(`Garder ${petToDelete.profile.pet_name}`, `Keep ${petToDelete.profile.pet_name}`)}</Text>
+                  <Text style={styles.confirmText}>{tx("C'est ton seul compagnon : ajoute un autre pet avant de supprimer celui-ci.", "This is your only companion: add another pet before deleting this one.")}</Text>
+                  <Pressable style={styles.confirmButton} onPress={() => { setDeleteKey(null); setAddPetOpen(true); }}><Text style={styles.confirmButtonText}>＋ {tx("Ajouter un pet", "Add a pet")}</Text></Pressable>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.confirmTitle}>{tx(`Supprimer ${petToDelete.profile.pet_name} ?`, `Delete ${petToDelete.profile.pet_name}?`)}</Text>
+                  <Text style={styles.confirmText}>{tx("Son profil, ses photos, ses matchs, ses messages et son XP seront supprimés définitivement.", "Their profile, photos, matches, messages and XP will be deleted for good.")}</Text>
+                  <Pressable style={[styles.deleteButton, deleting && { opacity: 0.6 }]} onPress={deletePet} disabled={deleting}>
+                    <Text style={styles.confirmButtonText}>{deleting ? tx("Suppression...", "Deleting...") : tx(`🗑️ Supprimer ${petToDelete.profile.pet_name}`, `🗑️ Delete ${petToDelete.profile.pet_name}`)}</Text>
+                  </Pressable>
+                </>
+              )}
+              <Pressable style={styles.cancelButton} onPress={() => setDeleteKey(null)} disabled={deleting}><Text style={styles.cancelButtonText}>{tx("Annuler", "Cancel")}</Text></Pressable>
+            </View>
+          )}
+        </View>
+      </Modal>
+      {levelInfoOpen &&<View style={styles.modalLayer}><Pressable style={styles.modalBackdrop} onPress={() => setLevelInfoOpen(false)} /><View style={styles.levelModal}><View style={styles.modalHandle} /><Text style={styles.modalTitle}>{tx(`Les niveaux de ${profile.pet_name}`, `${profile.pet_name}'s levels`)}</Text><Text style={styles.modalSubtitle}>{tx("Chaque pet progresse avec ses propres actions.", "Each pet progresses through its own actions.")}</Text><ScrollView showsVerticalScrollIndicator={false}>{PET_RANKS.map((rank, index) => <View key={rank.name} style={[styles.levelRow, index + 1 === level.level && styles.levelRowActive]}><Image source={rank.image} style={styles.levelRowImage} /><View style={styles.levelRowCopy}><Text style={[styles.levelRowTitle, { color: rank.color }]}>{tx(rank.name, rank.nameEn)} · {tx("Niveau", "Level")} {index + 1}  <Text style={styles.levelRowXp}>{LEVEL_THRESHOLDS[index].toLocaleString(language === "en" ? "en-US" : "fr-FR")} XP</Text></Text><Text style={styles.levelRowText}>{index === 0 ? tx("Profil complété et premières connexions", "Completed profile and first connections") : index === 1 ? tx("Matchs et sorties régulières", "Regular matches and outings") : index === 2 ? tx("Une vraie présence dans GRRRR", "A real presence on GRRRR") : index === 3 ? tx("Beaucoup de rencontres positives", "Lots of positive meetups") : index === 4 ? tx("Une communauté qui le reconnaît", "A community that recognizes them") : tx("Le niveau maximum", "The highest level")}</Text></View></View>)}<Text style={styles.questTitle}>{tx("Comment gagner de l'XP", "How to earn XP")}</Text>{(progression?.sources ?? Object.keys(XP_SOURCES).map((key) => ({ key, xp: 0, max: null, count: 0, goal: null }))).map((source) => { const info = XP_SOURCES[source.key as keyof typeof XP_SOURCES]; const fill = source.max ? Math.min(1, source.xp / source.max) : source.xp > 0 ? 1 : 0; return <View key={source.key} style={styles.questRow}><Text style={styles.questIcon}>{info.icon}</Text><View style={styles.levelRowCopy}><View style={styles.questHeader}><Text style={styles.questName}>{tx(info.title, info.titleEn)}</Text><Text style={styles.questXp}>{source.xp} XP{source.max ? ` / ${source.max}` : ""}</Text></View><Text style={styles.levelRowText}>{tx(info.rule, info.ruleEn)}{source.goal ? ` · ${source.count}/${source.goal}` : ""}</Text>{source.max ? <View style={styles.questTrack}><View style={[styles.questFill, { width: `${fill * 100}%` }]} /></View> : null}</View></View>; })}</ScrollView><Pressable style={styles.modalClose} onPress={() => setLevelInfoOpen(false)}><Text style={styles.modalCloseText}>{tx("Compris", "Got it")}</Text></Pressable></View></View>}
     </SafeAreaView>
   );
 }
@@ -501,6 +564,10 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     confirmButton: { backgroundColor: colors.coral, borderRadius: radii.pill, alignItems: "center", paddingVertical: 13 },
     confirmButtonText: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.white },
     cancelButton: { alignItems: "center", paddingVertical: 12 },
+    deleteLayer: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(43,39,36,0.45)" },
+    deleteSheet: { backgroundColor: colors.cream, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 26, alignItems: "stretch" },
+    deleteAvatar: { width: 78, height: 78, borderRadius: 39, alignSelf: "center", marginTop: 6, marginBottom: 12, borderWidth: 3, borderColor: colors.coral },
+    deleteButton: { backgroundColor: "#D93A4F", borderRadius: radii.pill, alignItems: "center", paddingVertical: 13 },
     cancelButtonText: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.grey },
     modalLayer: { ...StyleSheet.absoluteFill, justifyContent: "flex-end", backgroundColor: "rgba(43,39,36,0.25)", zIndex: 20 },
     modalBackdrop: { ...StyleSheet.absoluteFill },

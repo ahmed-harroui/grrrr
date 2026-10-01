@@ -40,6 +40,12 @@ export interface Pet {
   city?: string;
   country?: string;
   level?: number;
+  /** XP computed by the database (migration 005); ranks Trending profiles */
+  xp?: number;
+  /** Test pet owned by the bot account */
+  isBot?: boolean;
+  /** Starter card created with the account; the owner hasn't filled the pet setup yet */
+  setupPending?: boolean;
   /** Health fields shared with GRRRR Care (same pets row) */
   health?: PetHealth;
 }

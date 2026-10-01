@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -6,6 +6,8 @@ import { fonts } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { useAppState } from "@/context/AppState";
 import Header from "@/components/Header";
+import PetProfileSheet from "@/components/PetProfileSheet";
+import type { Pet } from "@/data/mockPets";
 import { useTranslation } from "@/i18n/useTranslation";
 
 export default function ChatListScreen() {
@@ -14,6 +16,7 @@ export default function ChatListScreen() {
   const colors = useThemedColors();
   const styles = getStyles(colors);
   const { tx } = useTranslation();
+  const [profilePet, setProfilePet] = useState<Pet | null>(null);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.cream }]} edges={["top"]}>
@@ -30,7 +33,7 @@ export default function ChatListScreen() {
             keyExtractor={(chat) => `story-${chat.pet.id}`}
             contentContainerStyle={styles.stories}
             renderItem={({ item }) => (
-              <Pressable style={styles.story} onPress={() => navigation.navigate("ChatThread", { petId: item.pet.id })}>
+              <Pressable style={styles.story} onPress={() => setProfilePet(item.pet)}>
                 <View style={[styles.storyRing, { backgroundColor: colors.coral }]}><Image source={{ uri: item.pet.photo }} style={[styles.storyAvatar, { borderColor: colors.cream }]} /></View>
                 <Text style={[styles.storyName, { color: colors.dark }]} numberOfLines={1}>{item.pet.name}</Text>
               </Pressable>
@@ -52,7 +55,9 @@ export default function ChatListScreen() {
             const last = item.messages[item.messages.length - 1];
             return (
               <Pressable style={[styles.row, { borderBottomColor: colors.line }]} onPress={() => navigation.navigate("ChatThread", { petId: item.pet.id })}>
-                <Image source={{ uri: item.pet.photo }} style={styles.avatar} />
+                <Pressable onPress={() => setProfilePet(item.pet)} hitSlop={6}>
+                  <Image source={{ uri: item.pet.photo }} style={styles.avatar} />
+                </Pressable>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.name, { color: colors.dark }]}>{item.pet.name}</Text>
                   <Text style={[styles.preview, { color: colors.grey }]} numberOfLines={1}>
@@ -64,6 +69,12 @@ export default function ChatListScreen() {
           }}
         />
       )}
+
+      <PetProfileSheet
+        pet={profilePet}
+        onClose={() => setProfilePet(null)}
+        action={profilePet ? { label: tx(`💬 Écrire à ${profilePet.name}`, `💬 Message ${profilePet.name}`), onPress: () => { const petId = profilePet.id; setProfilePet(null); navigation.navigate("ChatThread", { petId }); } } : undefined}
+      />
     </SafeAreaView>
   );
 }

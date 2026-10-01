@@ -1,12 +1,13 @@
 import React, { forwardRef, useImperativeHandle, useRef } from "react";
-import { Animated, Dimensions, Image, Modal, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Dimensions, Image, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { fonts, radii } from "@/theme/theme";
 import { ENERGY_LABEL, Pet } from "@/data/mockPets";
-import { computeMatch } from "@/utils/matching";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { useTranslation } from "@/i18n/useTranslation";
 import PetRankBadge from "@/components/PetRankBadge";
+import PetProfileSheet from "@/components/PetProfileSheet";
+import type { Liker } from "@/data/api/likes";
 
 const { width } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 110;
@@ -21,21 +22,20 @@ interface Props {
   mode: number;
   isTop: boolean;
   depth: number;
+  /** Set when this pet already liked mine: liking back makes the match */
+  likedMe?: Liker;
   onSwiped: (direction: "left" | "right" | "super") => void;
 }
 
 const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
-  { pet, activePet, mode, isTop, depth, onSwiped },
+  { pet, mode, isTop, depth, likedMe, onSwiped },
   ref
 ) {
   const colors = useThemedColors();
-  const { t, language } = useTranslation();
+  const { t, tx } = useTranslation();
   const pan = useRef(new Animated.ValueXY()).current;
   const [showProfile, setShowProfile] = React.useState(false);
-  const [photoIndex, setPhotoIndex] = React.useState(0);
-  const { pct } = computeMatch(pet, mode, activePet);
   const lastTapRef = useRef<number>(0);
-  const photos = pet.photos || [pet.photo];
 
   const panResponder = useRef(
     PanResponder.create({
@@ -108,6 +108,14 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
 
       <View style={styles.rankBadge}><PetRankBadge level={pet.level ?? ((pet.id % 3) + 1)} /></View>
 
+      {likedMe && (
+        <View style={[styles.likedMeBadge, { backgroundColor: likedMe.intent === "HOT" ? "rgba(255,93,115,0.95)" : "rgba(47,189,180,0.95)" }]} pointerEvents="none">
+          <Text style={styles.likedMeText}>
+            {likedMe.super_like ? "⭐ " : "💌 "}{tx("T'a liké", "Liked you")} · {likedMe.intent === "HOT" ? "✦ Hot" : "🐾 Friend"}
+          </Text>
+        </View>
+      )}
+
       {isTop && (
         <>
           <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeOpacity }]}>
@@ -145,52 +153,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
         </View>
       </View>
 
-      <Modal visible={showProfile} transparent animationType="slide" onRequestClose={() => setShowProfile(false)}>
-        <View style={styles.profileModal}>
-          <View style={[styles.profileCard, { backgroundColor: colors.cream }]}>
-            <Pressable style={styles.closeButton} onPress={() => setShowProfile(false)}>
-              <Text style={styles.closeIcon}>✕</Text>
-            </Pressable>
-
-            {/* Photo Carousel */}
-            <View style={styles.photoCarousel}>
-              <Image source={{ uri: photos[photoIndex] }} style={styles.profilePhoto} />
-              {photos.length > 1 && (
-                <>
-                  <Pressable style={[styles.photoNav, styles.photoNavLeft]} onPress={() => setPhotoIndex((i) => (i - 1 + photos.length) % photos.length)}>
-                    <Text style={styles.photoNavText}>‹</Text>
-                  </Pressable>
-                  <Pressable style={[styles.photoNav, styles.photoNavRight]} onPress={() => setPhotoIndex((i) => (i + 1) % photos.length)}>
-                    <Text style={styles.photoNavText}>›</Text>
-                  </Pressable>
-                  <View style={styles.photoIndicator}>
-                    <Text style={styles.photoCount}>{photoIndex + 1}/{photos.length}</Text>
-                  </View>
-                </>
-              )}
-            </View>
-
-            <View style={styles.profileInfo}>
-              <Text style={[styles.profileName, { color: colors.dark }]}>{pet.name}, {pet.age} {t.common.years}</Text>
-              <Text style={[styles.profileMeta, { color: colors.grey }]}>{pet.breed} • {pet.gender === "F" ? t.common.female : t.common.male}</Text>
-              <Text style={[styles.profileDist, { color: colors.grey }]}>📍 {pet.dist} {language === "en" ? "km away" : "km"}</Text>
-              <Text style={[styles.profileCompat, { color: colors.friend }]}>❤️ {pct}% compatible</Text>
-
-              <Text style={[styles.profileBio, { color: colors.dark }]}>{pet.bio}</Text>
-
-              {pet.tags && pet.tags.length > 0 && (
-                <View style={styles.profileTags}>
-                  {pet.tags.map((tag) => (
-                    <View key={tag} style={[styles.profileTag, { backgroundColor: colors.friend + "20" }]}>
-                      <Text style={[styles.profileTagText, { color: colors.friend }]}>{tag}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <PetProfileSheet pet={showProfile ? pet : null} onClose={() => setShowProfile(false)} />
     </Animated.View>
   );
 });
@@ -220,6 +183,8 @@ const styles = StyleSheet.create({
   likeTint: { backgroundColor: "#2FBDB4" },
   nopeTint: { backgroundColor: "#FF5D73" },
   rankBadge: { position: "absolute", top: -8, right: 12, zIndex: 4 },
+  likedMeBadge: { position: "absolute", left: 14, bottom: 238, zIndex: 4, paddingHorizontal: 11, paddingVertical: 6, borderRadius: radii.pill },
+  likedMeText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#FFFFFF" },
   stamp: {
     position: "absolute",
     top: 26,
@@ -248,25 +213,4 @@ const styles = StyleSheet.create({
   tag: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.pill },
   tagText: { fontFamily: fonts.bodySemi, fontSize: 10, color: "#FFFFFF" },
   whyToggle: { fontFamily: fonts.bodySemi, fontSize: 11, color: "#FFFFFF", marginTop: 6 },
-  profileModal: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  profileCard: { borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg, padding: 20, maxHeight: "85%", overflow: "scroll" },
-  closeButton: { position: "absolute", top: 12, right: 12, zIndex: 10, width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  closeIcon: { fontSize: 24, color: "#2B2724" },
-  photoCarousel: { position: "relative", width: "100%", height: 320, marginBottom: 20, borderRadius: radii.md, overflow: "hidden" },
-  profilePhoto: { width: "100%", height: "100%", borderRadius: radii.md },
-  photoNav: { position: "absolute", top: "50%", width: 44, height: 44, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 22 },
-  photoNavLeft: { left: 12 },
-  photoNavRight: { right: 12 },
-  photoNavText: { fontSize: 28, color: "#FFFFFF", fontWeight: "bold" },
-  photoIndicator: { position: "absolute", bottom: 12, right: 12, backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
-  photoCount: { fontFamily: fonts.bodySemi, fontSize: 12, color: "#FFFFFF" },
-  profileInfo: { paddingHorizontal: 0 },
-  profileName: { fontFamily: fonts.display, fontSize: 26, marginBottom: 4 },
-  profileMeta: { fontFamily: fonts.body, fontSize: 14, marginBottom: 4 },
-  profileDist: { fontFamily: fonts.body, fontSize: 13, marginBottom: 8 },
-  profileCompat: { fontFamily: fonts.displaySemi, fontSize: 14, marginBottom: 12, fontWeight: "600" },
-  profileBio: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, marginBottom: 12 },
-  profileTags: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
-  profileTag: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radii.pill },
-  profileTagText: { fontFamily: fonts.bodySemi, fontSize: 12 },
 });

@@ -2,7 +2,8 @@ import React, { createContext, useCallback, useContext, useMemo, useRef, useStat
 import { LIKED_BACK, ME, Pet } from "@/data/mockPets";
 import { awardTreats, loadTreatBalance } from "@/data/api/treats";
 import { loadMeetingTraces, removeMeetingTrace, saveMeetingTrace, updateMeetingTraceStatus } from "@/data/api/meetings";
-import { getMatches, createMatch, matchExists } from "@/data/api/matches";
+import { getMatches, createMatch, getMatchType } from "@/data/api/matches";
+import type { MatchType } from "@/data/types/match";
 import { createSwipe } from "@/data/api/swipes";
 import { getOwnedPetProfiles, getPetsByIds, petRecordToPet, stablePetId } from "@/data/api/profile";
 import { useAuth } from "@/context/AuthContext";
@@ -13,6 +14,11 @@ import { subscribeToNewMatches } from "@/data/api/likes";
 
 // Database pets are addressed by their UUID; demo pets by their numeric id.
 const apiPetId = (pet: Pet) => pet.dbId ?? String(pet.id);
+
+// LOVE (both liked in Hot) is a Hot match, FRIEND a Friend match. BOTH is a mixed-mood match,
+// or one made before likes had a mood: the pets' own modes decide.
+const matchLabel = (type: MatchType, me: Pet, other: Pet): "Hot" | "Friend" =>
+  type === "LOVE" ? "Hot" : type === "FRIEND" ? "Friend" : me.mode >= 50 && other.mode >= 50 ? "Hot" : "Friend";
 
 export interface ChatMessage {
   from: "me" | "them";
@@ -60,7 +66,7 @@ interface AppStateShape {
   chats: Chat[];
   pendingMatch: Pet | null;
   clearPendingMatch: () => void;
-  likePet: (pet: Pet) => void;
+  likePet: (pet: Pet, superLike?: boolean) => void;
   sendMessage: (petId: number, text: string) => void;
   markChatRead: (petId: number) => void;
   meetingMarkers: Record<number, MeetingMarker | undefined>;
@@ -139,13 +145,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     const myDbId = activePet.dbId;
     if (!session?.user.id || !myDbId) return;
-    return subscribeToNewMatches(myDbId, async (otherId) => {
+    return subscribeToNewMatches(myDbId, async (otherId, type) => {
       if (recentlyLikedRef.current.has(otherId)) return;
       const { data } = await getPetsByIds([otherId]);
       if (!data[0]) return;
       const other = petRecordToPet(data[0]);
-      const isHot = activePet.mode >= 50 && other.mode >= 50;
-      setPendingMatch({ ...other, matchType: isHot ? "Hot" : "Friend" } as any);
+      setPendingMatch({ ...other, matchType: matchLabel(type, activePet, other) } as any);
       void loadDbConversations(myDbId);
     });
   }, [activePet.dbId, activePet.mode, loadDbConversations, session?.user.id]);
@@ -267,23 +272,29 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setActivePetState((current) => ({ ...current, mode: nextMode }));
   }, []);
 
-  const likePet = useCallback(async (pet: Pet) => {
+  const likePet = useCallback(async (pet: Pet, superLike = false) => {
     setLikedPetIds((current) => new Set(current).add(pet.id));
     if (pet.dbId) recentlyLikedRef.current.add(pet.dbId);
 
-    // Demo pets match from a fixed list; database pets match when the database says so
-    // (both owners liked each other, or instantly for test bots).
+    // The like carries the mood it's sent in (the Discover slider): the other pet sees it
+    // blurred as a Hot or Friend like. Demo pets match from a fixed list; database pets
+    // match only when the other pet likes back (or instantly for test bots).
+    const intent = mode >= 50 ? "HOT" : "FRIEND";
+    let dbType: MatchType | null = null;
     let isMatch = LIKED_BACK.has(pet.id);
     try {
-      await createSwipe(apiPetId(activePet), apiPetId(pet), "LIKE");
-      if (activePet.dbId && pet.dbId) isMatch = await matchExists(activePet.dbId, pet.dbId);
+      await createSwipe(apiPetId(activePet), apiPetId(pet), superLike ? "SUPER_LIKE" : "LIKE", intent);
+      if (activePet.dbId && pet.dbId) {
+        dbType = await getMatchType(activePet.dbId, pet.dbId);
+        isMatch = dbType !== null;
+      }
     } catch (error) {
       console.error("Error saving swipe:", error);
     }
     if (!isMatch) return;
 
-    const isHotMatch = activePet.mode >= 50 && pet.mode >= 50;
-    const matchType = isHotMatch ? "Hot" : "Friend";
+    const matchType = dbType ? matchLabel(dbType, activePet, pet) : mode >= 50 && pet.mode >= 50 ? "Hot" : "Friend";
+    const isHotMatch = matchType === "Hot";
     const matchEmoji = isHotMatch ? "❤️" : "🐾";
     setMatches((prev) => (prev.find((p) => p.id === pet.id) ? prev : [...prev, pet]));
     setChats((prev) =>
@@ -311,7 +322,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Error creating match:", error);
     }
-  }, [activePet, collectTreats, petProgress.matches, updateProgress]);
+  }, [activePet, collectTreats, mode, petProgress.matches, updateProgress]);
 
   const clearPendingMatch = useCallback(() => setPendingMatch(null), []);
 

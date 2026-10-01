@@ -7,7 +7,7 @@ import { PETS, Pet } from "@/data/mockPets";
 import { useAuth } from "@/context/AuthContext";
 import { getDiscoverablePetProfiles, petRecordToPet } from "@/data/api/profile";
 import { getSwipeHistory } from "@/data/api/swipes";
-import { getPetLikers } from "@/data/api/likes";
+import { getPetLikers, Liker } from "@/data/api/likes";
 import { proximityRank } from "@/utils/discovery";
 import { useAppState } from "@/context/AppState";
 import { useThemedColors } from "@/hooks/useThemedColors";
@@ -29,7 +29,7 @@ export default function DiscoverScreen() {
   const [communityPets, setCommunityPets] = useState<Pet[]>([]);
   const [swipedIds, setSwipedIds] = useState<Set<string>>(new Set());
   // Pets that already liked mine: shown first, so liking back is one swipe away.
-  const [likerIds, setLikerIds] = useState<Set<string>>(new Set());
+  const [likers, setLikers] = useState<Map<string, Liker>>(new Map());
 
   useEffect(() => setCursor(0), [activePet.id]);
 
@@ -45,7 +45,7 @@ export default function DiscoverScreen() {
       ])
         .then(([pets, swipes, likers]) => {
           if (!active) return;
-          setLikerIds(new Set(likers.map((liker) => liker.id)));
+          setLikers(new Map(likers.map((liker) => [liker.id, liker])));
           setCommunityPets(pets.data.map(petRecordToPet));
           setSwipedIds(new Set(swipes.map((swipe) => swipe.toPetId)));
           setCursor(0);
@@ -57,32 +57,36 @@ export default function DiscoverScreen() {
     }, [activePet.dbId, session?.user.id])
   );
 
-  // Everyone is shown, best fits first: same species, then closest (city, country, world),
-  // then same mood (PLAY / HOT), then most compatible. Only HOT mode hides same-gender pets of the same species.
+  // Everyone is shown, best fits first: pets that liked mine, real accounts before test bots
+  // (newest first, as loaded), then same species, closest (city, country, world),
+  // same mood (PLAY / HOT), most compatible. Only HOT mode hides same-gender pets of the same species.
   const recommendations = useMemo(() => {
     const fresh = communityPets.filter((pet) => !pet.dbId || !swipedIds.has(pet.dbId));
     // Demo profiles when signed out, or when the database has nobody left to show.
     const pool = session && fresh.length > 0 ? fresh : PETS;
     const sameSpecies = (pet: Pet) => (pet.species === activePet.species ? 0 : 1);
     const sameMood = (pet: Pet) => ((mode < 50) === (pet.mode < 50) ? 0 : 1);
-    const likedMe = (pet: Pet) => (pet.dbId && likerIds.has(pet.dbId) ? 0 : 1);
+    const likedMe = (pet: Pet) => (pet.dbId && likers.has(pet.dbId) ? 0 : 1);
+    const realAccount = (pet: Pet) => (pet.isBot ? 1 : 0);
     return pool
-      .filter((pet) => pet.id !== activePet.id && !(mode >= 50 && pet.species === activePet.species && pet.gender === activePet.gender))
+      // A pet that already liked mine is always shown, so the like can be answered.
+      .filter((pet) => pet.id !== activePet.id && (likedMe(pet) === 0 || !(mode >= 50 && pet.species === activePet.species && pet.gender === activePet.gender)))
       .sort((a, b) =>
         likedMe(a) - likedMe(b) ||
+        realAccount(a) - realAccount(b) ||
         sameSpecies(a) - sameSpecies(b) ||
         proximityRank(a, activePet) - proximityRank(b, activePet) ||
         sameMood(a) - sameMood(b) ||
         computeMatch(b, mode, activePet).pct - computeMatch(a, mode, activePet).pct
       );
-  }, [activePet, communityPets, likerIds, mode, session, swipedIds]);
+  }, [activePet, communityPets, likers, mode, session, swipedIds]);
   const visible = recommendations.slice(cursor, cursor + 3);
 
   const handleSwiped = (direction: "left" | "right" | "super") => {
     const pet = recommendations[cursor];
     setCursor((c) => c + 1);
     if (pet && (direction === "right" || direction === "super")) {
-      likePet(pet);
+      likePet(pet, direction === "super");
     }
   };
 
@@ -114,6 +118,7 @@ export default function DiscoverScreen() {
                   mode={mode}
                   isTop={depth === 0}
                   depth={depth}
+                  likedMe={pet.dbId ? likers.get(pet.dbId) : undefined}
                   onSwiped={handleSwiped}
                 />
               ))}

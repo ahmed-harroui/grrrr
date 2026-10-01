@@ -75,10 +75,11 @@ function AppContent({ stage, setStage }: { stage: Stage; setStage: (stage: Stage
   const { refreshOwnedPets } = useAppState();
   const [guestMode, setGuestMode] = useState(false);
 
-  // Signed-in accounts go straight to the app once they have a pet; new accounts create one first.
+  // Signed-in accounts go straight to the app once they have a pet; new accounts create one first
+  // (a starter card made at sign-up doesn't count until it has been filled in).
   const enterSignedIn = useCallback(async () => {
     const pets = await refreshOwnedPets();
-    setStage(pets.length ? "app" : "profileSetup");
+    setStage(pets.some((pet) => !pet.setupPending) ? "app" : "profileSetup");
   }, [refreshOwnedPets, setStage]);
 
   useEffect(() => {

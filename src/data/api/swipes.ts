@@ -1,4 +1,5 @@
 import {
+  LikeIntent,
   Swipe,
   SwipeAction,
 } from "../types/swipe";
@@ -12,19 +13,24 @@ const isUuid = (id: string) => /^[0-9a-f-]{36}$/i.test(id);
 export async function createSwipe(
   fromPetId: string,
   toPetId: string,
-  action: SwipeAction
+  action: SwipeAction,
+  intent?: LikeIntent
 ): Promise<Swipe> {
   if (supabase && isUuid(fromPetId) && isUuid(toPetId)) {
-    const { data, error } = await supabase
-      .from("pet_swipes")
-      .upsert(
-        { from_pet_id: fromPetId, to_pet_id: toPetId, action },
-        { onConflict: "from_pet_id,to_pet_id" }
-      )
-      .select("id, from_pet_id, to_pet_id, action, created_at")
-      .single();
+    const client = supabase;
+    const save = (row: Record<string, unknown>) =>
+      client
+        .from("pet_swipes")
+        .upsert(row, { onConflict: "from_pet_id,to_pet_id" })
+        .select("id, from_pet_id, to_pet_id, action, created_at")
+        .single();
 
-    if (error) throw error;
+    const row = { from_pet_id: fromPetId, to_pet_id: toPetId, action };
+    let { data, error } = await save(intent ? { ...row, intent } : row);
+    // Database without migration 009 (no intent column): save the like without its mood.
+    if (error && intent && /intent/i.test(error.message)) ({ data, error } = await save(row));
+
+    if (error || !data) throw error;
     return {
       id: data.id,
       fromPetId: data.from_pet_id,

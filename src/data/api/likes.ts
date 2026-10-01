@@ -1,7 +1,10 @@
 import { supabase } from "@/lib/supabase";
+import type { LikeIntent } from "@/data/types/swipe";
+import type { MatchType } from "@/data/types/match";
 
 // Pets that liked my pet but that it hasn't answered yet (a one-sided like, not a match).
-export type Liker = { id: string; photo_url: string; species: string; liked_at: string };
+// intent / super_like come with migration 009.
+export type Liker = { id: string; photo_url: string; species: string; liked_at: string; intent?: LikeIntent; super_like?: boolean };
 
 export async function getPetLikers(petId?: string): Promise<Liker[]> {
   if (!supabase || !petId || !/^[0-9a-f-]{36}$/i.test(petId)) return [];
@@ -13,13 +16,13 @@ export async function getPetLikers(petId?: string): Promise<Liker[]> {
   return (data ?? []) as Liker[];
 }
 
-/** Calls onMatch with the other pet's id whenever a new match involving my pet is created. */
-export function subscribeToNewMatches(myPetId: string, onMatch: (otherPetId: string) => void) {
+/** Calls onMatch with the other pet's id and the match type whenever a new match involving my pet is created. */
+export function subscribeToNewMatches(myPetId: string, onMatch: (otherPetId: string, type: MatchType) => void) {
   if (!supabase) return () => {};
   const client = supabase;
   const handle = (payload: { new: Record<string, any> }) => {
     const row = payload.new;
-    onMatch(row.pet_one_id === myPetId ? row.pet_two_id : row.pet_one_id);
+    onMatch(row.pet_one_id === myPetId ? row.pet_two_id : row.pet_one_id, row.match_type ?? "BOTH");
   };
   const channel = client
     .channel(`matches-${myPetId}`)

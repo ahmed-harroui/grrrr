@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Dimensions, Easing, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { fonts } from "@/theme/theme";
@@ -14,9 +14,6 @@ const BIG_DECOR = SMALL_DECOR;
 const DECOR_ASPECT = 694 / 360;
 
 const seenKey = (petId: string) => `@grrrr_seen_level:${petId}`;
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const CARD_WIDTH = Math.min(340, SCREEN_WIDTH - 40);
-const CARD_HEIGHT = 460;
 
 type Celebration = { petId: string; level: number };
 
@@ -54,6 +51,7 @@ export default function LevelUpCelebration() {
 
 function CelebrationCard({ level, petName, tx, onClose }: { level: number; petName: string; tx: (fr: string, en: string) => string; onClose: () => void }) {
   const rank = PET_RANKS[Math.max(0, Math.min(PET_RANKS.length - 1, level - 1))];
+  const { width, height } = useWindowDimensions();
   const backdrop = useRef(new Animated.Value(0)).current;
   const card = useRef(new Animated.Value(0)).current;
   const emblem = useRef(new Animated.Value(0)).current;
@@ -85,26 +83,27 @@ function CelebrationCard({ level, petName, tx, onClose }: { level: number; petNa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const bigWidth = CARD_WIDTH * 2.6;
-  const smallWidth = CARD_WIDTH * 1.25;
+  const bigWidth = width * 2.6;
+  const smallWidth = width * 1.4;
   const spin = loop.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
-  const bigShift = loop.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -60, 0] });
-  const smallShift = loop.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 40, 0] });
+  const bigShift = loop.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -80, 0] });
+  const smallShift = loop.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 50, 0] });
   const pulse = loop.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [1, 1.06, 1, 1.06, 1] });
 
+  // Full screen: the whole screen becomes the celebration, it zooms in slightly as it appears.
   return (
-    <Modal visible transparent animationType="none" onRequestClose={close}>
+    <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={close}>
       <Pressable style={StyleSheet.absoluteFill} onPress={close}>
-        <Animated.View style={[styles.backdrop, { opacity: backdrop }]} />
-        <View style={styles.center} pointerEvents="none">
-          <Animated.View style={[styles.card, { width: CARD_WIDTH, borderColor: rank.color, opacity: card, transform: [{ scale: card.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }, { rotate: card.interpolate({ inputRange: [0, 1], outputRange: ["-6deg", "0deg"] }) }] }]}>
-            <LinearGradient colors={["#FFFFFF", rank.color]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 0.75 }} style={StyleSheet.absoluteFill} />
+        <Animated.View pointerEvents="none" style={[styles.screen, { opacity: card, transform: [{ scale: card.interpolate({ inputRange: [0, 1], outputRange: [1.12, 1] }) }] }]}>
+          <LinearGradient colors={["#FFFFFF", rank.color, rank.color]} locations={[0, 0.55, 1]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFill} />
+          <Animated.View style={[styles.backdrop, { opacity: backdrop.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0] }) }]} />
 
-            {/* "big" decor: large white drawings drifting slowly */}
-            <Animated.Image source={BIG_DECOR} resizeMode="stretch" style={[styles.decor, { width: bigWidth, height: bigWidth / DECOR_ASPECT, left: -bigWidth * 0.3, top: -40, opacity: 0.28, tintColor: "#FFFFFF", transform: [{ translateX: bigShift }] }]} />
-            {/* "small" decor: smaller pink drawings at the bottom, drifting the other way */}
-            <Animated.Image source={SMALL_DECOR} resizeMode="stretch" style={[styles.decor, { width: smallWidth, height: smallWidth / DECOR_ASPECT, left: -smallWidth * 0.1, bottom: -10, opacity: 0.55, transform: [{ translateX: smallShift }] }]} />
+          {/* "big" decor: large white drawings drifting slowly */}
+          <Animated.Image source={BIG_DECOR} resizeMode="stretch" style={[styles.decor, { width: bigWidth, height: bigWidth / DECOR_ASPECT, left: -bigWidth * 0.3, top: -20, opacity: 0.28, tintColor: "#FFFFFF", transform: [{ translateX: bigShift }] }]} />
+          {/* "small" decor: smaller pink drawings at the bottom, drifting the other way */}
+          <Animated.Image source={SMALL_DECOR} resizeMode="stretch" style={[styles.decor, { width: smallWidth, height: smallWidth / DECOR_ASPECT, left: -smallWidth * 0.15, bottom: -10, opacity: 0.55, transform: [{ translateX: smallShift }] }]} />
 
+          <View style={[styles.content, { paddingTop: height * 0.1 }]}>
             <Animated.Text style={[styles.eyebrow, { opacity: copy }]}>{tx("NIVEAU SUPÉRIEUR !", "LEVEL UP!")}</Animated.Text>
 
             <View style={styles.emblemZone}>
@@ -120,28 +119,28 @@ function CelebrationCard({ level, petName, tx, onClose }: { level: number; petNa
               <Text style={styles.levelText}>{tx("Niveau", "Level")} {level}</Text>
               {petName ? <Text style={styles.petText}>{tx(`${petName} passe au niveau ${level} 🐾`, `${petName} reached level ${level} 🐾`)}</Text> : null}
             </Animated.View>
+          </View>
 
-            <Animated.Text style={[styles.hint, { opacity: Animated.multiply(copy, loop.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [1, 0.45, 1, 0.45, 1] })) }]}>{tx("Touchez pour continuer", "Tap to continue")}</Animated.Text>
-          </Animated.View>
-        </View>
+          <Animated.Text style={[styles.hint, { bottom: Math.max(36, height * 0.06), opacity: Animated.multiply(copy, loop.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [1, 0.45, 1, 0.45, 1] })) }]}>{tx("Touchez pour continuer", "Tap to continue")}</Animated.Text>
+        </Animated.View>
       </Pressable>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(20,16,14,0.72)" },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  card: { height: CARD_HEIGHT, borderRadius: 32, borderWidth: 3, overflow: "hidden", alignItems: "center", paddingTop: 26, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 14 },
+  screen: { ...StyleSheet.absoluteFill, overflow: "hidden", alignItems: "center" },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: "#FFFFFF" },
+  content: { flex: 1, width: "100%", alignItems: "center" },
   decor: { position: "absolute" },
-  eyebrow: { fontFamily: fonts.displayExtra, fontSize: 26, color: "#2B2724", letterSpacing: 1 },
-  emblemZone: { width: 220, height: 200, alignItems: "center", justifyContent: "center", marginTop: 6 },
-  rays: { position: "absolute", width: 220, height: 220, alignItems: "center", justifyContent: "center" },
-  ray: { position: "absolute", width: 8, height: 220, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.35)" },
-  halo: { position: "absolute", width: 150, height: 150, borderRadius: 75, backgroundColor: "rgba(255,255,255,0.55)" },
-  emblem: { width: 140, height: 140 },
-  rankName: { fontFamily: fonts.displayExtra, fontSize: 34, color: "#FFFFFF", textShadowColor: "rgba(0,0,0,0.25)", textShadowRadius: 6, textShadowOffset: { width: 0, height: 2 } },
-  levelText: { fontFamily: fonts.bodyBold, fontSize: 15, color: "#FFFFFF", marginTop: -2 },
-  petText: { fontFamily: fonts.bodySemi, fontSize: 13, color: "#FFFFFF", marginTop: 10, paddingHorizontal: 20, textAlign: "center" },
-  hint: { position: "absolute", bottom: 18, fontFamily: fonts.bodyBold, fontSize: 12, color: "#FFFFFF", letterSpacing: 0.5 },
+  eyebrow: { fontFamily: fonts.displayExtra, fontSize: 34, color: "#2B2724", letterSpacing: 1, textAlign: "center" },
+  emblemZone: { width: 320, height: 320, alignItems: "center", justifyContent: "center", marginTop: 18 },
+  rays: { position: "absolute", width: 340, height: 340, alignItems: "center", justifyContent: "center" },
+  ray: { position: "absolute", width: 11, height: 340, borderRadius: 6, backgroundColor: "rgba(255,255,255,0.35)" },
+  halo: { position: "absolute", width: 220, height: 220, borderRadius: 110, backgroundColor: "rgba(255,255,255,0.55)" },
+  emblem: { width: 210, height: 210 },
+  rankName: { fontFamily: fonts.displayExtra, fontSize: 46, color: "#FFFFFF", textShadowColor: "rgba(0,0,0,0.25)", textShadowRadius: 8, textShadowOffset: { width: 0, height: 2 }, marginTop: 10 },
+  levelText: { fontFamily: fonts.bodyBold, fontSize: 20, color: "#FFFFFF", marginTop: -2 },
+  petText: { fontFamily: fonts.bodySemi, fontSize: 16, color: "#FFFFFF", marginTop: 14, paddingHorizontal: 28, textAlign: "center" },
+  hint: { position: "absolute", fontFamily: fonts.bodyBold, fontSize: 14, color: "#FFFFFF", letterSpacing: 0.5 },
 });

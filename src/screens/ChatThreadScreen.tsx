@@ -16,6 +16,7 @@ import { fonts, radii } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { ChatMessage, useAppState } from "@/context/AppState";
 import { useTranslation } from "@/i18n/useTranslation";
+import PetProfileSheet from "@/components/PetProfileSheet";
 
 export default function ChatThreadScreen() {
   const colors = useThemedColors();
@@ -32,6 +33,7 @@ export default function ChatThreadScreen() {
   const trace = meetingTraces[petId];
 
   const [isCondensed, setIsCondensed] = useState(true);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     if (petId !== undefined) markChatRead(petId);
@@ -55,8 +57,13 @@ export default function ChatThreadScreen() {
         <Pressable onPress={() => navigation.goBack()} hitSlop={10}>
           <Text style={styles.back}>←</Text>
         </Pressable>
-        <Image source={{ uri: chat.pet.photo }} style={styles.avatar} />
-        <Text style={styles.name}>{chat.pet.name}</Text>
+        <Pressable style={styles.profileLink} onPress={() => setShowProfile(true)}>
+          <Image source={{ uri: chat.pet.photo }} style={styles.avatar} />
+          <View>
+            <Text style={styles.name}>{chat.pet.name}</Text>
+            <Text style={styles.profileHint}>{tx("Voir le profil", "View profile")}</Text>
+          </View>
+        </Pressable>
         <Pressable style={styles.locationButton} onPress={() => navigation.navigate("MainTabs", { screen: "Explore" })}>
           <Text style={styles.locationIcon}>⌖</Text>
         </Pressable>
@@ -166,6 +173,8 @@ export default function ChatThreadScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <PetProfileSheet pet={showProfile ? chat.pet : null} onClose={() => setShowProfile(false)} />
     </SafeAreaView>
   );
 }
@@ -209,6 +218,8 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     back: { fontSize: 18, color: colors.dark, marginRight: 2 },
     avatar: { width: 38, height: 38, borderRadius: 19 },
     name: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.dark },
+    profileLink: { flexDirection: "row", alignItems: "center", gap: 10 },
+    profileHint: { fontFamily: fonts.body, fontSize: 10, color: colors.grey },
     locationButton: { marginLeft: "auto", width: 36, height: 36, borderRadius: 18, backgroundColor: colors.cream2, alignItems: "center", justifyContent: "center" },
     locationIcon: { color: colors.coralDark, fontSize: 20 },
     organizedHeroCard: {

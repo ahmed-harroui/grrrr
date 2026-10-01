@@ -3,6 +3,9 @@ export type SwipeAction =
   | "SKIP"
   | "SUPER_LIKE";
 
+/** The mood a like is sent in; decides the match type once it's mutual */
+export type LikeIntent = "HOT" | "FRIEND";
+
 export interface Swipe {
   id: string;
 

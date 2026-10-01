@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { colors, fonts, radii } from "@/theme/theme";
 import { useAuth } from "@/context/AuthContext";
-import { createPetProfile, LocalPhoto, PetRecord, uploadPetPhoto } from "@/data/api/profile";
+import { createPetProfile, getOwnedPetProfiles, LocalPhoto, PetRecord, updatePetProfile, uploadPetPhoto } from "@/data/api/profile";
 
 // Start blank: never pre-fill with the demo pet, or skipped steps would save demo data.
 const DEFAULT_PET: PetRecord = {
@@ -33,6 +33,10 @@ const STEPS: { key: Step; title: string; titleEn: string; subtitle: string; subt
 
 import { useTranslation } from "@/i18n/useTranslation";
 
+// Text steps, then photos, then the energy / mode / gender choices.
+const TOTAL_STEPS = STEPS.length + 2;
+const MAX_GALLERY = 6;
+
 export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }) {
   const { session } = useAuth();
   const { tx } = useTranslation();
@@ -41,13 +45,19 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
   const [loading, setLoading] = useState(Boolean(session));
   const [saving, setSaving] = useState(false);
   const [photoAsset, setPhotoAsset] = useState<LocalPhoto | null>(null);
-  const photo = photoAsset?.uri ?? "";
+  const [gallery, setGallery] = useState<LocalPhoto[]>([]);
   const step = STEPS[stepIndex];
-  const isChoiceStep = stepIndex >= STEPS.length;
+  const isPhotoStep = stepIndex === STEPS.length;
+  const isChoiceStep = stepIndex > STEPS.length;
+
+  // Starter card created with the account (migration 008): this setup fills it in.
+  const [starterPetId, setStarterPetId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session?.user.id) return;
-    setLoading(false);
+    getOwnedPetProfiles(session.user.id)
+      .then(({ data }) => setStarterPetId(data.find((pet) => pet.setup_pending)?.id ?? null))
+      .finally(() => setLoading(false));
   }, [session?.user.id]);
 
   const updateText = (value: string) => {
@@ -63,13 +73,20 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
     }
     setSaving(true);
     if (session?.user.id) {
-      let photoUrl = "";
-      if (photoAsset) {
-        const upload = await uploadPetPhoto(session.user.id, photoAsset);
-        if (upload.error) Alert.alert(tx("Photo non envoyée", "Photo not uploaded"), `${upload.error.message}\n\n${tx("Tu pourras l'ajouter depuis ton profil.", "You can add it from your profile.")}`);
-        photoUrl = upload.url;
-      }
-      const { error } = await createPetProfile({ ...profile, photo_url: photoUrl, owner_id: session.user.id });
+      const ownerId = session.user.id;
+      // Main photo first, then the gallery; a failed upload is skipped, not fatal.
+      const uploads = await Promise.all([photoAsset, ...gallery].map((asset) => (asset ? uploadPetPhoto(ownerId, asset) : Promise.resolve(null))));
+      const failed = uploads.find((upload) => upload?.error);
+      if (failed?.error) Alert.alert(tx("Photo non envoyée", "Photo not uploaded"), `${failed.error.message}\n\n${tx("Tu pourras l'ajouter depuis ton profil.", "You can add it from your profile.")}`);
+      const urls = uploads.map((upload) => (upload && !upload.error ? upload.url : ""));
+      const [avatarUrl, ...galleryUrls] = urls;
+      const photos = galleryUrls.filter(Boolean);
+      // No main photo but a gallery: the first gallery picture becomes the avatar.
+      const photoUrl = avatarUrl || photos.shift() || "";
+      const record = { ...profile, photo_url: photoUrl, photos, owner_id: ownerId };
+      const { error } = starterPetId
+        ? await updatePetProfile(starterPetId, ownerId, { ...record, setup_pending: false })
+        : await createPetProfile(record);
       if (error) {
         setSaving(false);
         Alert.alert(tx("Profil non enregistré", "Profile not saved"), error.message);
@@ -80,20 +97,40 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
     onDone();
   };
 
-  const choosePhoto = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.7, base64: true });
-    if (!result.canceled) {
-      const asset = result.assets[0];
-      setPhotoAsset({ uri: asset.uri, base64: asset.base64, mimeType: asset.mimeType });
+  const pickImages = async (source: "camera" | "library", options: { square: boolean; limit: number }): Promise<LocalPhoto[]> => {
+    const permission = source === "camera" ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(tx("Autorisation refusée", "Permission denied"), source === "camera" ? tx("Autorise l'appareil photo dans les réglages pour prendre une photo.", "Allow camera access in settings to take a photo.") : tx("Autorise l'accès aux photos dans les réglages pour en ajouter.", "Allow photo access in settings to add some."));
+      return [];
     }
+    const multiple = source === "library" && options.limit > 1;
+    const pickerOptions: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ["images"],
+      quality: 0.7,
+      base64: true,
+      allowsEditing: !multiple,
+      aspect: options.square ? [1, 1] : [4, 5],
+      allowsMultipleSelection: multiple,
+      selectionLimit: multiple ? options.limit : 1,
+    };
+    const result = source === "camera" ? await ImagePicker.launchCameraAsync(pickerOptions) : await ImagePicker.launchImageLibraryAsync(pickerOptions);
+    if (result.canceled) return [];
+    return result.assets.map((asset) => ({ uri: asset.uri, base64: asset.base64, mimeType: asset.mimeType }));
   };
 
-  const next = () => {
-    if (stepIndex < STEPS.length - 1) setStepIndex((current) => current + 1);
-    else setStepIndex(STEPS.length);
+  const chooseMainPhoto = async (source: "camera" | "library") => {
+    const [photo] = await pickImages(source, { square: true, limit: 1 });
+    if (photo) setPhotoAsset(photo);
   };
+
+  const addGalleryPhotos = async (source: "camera" | "library") => {
+    const remaining = MAX_GALLERY - gallery.length;
+    if (remaining <= 0) return;
+    const photos = await pickImages(source, { square: false, limit: remaining });
+    if (photos.length) setGallery((current) => [...current, ...photos].slice(0, MAX_GALLERY));
+  };
+
+  const next = () => setStepIndex((current) => Math.min(current + 1, TOTAL_STEPS - 1));
 
   const skip = () => {
     if (isChoiceStep) return finish();
@@ -105,14 +142,56 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
-        <Text style={styles.counter}>{isChoiceStep ? "6 / 7" : `${stepIndex + 1} / 7`}</Text>
+        <Text style={styles.counter}>{`${stepIndex + 1} / ${TOTAL_STEPS}`}</Text>
         <Pressable onPress={skip} hitSlop={10}><Text style={styles.skip}>{tx("Passer", "Skip")}</Text></Pressable>
       </View>
-      <View style={styles.progressTrack}><View style={[styles.progress, { width: `${((stepIndex + 1) / 7) * 100}%` }]} /></View>
+      <View style={styles.progressTrack}><View style={[styles.progress, { width: `${((stepIndex + 1) / TOTAL_STEPS) * 100}%` }]} /></View>
 
-      {!isChoiceStep ? (
+      {isPhotoStep ? (
+        <ScrollView style={styles.flex} contentContainerStyle={styles.photoContent} showsVerticalScrollIndicator={false}>
+          <Text style={styles.emoji}>📸</Text>
+          <Text style={styles.title}>{tx(`Montre-nous ${profile.pet_name.trim() || "ton compagnon"} !`, `Show us ${profile.pet_name.trim() || "your companion"}!`)}</Text>
+          <Text style={styles.subtitle}>{tx("Une photo principale et quelques photos de plus : les profils avec photos reçoivent bien plus de likes.", "A main photo and a few more: profiles with photos get far more likes.")}</Text>
+
+          <Text style={styles.photoLabel}>{tx("PHOTO PRINCIPALE", "MAIN PHOTO")}</Text>
+          <View style={styles.mainPhotoRow}>
+            <Pressable onPress={() => chooseMainPhoto("library")} style={styles.photoPicker}>
+              {photoAsset ? <Image source={{ uri: photoAsset.uri }} style={styles.photoPreview} /> : <View style={styles.photoEmpty}><Text style={styles.photoEmptyText}>🐾</Text></View>}
+              <View style={styles.cameraBadge}><Text>📸</Text></View>
+            </Pressable>
+            <View style={styles.sourceButtons}>
+              <Pressable onPress={() => chooseMainPhoto("camera")} style={styles.sourceButton}><Text style={styles.sourceText}>{tx("📸 Prendre une photo", "📸 Take a photo")}</Text></Pressable>
+              <Pressable onPress={() => chooseMainPhoto("library")} style={styles.sourceButton}><Text style={styles.sourceText}>{tx("🖼️ Galerie", "🖼️ Gallery")}</Text></Pressable>
+            </View>
+          </View>
+
+          <View style={styles.galleryHeader}>
+            <Text style={styles.photoLabel}>{tx("GALERIE", "GALLERY")}</Text>
+            <Text style={styles.galleryCount}>{gallery.length}/{MAX_GALLERY}</Text>
+          </View>
+          <View style={styles.galleryGrid}>
+            {gallery.map((item, index) => (
+              <View key={item.uri + index} style={styles.galleryCell}>
+                <Image source={{ uri: item.uri }} style={styles.galleryImage} />
+                <Pressable onPress={() => setGallery((current) => current.filter((_, i) => i !== index))} hitSlop={8} style={styles.galleryRemove}><Text style={styles.galleryRemoveText}>✕</Text></Pressable>
+              </View>
+            ))}
+            {gallery.length < MAX_GALLERY && (
+              <Pressable onPress={() => addGalleryPhotos("library")} style={[styles.galleryCell, styles.galleryAdd]}>
+                <Text style={styles.galleryAddIcon}>＋</Text>
+                <Text style={styles.galleryAddText}>{tx("Galerie", "Gallery")}</Text>
+              </Pressable>
+            )}
+            {gallery.length < MAX_GALLERY && (
+              <Pressable onPress={() => addGalleryPhotos("camera")} style={[styles.galleryCell, styles.galleryAdd]}>
+                <Text style={styles.galleryAddIcon}>📸</Text>
+                <Text style={styles.galleryAddText}>{tx("Appareil", "Camera")}</Text>
+              </Pressable>
+            )}
+          </View>
+        </ScrollView>
+      ) : !isChoiceStep ? (
         <View style={styles.content}>
-          <Pressable onPress={choosePhoto} style={styles.photoPicker}>{photo ? <Image source={{ uri: photo }} style={styles.photoPreview} /> : <View style={styles.photoEmpty}><Text style={styles.photoEmptyText}>🐾</Text></View>}<View style={styles.cameraBadge}><Text>📸</Text></View></Pressable>
           <Text style={styles.emoji}>🐾</Text>
           <Text style={styles.title}>{tx(step.title, step.titleEn)}</Text>
           <Text style={styles.subtitle}>{tx(step.subtitle, step.subtitleEn)}</Text>
@@ -145,7 +224,7 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
 
       <View style={styles.footer}>
         <Pressable style={styles.primary} onPress={isChoiceStep ? finish : next} disabled={saving}><Text style={styles.primaryText}>{saving ? tx("Enregistrement...", "Saving...") : isChoiceStep ? tx("Terminer", "Finish") : tx("Continuer", "Continue")}</Text></Pressable>
-        {!isChoiceStep && <Pressable onPress={skip} style={styles.skipBottom}><Text style={styles.skipBottomText}>{tx("Répondre plus tard", "Answer later")}</Text></Pressable>}
+        {!isChoiceStep && <Pressable onPress={skip} style={styles.skipBottom}><Text style={styles.skipBottomText}>{isPhotoStep ? tx("Ajouter les photos plus tard", "Add photos later") : tx("Répondre plus tard", "Answer later")}</Text></Pressable>}
       </View>
     </View>
   );
@@ -180,7 +259,24 @@ const styles = StyleSheet.create({
   primaryText: { fontFamily: fonts.displaySemi, color: colors.white, fontSize: 15 },
   skipBottom: { alignItems: "center", paddingTop: 16 },
   skipBottomText: { fontFamily: fonts.bodySemi, color: colors.grey, fontSize: 12 },
-  photoPicker: { width: 118, height: 118, borderRadius: 59, alignSelf: "flex-start", backgroundColor: colors.white, borderWidth: 3, borderColor: colors.coral, marginBottom: 18, overflow: "visible" },
+  flex: { flex: 1 },
+  photoContent: { paddingTop: 24, paddingBottom: 16 },
+  photoLabel: { fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.6, color: colors.grey, marginTop: 24, marginBottom: 10 },
+  mainPhotoRow: { flexDirection: "row", alignItems: "center", gap: 16 },
+  sourceButtons: { flex: 1, gap: 8 },
+  sourceButton: { borderRadius: radii.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white, paddingVertical: 11, alignItems: "center" },
+  sourceText: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.dark },
+  galleryHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
+  galleryCount: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.grey },
+  galleryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  galleryCell: { width: "31.8%", aspectRatio: 4 / 5, borderRadius: radii.sm, overflow: "hidden", backgroundColor: colors.cream2 },
+  galleryImage: { width: "100%", height: "100%" },
+  galleryRemove: { position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: 12, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
+  galleryRemoveText: { color: colors.white, fontSize: 11, fontFamily: fonts.bodyBold },
+  galleryAdd: { alignItems: "center", justifyContent: "center", borderWidth: 2, borderStyle: "dashed", borderColor: colors.coral },
+  galleryAddIcon: { fontSize: 24, color: colors.coralDark },
+  galleryAddText: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.coralDark, marginTop: 2 },
+  photoPicker: { width: 118, height: 118, borderRadius: 59, backgroundColor: colors.white, borderWidth: 3, borderColor: colors.coral, overflow: "visible" },
   photoPreview: { width: "100%", height: "100%", borderRadius: 56 },
   photoEmpty: { width: "100%", height: "100%", borderRadius: 56, alignItems: "center", justifyContent: "center", backgroundColor: colors.cream2 },
   photoEmptyText: { fontSize: 40 },

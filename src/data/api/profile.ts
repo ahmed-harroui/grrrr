@@ -29,6 +29,8 @@ export interface PetRecord {
   country?: string | null;
   /** Test pets owned by the bot account; they like back automatically */
   is_bot?: boolean;
+  /** Starter pet created with the account (migration 008), filled by the pet setup screen */
+  setup_pending?: boolean;
   // Health fields, also edited in GRRRR Care
   birthday?: string | null;
   weight?: number | null;
@@ -83,8 +85,13 @@ export function stablePetId(id: string) {
   return Array.from(id).reduce((value, character) => ((value * 31) + character.charCodeAt(0)) >>> 0, 7);
 }
 
+// Cards without a picture yet (e.g. starter pets) still get one.
+const placeholderPhoto = (species: string, id: number) =>
+  species === "cat" ? `https://cataas.com/cat/cute?width=600&height=700&r=${id % 50}` : `https://placedog.net/600/700?id=${1 + (id % 200)}`;
+
 export function petRecordToPet(record: PetRecord): Pet {
   const id = stablePetId(record.id ?? record.owner_id);
+  const photo = record.photo_url || placeholderPhoto(record.species, id);
   return {
     id,
     dbId: record.id,
@@ -98,11 +105,14 @@ export function petRecordToPet(record: PetRecord): Pet {
     mode: record.mode,
     bio: record.bio,
     tags: record.tags ?? [],
-    photo: record.photo_url,
-    photos: [record.photo_url, ...(record.photos ?? [])].filter(Boolean),
+    photo,
+    photos: [photo, ...(record.photos ?? [])].filter(Boolean),
     city: record.city,
     country: record.country ?? undefined,
     level: record.level,
+    xp: record.xp ?? 0,
+    isBot: record.is_bot ?? false,
+    setupPending: record.setup_pending ?? false,
     health: {
       birthday: record.birthday ?? null,
       weight: record.weight ?? null,
@@ -119,6 +129,18 @@ export async function getDiscoverablePetProfiles(ownerId?: string) {
   let query = supabase.from("pets").select("*").order("created_at", { ascending: false });
   if (ownerId) query = query.neq("owner_id", ownerId);
   const { data, error } = await query;
+  return { data: (data ?? []) as PetRecord[], error };
+}
+
+/** Trending profiles: the pets with the most XP in the database, every account included. */
+export async function getTopXpPetProfiles(limit = 60) {
+  if (!supabase) return { data: [] as PetRecord[], error: null };
+  const { data, error } = await supabase
+    .from("pets")
+    .select("*")
+    .order("xp", { ascending: false })
+    .order("level", { ascending: false })
+    .limit(limit);
   return { data: (data ?? []) as PetRecord[], error };
 }
 
@@ -163,6 +185,13 @@ export async function uploadPetPhoto(ownerId: string, photo: LocalPhoto): Promis
   const { error } = await supabase.storage.from(PET_PHOTOS_BUCKET).upload(path, base64ToBytes(photo.base64), { contentType });
   if (error) return { url: "", error };
   return { url: supabase.storage.from(PET_PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl, error: null };
+}
+
+/** Deletes one of my pets; its swipes, matches and messages go with it (on delete cascade). */
+export async function deletePetProfile(petId: string, ownerId: string) {
+  if (!supabase) return { error: null };
+  const { error } = await supabase.from("pets").delete().eq("id", petId).eq("owner_id", ownerId);
+  return { error };
 }
 
 export async function updatePetProfile(petId: string, ownerId: string, changes: Partial<PetRecord>) {
