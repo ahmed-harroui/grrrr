@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { fonts, radii } from "@/theme/theme";
 import { PETS, Pet } from "@/data/mockPets";
@@ -13,14 +13,18 @@ import { useAppState } from "@/context/AppState";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { useTranslation } from "@/i18n/useTranslation";
 import ModeSlider from "@/components/ModeSlider";
-import SwipeCard, { SwipeCardHandle } from "@/components/SwipeCard";
+import SwipeCard, { SwipeCardHandle, SwipeDirection } from "@/components/SwipeCard";
 import Header from "@/components/Header";
 import LikeButton from "@/components/LikeButton";
 import { computeMatch } from "@/utils/matching";
+import { addAdoptionInterest, AdoptionIntent, getAdoptionInterests } from "@/data/api/adoption";
+
+const ADOPT = "#FFB35C";
+const DISCOVER_ICON = require("../../assets/navbar/descover.png");
 
 export default function DiscoverScreen() {
   const colors = useThemedColors();
-  const { t } = useTranslation();
+  const { t, tx } = useTranslation();
   const { activePet, mode, setMode, likePet } = useAppState();
   const [cursor, setCursor] = useState(0);
   const [pendingMode, setPendingMode] = useState<number | null>(null);
@@ -30,6 +34,14 @@ export default function DiscoverScreen() {
   const [swipedIds, setSwipedIds] = useState<Set<string>>(new Set());
   // Pets that already liked mine: shown first, so liking back is one swipe away.
   const [likers, setLikers] = useState<Map<string, Liker>>(new Map());
+  // An account that came to adopt has no pet to show: its swipes only say "waiting to adopt".
+  const adopterMode = Boolean(activePet.adopterOnly);
+  const [adoptNotice, setAdoptNotice] = useState<string | null>(null);
+  const [adoptChoice, setAdoptChoice] = useState<Pet | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+  }, []);
 
   useEffect(() => setCursor(0), [activePet.id]);
 
@@ -42,12 +54,14 @@ export default function DiscoverScreen() {
         getDiscoverablePetProfiles(session.user.id),
         activePet.dbId ? getSwipeHistory(activePet.dbId) : Promise.resolve([]),
         getPetLikers(activePet.dbId),
+        getAdoptionInterests(activePet.dbId),
       ])
-        .then(([pets, swipes, likers]) => {
+        .then(([pets, swipes, likers, interests]) => {
           if (!active) return;
           setLikers(new Map(likers.map((liker) => [liker.id, liker])));
           setCommunityPets(pets.data.map(petRecordToPet));
-          setSwipedIds(new Set(swipes.map((swipe) => swipe.toPetId)));
+          // Pets swiped up are waiting in Messages: not shown again.
+          setSwipedIds(new Set([...swipes.map((swipe) => swipe.toPetId), ...interests.map((interest) => interest.pet.dbId ?? "")]));
           setCursor(0);
         })
         .catch((error) => console.warn("Discover could not load pets", error));
@@ -82,12 +96,37 @@ export default function DiscoverScreen() {
   }, [activePet, communityPets, likers, mode, session, swipedIds]);
   const visible = recommendations.slice(cursor, cursor + 3);
 
-  const handleSwiped = (direction: "left" | "right" | "super") => {
+  const handleSwiped = (direction: SwipeDirection) => {
     const pet = recommendations[cursor];
     setCursor((c) => c + 1);
-    if (pet && (direction === "right" || direction === "super")) {
-      likePet(pet, direction === "super");
+    if (!pet) return;
+    // Up (or any like in adopter mode): no like is sent; a sheet asks whether to adopt or buy.
+    if (direction === "adopt" || (adopterMode && direction === "right")) {
+      setAdoptChoice(pet);
+      return;
     }
+    if (direction === "right") likePet(pet);
+  };
+
+  // The family waits for this pet's babies; the request leaves with its first litter.
+  const chooseIntent = async (intent: AdoptionIntent) => {
+    const pet = adoptChoice;
+    setAdoptChoice(null);
+    if (!pet) return;
+    const { error } = await addAdoptionInterest(pet.dbId, activePet.dbId, intent);
+    setAdoptNotice(error === "WAITLIST_FULL"
+      ? tx(`😿 ${pet.name} a déjà 5 familles qui attendent ses bébés. Réessaie plus tard.`, `😿 ${pet.name} already has 5 families waiting for their babies. Try again later.`)
+      : intent === "BUY"
+        ? tx(`🔔 Tu seras prévenu dès que ${pet.name} aura des bébés à vendre. Il t'attend dans Messages.`, `🔔 You will be told as soon as ${pet.name} has babies for sale. Find them in Messages.`)
+        : tx(`🔔 Tu seras prévenu dès que ${pet.name} aura des bébés à adopter. Il t'attend dans Messages.`, `🔔 You will be told as soon as ${pet.name} has babies to adopt. Find them in Messages.`));
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setAdoptNotice(null), 4000);
+  };
+
+  // Changed my mind: the card comes back.
+  const cancelIntent = () => {
+    setAdoptChoice(null);
+    setCursor((c) => Math.max(0, c - 1));
   };
 
   return (
@@ -103,9 +142,15 @@ export default function DiscoverScreen() {
           </View>
         ) : (
           <>
-            <View style={styles.modeSliderOverlay}>
-              <ModeSlider value={mode} onChange={(nextMode) => nextMode !== mode && setPendingMode(nextMode)} />
-            </View>
+            {adopterMode ? (
+              <View style={styles.modeSliderOverlay}>
+                <Text style={styles.adopterBanner}>{tx("🍼 Mode adoption · glisse vers le haut les compagnons dont tu veux un bébé", "🍼 Adoption mode · swipe up the companions you would like a baby from")}</Text>
+              </View>
+            ) : (
+              <View style={styles.modeSliderOverlay}>
+                <ModeSlider value={mode} onChange={(nextMode) => nextMode !== mode && setPendingMode(nextMode)} />
+              </View>
+            )}
             {visible
               .map((pet, i) => ({ pet, depth: i }))
               .reverse()
@@ -126,14 +171,43 @@ export default function DiscoverScreen() {
               <Pressable style={[styles.actBtn, styles.skipBtn]} onPress={() => topCardRef.current?.triggerSwipe("left")}>
                 <Text style={styles.skipIcon}>×</Text>
               </Pressable>
-              <Pressable style={[styles.actBtn, styles.superBtn]} onPress={() => topCardRef.current?.triggerSwipe("super")}>
-                <Text style={styles.superIcon}>⭐</Text>
+              <Pressable style={[styles.actBtn, styles.adoptBtn]} onPress={() => topCardRef.current?.triggerSwipe("adopt")}>
+                <Image source={DISCOVER_ICON} style={styles.adoptIcon} resizeMode="contain" />
               </Pressable>
-              <LikeButton mode={mode} onLike={() => topCardRef.current?.triggerSwipe("right")} />
+              {!adopterMode && <LikeButton mode={mode} onLike={() => topCardRef.current?.triggerSwipe("right")} />}
             </View>
           </>
         )}
       </View>
+
+      {adoptNotice && (
+        <Pressable style={styles.adoptNotice} onPress={() => setAdoptNotice(null)}>
+          <Text style={styles.adoptNoticeText}>{adoptNotice}</Text>
+        </Pressable>
+      )}
+
+      <Modal visible={!!adoptChoice} transparent animationType="slide" onRequestClose={cancelIntent}>
+        <View style={styles.sheetOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={cancelIntent} />
+          {adoptChoice && (
+            <View style={styles.sheet}>
+              <View style={styles.sheetHandle} />
+              <Image source={{ uri: adoptChoice.photo || undefined }} style={styles.sheetAvatar} />
+              <Text style={styles.sheetTitle}>{tx(`Les bébés de ${adoptChoice.name}`, `${adoptChoice.name}'s babies`)}</Text>
+              <Text style={styles.sheetText}>{tx(`Rien n'est envoyé maintenant. Dès que ${adoptChoice.name} aura une portée, ta demande part chez les deux parents.`, `Nothing is sent now. As soon as ${adoptChoice.name} has a litter, your request goes to both parents.`)}</Text>
+              <Pressable style={styles.sheetPrimary} onPress={() => chooseIntent("ADOPT")}>
+                <Text style={styles.sheetPrimaryText}>🍼 {tx("Adopter un bébé", "Adopt a baby")}</Text>
+              </Pressable>
+              <Pressable style={styles.sheetSecondary} onPress={() => chooseIntent("BUY")}>
+                <Text style={styles.sheetSecondaryText}>💶 {tx("Acheter un bébé", "Buy a baby")}</Text>
+              </Pressable>
+              <Pressable style={styles.sheetCancel} onPress={cancelIntent}>
+                <Text style={styles.sheetCancelText}>{tx("Annuler", "Cancel")}</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </Modal>
 
       <Modal visible={pendingMode !== null} transparent animationType="fade" onRequestClose={() => setPendingMode(null)}>
         <View style={[styles.confirmOverlay, { backgroundColor: "rgba(43,39,36,0.48)" }]}>
@@ -170,8 +244,23 @@ const styles = StyleSheet.create({
   },
   skipBtn: { width: 54, height: 54, borderRadius: 27 },
   skipIcon: { fontFamily: fonts.body, fontSize: 32, lineHeight: 34, color: "#2B2724" },
-  superBtn: { width: 44, height: 44, borderRadius: 22 },
-  superIcon: { fontSize: 18, color: "#FF9E4F" },
+  adoptBtn: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: ADOPT },
+  adoptIcon: { width: 28, height: 28 },
+  adopterBanner: { alignSelf: "center", fontFamily: fonts.bodyBold, fontSize: 11, color: "#FFFFFF", backgroundColor: "rgba(201,122,30,0.9)", paddingHorizontal: 12, paddingVertical: 7, borderRadius: radii.pill, overflow: "hidden", textAlign: "center" },
+  adoptNotice: { position: "absolute", left: 16, right: 16, top: 70, zIndex: 40, padding: 12, borderRadius: radii.md, backgroundColor: "rgba(255,255,255,0.96)", borderWidth: 1.5, borderColor: ADOPT, shadowColor: "#C97A1E", shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+  sheetOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(43,39,36,0.42)" },
+  sheet: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.97)", borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg, borderWidth: 1.5, borderBottomWidth: 0, borderColor: ADOPT, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 28 },
+  sheetHandle: { width: 42, height: 4, borderRadius: 2, backgroundColor: "rgba(201,122,30,0.35)", marginBottom: 16 },
+  sheetAvatar: { width: 76, height: 76, borderRadius: 38, borderWidth: 3, borderColor: ADOPT, backgroundColor: "#FFF1DD" },
+  sheetTitle: { fontFamily: fonts.display, fontSize: 21, color: "#3A2A18", marginTop: 10, textAlign: "center" },
+  sheetText: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, color: "#8A6F54", textAlign: "center", marginTop: 6, marginBottom: 18 },
+  sheetPrimary: { alignSelf: "stretch", alignItems: "center", borderRadius: radii.pill, paddingVertical: 14, backgroundColor: ADOPT },
+  sheetPrimaryText: { fontFamily: fonts.bodyBold, fontSize: 15, color: "#FFFFFF" },
+  sheetSecondary: { alignSelf: "stretch", alignItems: "center", borderRadius: radii.pill, paddingVertical: 13, marginTop: 10, backgroundColor: "#FFFFFF", borderWidth: 1.5, borderColor: ADOPT },
+  sheetSecondaryText: { fontFamily: fonts.bodyBold, fontSize: 15, color: "#C97A1E" },
+  sheetCancel: { paddingVertical: 12, marginTop: 4 },
+  sheetCancelText: { fontFamily: fonts.bodySemi, fontSize: 13, color: "#8A6F54" },
+  adoptNoticeText: { fontFamily: fonts.bodySemi, fontSize: 12, lineHeight: 17, color: "#3A2A18" },
   likeBtn: { width: 60, height: 60, borderRadius: 30, backgroundColor: "#FF5D73" },
   likeIcon: { fontSize: 22 },
   confirmOverlay: { flex: 1, alignItems: "center", justifyContent: "center", padding: 22 },

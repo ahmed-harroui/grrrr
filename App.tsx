@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashAPI from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import {
@@ -46,13 +47,15 @@ export default function App() {
 
   return (
     <View style={styles.fill} onLayout={onLayout}>
-      <AuthProvider>
-        <LocalizationProvider>
-          <ThemeProvider>
-            <ThemedApp stage={stage} setStage={setStage} />
-          </ThemeProvider>
-        </LocalizationProvider>
-      </AuthProvider>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <LocalizationProvider>
+            <ThemeProvider>
+              <ThemedApp stage={stage} setStage={setStage} />
+            </ThemeProvider>
+          </LocalizationProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
     </View>
   );
 }

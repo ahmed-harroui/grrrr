@@ -1,4 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { getPetLikers, Liker } from "@/data/api/likes";
+import { getWaitingForMyPet } from "@/data/api/adoption";
+import { useWidgetSync } from "@/widgets/useWidgetSync";
 import { Image, ImageStyle, StyleSheet, Text, View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -54,13 +57,36 @@ export default function MainTabs() {
   const insets = useSafeAreaInsets();
   const colors = useThemedColors();
   const styles = getStaticStyles(colors);
-  const { chats, pendingMatch, clearPendingMatch } = useAppState();
+  const { chats, matches, activePet, pendingMatch, clearPendingMatch } = useAppState();
   const { tx } = useTranslation();
   const unreadMessages = chats.reduce(
     (total, chat) => total + chat.messages.filter((message) => message.from === "them" && !message.read).length,
     0
   );
   const hasMessages = chats.some((chat) => chat.messages.length > 0);
+
+  // Matches tab badge: the likes received that are still waiting for a like back, and the
+  // families waiting for my pet's babies (matches are conversations, counted on the Chat tab).
+  const [likers, setLikers] = useState<Liker[]>([]);
+  const [waitingCount, setWaitingCount] = useState(0);
+  useEffect(() => {
+    let active = true;
+    const load = () => {
+      void getPetLikers(activePet.dbId).then((result) => active && setLikers(result));
+      void getWaitingForMyPet(activePet.dbId).then((result) => active && setWaitingCount(result.length));
+    };
+    load();
+    const timer = setInterval(load, 30000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [activePet.dbId, matches.length]);
+  const pendingLikers = likers.filter((liker) => !matches.some((pet) => pet.dbId === liker.id));
+  const matchesCount = pendingLikers.length + waitingCount;
+
+  // The home-screen widgets show the same numbers.
+  useWidgetSync({ likes: pendingLikers.length, lastLikerName: pendingLikers[0]?.pet_name, unread: unreadMessages });
 
   return (
     <>
@@ -84,6 +110,7 @@ export default function MainTabs() {
               <Image source={ICONS[route.name]} style={styles.icon} resizeMode="contain" />
             )}
             {route.name === "Chat" && unreadMessages > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{unreadMessages > 99 ? "99+" : unreadMessages}</Text></View>}
+            {route.name === "Matches" && matchesCount > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{matchesCount > 99 ? "99+" : matchesCount}</Text></View>}
           </View>
         ),
       })}

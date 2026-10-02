@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 // Real chat between matched pets, stored in match_messages (one conversation per pet_matches row).
 
 export type DbMessage = { id: string; match_id: string; sender_pet_id: string; body: string; created_at: string };
-export type Conversation = { matchId: string; otherPetId: string; messages: DbMessage[] };
+export type Conversation = { matchId: string; otherPetId: string; messages: DbMessage[]; createdAt: string };
 
 const isUuid = (id?: string) => Boolean(id && /^[0-9a-f-]{36}$/i.test(id));
 
@@ -12,7 +12,7 @@ export async function loadConversations(myPetId: string): Promise<Conversation[]
   if (!supabase || !isUuid(myPetId)) return [];
   const { data: matches, error } = await supabase
     .from("pet_matches")
-    .select("id, pet_one_id, pet_two_id")
+    .select("id, pet_one_id, pet_two_id, created_at")
     .or(`pet_one_id.eq.${myPetId},pet_two_id.eq.${myPetId}`);
   if (error || !matches?.length) return [];
   const { data: messages } = await supabase
@@ -24,6 +24,7 @@ export async function loadConversations(myPetId: string): Promise<Conversation[]
     matchId: m.id,
     otherPetId: m.pet_one_id === myPetId ? m.pet_two_id : m.pet_one_id,
     messages: (messages ?? []).filter((msg) => msg.match_id === m.id) as DbMessage[],
+    createdAt: m.created_at,
   }));
 }
 

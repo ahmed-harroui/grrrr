@@ -1,122 +1,148 @@
 import React, { useCallback, useState } from "react";
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { fonts, radii } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
-import { MeetingMarker, useAppState } from "@/context/AppState";
+import { useAppState } from "@/context/AppState";
 import Header from "@/components/Header";
-import { Pet } from "@/data/mockPets";
-import PetRankBadge from "@/components/PetRankBadge";
 import TrendingProfiles from "@/components/TrendingProfiles";
-import PetProfileSheet from "@/components/PetProfileSheet";
-import { MeetingConfirmModal, MeetingRequest } from "@/components/MeetingMap";
 import { useTranslation } from "@/i18n/useTranslation";
 import { getPetLikers, Liker } from "@/data/api/likes";
+import { AdoptionInterest, getWaitingForMyPet, removeWaitingFamily, WAITLIST_LIMIT } from "@/data/api/adoption";
+import PetProfileSheet from "@/components/PetProfileSheet";
+import type { Pet } from "@/data/mockPets";
+import { timeAgo } from "@/utils/notificationText";
 
 const HOT = "#FF5D73";
 const FRIEND = "#2FBDB4";
+const ADOPT = "#FFB35C";
+const BUY = "#2FBDB4";
 
+// The likes still waiting for an answer. Matches are not listed here: each one is a
+// conversation in Messages.
 export default function MatchesScreen() {
-  const { matches, meetingMarkers, activePet } = useAppState();
+  const { matches, activePet } = useAppState();
   const navigation = useNavigation<any>();
   const colors = useThemedColors();
   const styles = getStyles(colors);
   const { tx } = useTranslation();
-  const [confirmRequest, setConfirmRequest] = useState<MeetingRequest | null>(null);
-  const [profilePet, setProfilePet] = useState<Pet | null>(null);
   const [likers, setLikers] = useState<Liker[]>([]);
+  const [waiting, setWaiting] = useState<AdoptionInterest[]>([]);
+  const [profilePet, setProfilePet] = useState<Pet | null>(null);
 
-  // One-sided likes: listed like matches but blurred until my pet likes back in Discover.
+  // One-sided likes: blurred until my pet likes back in Discover. Below them, the swipes up.
   useFocusEffect(
     useCallback(() => {
       let active = true;
       getPetLikers(activePet.dbId).then((result) => active && setLikers(result));
+      getWaitingForMyPet(activePet.dbId).then((result) => active && setWaiting(result));
       return () => {
         active = false;
       };
     }, [activePet.dbId])
   );
+  // Removing a family makes room for another one (5 at most, migration 022).
+  const confirmRemove = (interest: AdoptionInterest) => {
+    const name = interest.pet.name;
+    Alert.alert(tx(`Retirer ${name} ?`, `Remove ${name}?`), tx(`${name} n'attendra plus les bébés de ${activePet.name}.`, `${name} will no longer wait for ${activePet.name}'s babies.`), [
+      { text: tx("Annuler", "Cancel"), style: "cancel" },
+      {
+        text: tx("Retirer", "Remove"),
+        style: "destructive",
+        onPress: async () => {
+          if (!activePet.dbId || !interest.pet.dbId) return;
+          setWaiting((current) => current.filter((item) => item.pet.dbId !== interest.pet.dbId));
+          const removed = await removeWaitingFamily(activePet.dbId, interest.pet.dbId);
+          if (!removed) getWaitingForMyPet(activePet.dbId).then(setWaiting);
+        },
+      },
+    ]);
+  };
+
   const matchedIds = new Set(matches.map((pet) => pet.dbId));
   const pendingLikers = likers.filter((liker) => !matchedIds.has(liker.id));
-
-  const openChat = (pet: Pet) => {
-    setProfilePet(null);
-    navigation.navigate("ChatThread", { petId: pet.id });
-  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.cream }]} edges={["top"]}>
       <Header />
 
       <FlatList
-        data={matches}
-        keyExtractor={(p) => String(p.id)}
+        data={pendingLikers}
+        keyExtractor={(liker) => liker.id}
         numColumns={1}
         contentContainerStyle={{ gap: 8, paddingHorizontal: 20, paddingBottom: 30 }}
         ListHeaderComponent={
           <View style={styles.headerWrap}>
             <TrendingProfiles />
-            <Text style={styles.title}>{tx("Vos matchs", "Your matches")}</Text>
-            {pendingLikers.length > 0 && (
-              <View style={styles.pendingList}>
-                {pendingLikers.map((liker) => (
-                  <MysteryTile key={liker.id} liker={liker} petName={activePet.name} onPress={() => navigation.navigate("Discover")} styles={styles} />
-                ))}
-              </View>
-            )}
+            <Text style={styles.title}>{tx(`Ils ont liké ${activePet.name}`, `They liked ${activePet.name}`)}</Text>
           </View>
         }
         ListEmptyComponent={
-          pendingLikers.length > 0 ? null : (
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>{tx("Pas encore de match. Swipez à droite sur Discover 🐾", "No matches yet. Swipe right on Discover 🐾")}</Text>
-            </View>
-          )
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>{tx("Aucun like en attente. Swipez à droite sur Discover 🐾", "No likes waiting. Swipe right on Discover 🐾")}</Text>
+          </View>
         }
-        renderItem={({ item }) => (
-          <MatchTile
-            pet={item}
-            marker={meetingMarkers[item.id]}
-            onMarkerChange={(marker) => setConfirmRequest({ pet: item, marker })}
-            onPress={() => setProfilePet(item)}
-            onChat={() => openChat(item)}
-            styles={styles}
-          />
-        )}
+        ListFooterComponent={
+          <View>
+            {/* Swiped my pet up in Discover: they wait for its babies, to adopt or to buy */}
+            {waiting.length > 0 && (
+              <View style={styles.waitingSection}>
+                <View style={styles.waitingHeader}>
+                  <Text style={styles.waitingTitle}>🍼 {tx(`Ils attendent les bébés de ${activePet.name}`, `Waiting for ${activePet.name}'s babies`)}</Text>
+                  <Text style={[styles.waitingCount, waiting.length >= WAITLIST_LIMIT && styles.waitingCountFull]}>{waiting.length}/{WAITLIST_LIMIT}</Text>
+                </View>
+                <Text style={styles.waitingHint}>
+                  {waiting.length >= WAITLIST_LIMIT
+                    ? tx("Liste pleine : personne d'autre ne peut attendre. Retire une famille (✕) pour faire de la place.", "List full: nobody else can wait. Remove a family (✕) to make room.")
+                    : tx("Leur demande part dès que tu proposes une relation 💞 dans un chat.", "Their request leaves as soon as you propose a relationship 💞 in a chat.")}
+                </Text>
+                {waiting.map((item) => (
+                  <WaitingTile key={item.pet.id} interest={item} onPress={() => setProfilePet(item.pet)} onRemove={() => confirmRemove(item)} styles={styles} />
+                ))}
+              </View>
+            )}
+            {matches.length > 0 ? (
+              <Pressable style={styles.messagesLink} onPress={() => navigation.navigate("Chat")}>
+                <Text style={styles.messagesLinkText}>
+                  💬 {matches.length > 1 ? tx(`Tes ${matches.length} matchs sont dans Messages ›`, `Your ${matches.length} matches are in Messages ›`) : tx("Ton match est dans Messages ›", "Your match is in Messages ›")}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        }
+        renderItem={({ item }) => <MysteryTile liker={item} petName={activePet.name} onPress={() => navigation.navigate("Discover")} styles={styles} />}
       />
-
-      <MeetingConfirmModal request={confirmRequest} onClose={() => setConfirmRequest(null)} />
-      <PetProfileSheet
-        pet={profilePet}
-        onClose={() => setProfilePet(null)}
-        action={profilePet ? { label: tx(`💬 Écrire à ${profilePet.name}`, `💬 Message ${profilePet.name}`), onPress: () => openChat(profilePet) } : undefined}
-      />
+      <PetProfileSheet pet={profilePet} onClose={() => setProfilePet(null)} />
     </SafeAreaView>
   );
 }
-function MatchTile({ pet, marker, onMarkerChange, onPress, onChat, styles }: { pet: Pet; marker?: MeetingMarker; onMarkerChange: (marker: MeetingMarker) => void; onPress: () => void; onChat: () => void; styles: ReturnType<typeof getStyles> }) {
-  const { tx } = useTranslation();
-  // Compact row: the full profile (photos, bio, tags) opens on tap.
+
+// A family that swiped my pet up: who, and whether they want to adopt or buy.
+function WaitingTile({ interest, onPress, onRemove, styles }: { interest: AdoptionInterest; onPress: () => void; onRemove: () => void; styles: ReturnType<typeof getStyles> }) {
+  const { tx, language } = useTranslation();
+  const { pet, intent } = interest;
+  const buy = intent === "BUY";
   return (
-    <Pressable style={styles.card} onPress={onPress}>
-      <Image source={{ uri: pet.photo }} style={styles.avatar} />
+    <Pressable style={styles.waitingCard} onPress={onPress}>
+      <View style={styles.waitingRing}>
+        {pet.photo ? <Image source={{ uri: pet.photo }} style={styles.waitingAvatar} /> : <View style={[styles.waitingAvatar, styles.waitingFamily]}><Text style={styles.waitingFamilyIcon}>👪</Text></View>}
+      </View>
       <View style={styles.info}>
         <View style={styles.nameRow}>
-          <Text style={styles.name} numberOfLines={1}>{pet.name}, {pet.age}</Text>
-          <PetRankBadge level={pet.level ?? ((pet.id % 3) + 1)} />
+          <Text style={styles.waitingName} numberOfLines={1}>{pet.adopterOnly ? tx(`Famille ${pet.name}`, `${pet.name}'s family`) : pet.name}</Text>
+          <Text style={[styles.intentPill, { backgroundColor: buy ? BUY : ADOPT }]}>{buy ? tx("💶 Acheter", "💶 Buy") : tx("🍼 Adopter", "🍼 Adopt")}</Text>
         </View>
-        <Text style={styles.detailLine} numberOfLines={1}>{pet.breed} · {pet.gender === "F" ? tx("Femelle", "Female") : tx("Mâle", "Male")} · 📍 {pet.dist} km</Text>
-        <Text style={styles.meetingPlace} numberOfLines={1}>{marker ? tx("📍 Trace enregistrée", "📍 Spot saved") : tx("📍 Point de rencontre à définir", "📍 Meeting point to decide")}</Text>
+        <Text style={styles.meetingPlace} numberOfLines={1}>{[pet.adopterOnly ? "" : pet.breed, timeAgo(interest.since, language)].filter(Boolean).join(" · ")}</Text>
       </View>
-      <Pressable onPress={() => onMarkerChange("blue")} hitSlop={4} style={[styles.markerButton, marker === "blue" && styles.markerSelected]}><Image source={require("../../assets/bleue_clic.png")} style={styles.markerImage} /></Pressable>
-      <Pressable onPress={() => onMarkerChange("pink")} hitSlop={4} style={[styles.markerButton, marker === "pink" && styles.markerSelected]}><Image source={require("../../assets/pink_clic.png")} style={styles.markerImage} /></Pressable>
-      <Pressable onPress={onChat} hitSlop={8} style={styles.chatButton}><Text style={styles.chatButtonText}>💬</Text></Pressable>
+      <Pressable onPress={onRemove} hitSlop={10} style={styles.waitingRemove}>
+        <Text style={styles.waitingRemoveText}>✕</Text>
+      </Pressable>
     </Pressable>
   );
 }
 
-// A pet that liked mine: same row as a match, but photo and identity stay blurred until the like back.
+// A pet that liked mine: photo and identity stay blurred until the like back.
 function MysteryTile({ liker, petName, onPress, styles }: { liker: Liker; petName: string; onPress: () => void; styles: ReturnType<typeof getStyles> }) {
   const { tx } = useTranslation();
   const hot = liker.intent === "HOT";
@@ -145,10 +171,9 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     container: { flex: 1 },
     headerWrap: { marginBottom: 4 },
     title: { fontFamily: fonts.display, fontSize: 21, color: colors.dark, marginBottom: 10, marginTop: 10 },
-    empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40, paddingVertical: 40 },
+    empty: { alignItems: "center", justifyContent: "center", paddingHorizontal: 40, paddingVertical: 40 },
     emptyText: { textAlign: "center", fontFamily: fonts.body, color: colors.grey, fontSize: 13 },
     card: { flexDirection: "row", alignItems: "center", gap: 8, padding: 9, backgroundColor: colors.white, borderRadius: radii.md, borderWidth: 1, borderColor: colors.line },
-    avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.line },
     info: { flex: 1, minWidth: 0, marginLeft: 3 },
     nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
     name: { flexShrink: 1, fontFamily: fonts.display, fontSize: 16, color: colors.dark },
@@ -156,13 +181,25 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     meetingPlace: { fontFamily: fonts.body, fontSize: 10, color: colors.grey, marginTop: 2 },
     chatButton: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.cream2, alignItems: "center", justifyContent: "center" },
     chatButtonText: { fontSize: 15 },
-    markerButton: { width: 26, height: 26, alignItems: "center", justifyContent: "center", borderRadius: 13 },
-    markerSelected: { backgroundColor: colors.cream2 },
-    markerImage: { width: 22, height: 22 },
-    pendingList: { gap: 8, marginBottom: 4 },
     mysteryAvatar: { width: 52, height: 52, borderRadius: 26, overflow: "hidden", backgroundColor: colors.line, alignItems: "center", justifyContent: "center" },
     mysteryPhoto: { ...StyleSheet.absoluteFill },
     intentPill: { fontFamily: fonts.bodyBold, fontSize: 9, color: "#FFFFFF", paddingHorizontal: 7, paddingVertical: 2, borderRadius: radii.pill, overflow: "hidden" },
     superLike: { fontSize: 12 },
+    waitingSection: { marginTop: 18, padding: 12, gap: 8, borderRadius: radii.lg, backgroundColor: "rgba(255,179,92,0.12)", borderWidth: 1, borderColor: "rgba(255,179,92,0.45)" },
+    waitingTitle: { fontFamily: fonts.display, fontSize: 17, color: colors.dark },
+    waitingHint: { fontFamily: fonts.body, fontSize: 11, lineHeight: 15, color: colors.grey, marginTop: -4, marginBottom: 2 },
+    waitingCard: { flexDirection: "row", alignItems: "center", gap: 9, padding: 8, borderRadius: radii.md, backgroundColor: colors.white, borderWidth: 1, borderColor: "rgba(255,179,92,0.35)" },
+    waitingRing: { width: 46, height: 46, borderRadius: 23, padding: 2, backgroundColor: ADOPT },
+    waitingAvatar: { width: "100%", height: "100%", borderRadius: 21, backgroundColor: colors.cream2 },
+    waitingFamily: { alignItems: "center", justifyContent: "center" },
+    waitingFamilyIcon: { fontSize: 20 },
+    waitingName: { flexShrink: 1, fontFamily: fonts.display, fontSize: 15, color: colors.dark },
+    waitingHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+    waitingCount: { fontFamily: fonts.bodyBold, fontSize: 11, color: "#C97A1E", backgroundColor: colors.white, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radii.pill, overflow: "hidden" },
+    waitingCountFull: { color: colors.white, backgroundColor: "#C97A1E" },
+    waitingRemove: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.cream2, alignItems: "center", justifyContent: "center" },
+    waitingRemoveText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.grey },
+    messagesLink: { alignSelf: "center", marginTop: 8, paddingHorizontal: 14, paddingVertical: 9, borderRadius: radii.pill, backgroundColor: colors.cream2, borderWidth: 1, borderColor: colors.line },
+    messagesLinkText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.coralDark },
   });
 }

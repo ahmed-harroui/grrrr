@@ -1,10 +1,13 @@
 import React from "react";
 import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { fonts, radii } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import Header from "@/components/Header";
 import MeetingMap from "@/components/MeetingMap";
+import ThreadsFeed from "@/components/ThreadsFeed";
+import SectionBoundary from "@/components/SectionBoundary";
 import { useAppState } from "@/context/AppState";
 import { useCareStatus } from "@/hooks/usePetProgression";
 import { careUrlForPet, healthLabel } from "@/data/api/care";
@@ -18,30 +21,28 @@ const SOCIALS = [
   { label: "Snap", icon: "◈", color: "#D7B52A", url: "https://snapchat.com" },
 ];
 
-const EDITORIAL = [
-  { type: "thread", title: "Le petit rituel qui rapproche", titleEn: "The little ritual that brings you closer", text: "3 idées simples pour une première balade réussie.", textEn: "3 simple ideas for a great first walk.", icon: "✦" },
-  { type: "new", title: "Nouveau chez GRRRR", titleEn: "New at GRRRR", text: "Les badges de niveau arrivent dans les profils.", textEn: "Level badges are coming to profiles.", icon: "✧" },
-  { type: "product", title: "La sélection du moment", titleEn: "Current picks", text: "Des essentiels choisis pour les sorties complices.", textEn: "Essentials chosen for outings together.", icon: "♡" },
-];
-
 export default function ExploreScreen() {
   const colors = useThemedColors();
   const styles = getStyles(colors);
   const { activePet } = useAppState();
   const { t, tx, language } = useTranslation();
   const care = useCareStatus(activePet.dbId);
+  const navigation = useNavigation<any>();
 
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
         <Header />
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
           <View style={styles.mapSection}>
-            <MeetingMap />
+            <SectionBoundary name="map">
+              <MeetingMap />
+            </SectionBoundary>
           </View>
           <View style={styles.splitSection}>
             <View style={styles.leftColumn}>
-              <Text style={styles.columnTitle}>{tx("À découvrir", "Discover")}</Text>
-              {EDITORIAL.map((item) => <Pressable key={item.title} style={styles.editorialCard}><View style={styles.editorialIcon}><Text style={styles.editorialIconText}>{item.icon}</Text></View><Text style={styles.editorialType}>{item.type === "thread" ? "THREAD" : item.type === "new" ? tx("NOUVEAUTÉ", "NEW") : tx("SÉLECTION", "PICKS")}</Text><Text style={styles.editorialTitle}>{tx(item.title, item.titleEn)}</Text><Text style={styles.editorialText}>{tx(item.text, item.textEn)}</Text><Text style={styles.readMore}>{tx("Voir plus ›", "Read more ›")}</Text></Pressable>)}
+              <SectionBoundary name="threads">
+                <ThreadsFeed />
+              </SectionBoundary>
             </View>
             <View style={styles.rightColumn}>
               <Text style={styles.columnTitle}>{tx("La boutique", "The shop")}</Text>
@@ -65,12 +66,12 @@ export default function ExploreScreen() {
                   </>
                 )}
               </Pressable>
-              <View style={styles.adoptionCard}>
+              <Pressable style={styles.adoptionCard} onPress={() => navigation.navigate("Adopt")}>
                 <View style={styles.careHeader}><Text style={styles.careIcon}>🍼</Text><Text style={styles.adoptionEyebrow}>GRRRR ADOPT</Text></View>
                 <Text style={styles.careTitle}>{t.explore.adoptionTitle}</Text>
                 <Text style={styles.careAdvice}>{t.explore.adoptionText}</Text>
-                <View style={styles.comingSoonOverlay}><Text style={styles.comingSoonText}>{t.explore.comingSoon}</Text></View>
-              </View>
+                <Text style={styles.adoptionLink}>{t.explore.adoptionLink}</Text>
+              </Pressable>
             </View>
           </View>
         </ScrollView>
@@ -95,10 +96,9 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     careFill: { height: "100%", borderRadius: 3, backgroundColor: CARE_BLUE },
     careAdvice: { fontFamily: fonts.body, fontSize: 10, lineHeight: 14, color: colors.grey, marginTop: 7 },
     careLink: { fontFamily: fonts.bodyBold, fontSize: 11, color: CARE_BLUE, marginTop: 8 },
-    adoptionCard: { marginTop: 10, borderRadius: radii.md, padding: 12, minHeight: 110, overflow: "hidden", backgroundColor: colors.cream2, borderWidth: 1, borderColor: colors.line },
-    adoptionEyebrow: { fontFamily: fonts.bodyBold, fontSize: 9, letterSpacing: 1, color: colors.coralDark },
-    comingSoonOverlay: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" },
-    comingSoonText: { fontFamily: fonts.bodyBold, fontSize: 12, letterSpacing: 0.5, color: "#FFFFFF", backgroundColor: "rgba(0,0,0,0.35)", paddingHorizontal: 12, paddingVertical: 6, borderRadius: radii.pill, overflow: "hidden" },
+    adoptionCard: { marginTop: 10, borderRadius: radii.md, padding: 12, backgroundColor: "rgba(255,179,92,0.16)", borderWidth: 1, borderColor: "rgba(255,179,92,0.6)" },
+    adoptionEyebrow: { fontFamily: fonts.bodyBold, fontSize: 9, letterSpacing: 1, color: "#C97A1E" },
+    adoptionLink: { fontFamily: fonts.bodyBold, fontSize: 11, color: "#C97A1E", marginTop: 8 },
     socialRow: { flexDirection: "row", gap: 8 },
     socialChip: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, borderWidth: 1, borderRadius: radii.pill, paddingVertical: 7, backgroundColor: "rgba(255,255,255,0.65)" },
     socialIcon: { fontFamily: fonts.bodyBold, fontSize: 15 },
@@ -107,13 +107,6 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     leftColumn: { flex: 1 },
     rightColumn: { flex: 1 },
     columnTitle: { fontFamily: fonts.displaySemi, fontSize: 16, color: colors.dark, marginBottom: 9 },
-    editorialCard: { backgroundColor: colors.white, borderRadius: radii.md, borderWidth: 1, borderColor: colors.line, padding: 12, marginBottom: 10, minHeight: 157 },
-    editorialIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: colors.cream2, alignItems: "center", justifyContent: "center", marginBottom: 8 },
-    editorialIconText: { fontFamily: fonts.display, fontSize: 17, color: colors.coralDark },
-    editorialType: { fontFamily: fonts.bodyBold, fontSize: 8, letterSpacing: 0.8, color: colors.friend },
-    editorialTitle: { fontFamily: fonts.displaySemi, fontSize: 15, lineHeight: 18, color: colors.dark, marginTop: 3 },
-    editorialText: { fontFamily: fonts.body, fontSize: 11, lineHeight: 16, color: colors.grey, marginTop: 4 },
-    readMore: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.coralDark, marginTop: 8 },
     storeCard: { height: 360, borderRadius: radii.lg, overflow: "hidden", backgroundColor: colors.cream2 },
     storeImage: { width: "100%", height: "100%" },
     storeOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, padding: 14, backgroundColor: "rgba(43,39,36,0.62)" },

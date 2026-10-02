@@ -1,8 +1,19 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+// Firebase Cloud Messaging (google-services.json next to this file)
+apply plugin: "com.google.gms.google-services"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
+
+def googleMapsApiKey() {
+    def fromEnv = System.getenv("EXPO_PUBLIC_GOOGLE_MAPS_API_KEY")
+    if (fromEnv) return fromEnv
+    def envFile = new File(rootDir.getParentFile(), ".env")
+    if (!envFile.exists()) return ""
+    def line = envFile.readLines().find { it.trim().startsWith("EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=") }
+    return line ? line.substring(line.indexOf("=") + 1).trim().replaceAll(/^["']|["']$/, "") : ""
+}
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -96,6 +107,10 @@ android {
         versionName "1.0.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+        // Google Maps key for react-native-maps (AndroidManifest.xml): the EAS environment
+        // variable, else EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in the project's .env. Without it the app
+        // shows a placeholder instead of the maps (src/lib/maps.ts).
+        manifestPlaceholders = [googleMapsApiKey: googleMapsApiKey()]
     }
     signingConfigs {
         debug {

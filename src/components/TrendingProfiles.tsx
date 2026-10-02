@@ -61,7 +61,6 @@ function TrendingCard({ pet, position, isMine, onPress, styles, colors }: { pet:
       </View>
       <View style={styles.panel}>
         <Text style={styles.name} numberOfLines={1}>{pet.name}</Text>
-        <Text style={[styles.level, { color: rank.color }]}>{tx("Niv.", "Lvl")} {level}</Text>
         <Text style={[styles.mode, { color: isHot ? colors.coralDark : colors.friend }]}>{isHot ? "✦ Hot" : "🐾 Friend"}</Text>
       </View>
     </Pressable>

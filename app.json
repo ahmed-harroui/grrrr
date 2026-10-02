@@ -2,6 +2,7 @@
   "expo": {
     "name": "GRRRR",
     "slug": "grrrr",
+    "scheme": "grrrr",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -17,6 +18,7 @@
     },
     "android": {
       "package": "com.grrrr.app",
+      "googleServicesFile": "./google-services.json",
       "versionCode": 1
     },
     "web": {
@@ -32,12 +34,116 @@
       ],
       "expo-font",
       [
+        "expo-notifications",
+        {
+          "color": "#FF5D73"
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "GRRRR a besoin de tes photos pour ajouter des images au profil de ton compagnon.",
           "cameraPermission": "GRRRR a besoin de l'appareil photo pour photographier ton compagnon."
         }
-      ]
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "GrrrrPet",
+              "label": "Mon compagnon",
+              "description": "Niveau, XP, croquettes et série de ton compagnon",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "GrrrrMatch",
+              "label": "Likes et matchs",
+              "description": "Likes reçus, matchs et messages à lire",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "GrrrrRanking",
+              "label": "Classement XP",
+              "description": "Le top 3 des compagnons et ta position",
+              "minWidth": "180dp",
+              "minHeight": "150dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "GrrrrDay",
+              "label": "Le mot du jour",
+              "description": "Anniversaire, conseil santé ou le savais-tu du jour",
+              "minWidth": "250dp",
+              "minHeight": "70dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 1,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ],
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "com.grrrr.app.widgets",
+          "groupIdentifier": "group.com.grrrr.app",
+          "widgets": [
+            {
+              "name": "PetWidget",
+              "displayName": "Mon compagnon",
+              "description": "Niveau, XP, croquettes et série de ton compagnon",
+              "supportedFamilies": [
+                "systemMedium"
+              ],
+              "contentMarginsDisabled": false
+            },
+            {
+              "name": "MatchWidget",
+              "displayName": "Likes et matchs",
+              "description": "Likes reçus, matchs et messages à lire",
+              "supportedFamilies": [
+                "systemMedium"
+              ],
+              "contentMarginsDisabled": false
+            },
+            {
+              "name": "RankingWidget",
+              "displayName": "Classement XP",
+              "description": "Le top 3 des compagnons et ta position",
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium"
+              ],
+              "contentMarginsDisabled": false
+            },
+            {
+              "name": "DayWidget",
+              "displayName": "Le mot du jour",
+              "description": "Anniversaire, conseil santé ou le savais-tu du jour",
+              "supportedFamilies": [
+                "systemMedium"
+              ],
+              "contentMarginsDisabled": false
+            }
+          ]
+        }
+      ],
+      "@react-native-google-signin/google-signin"
     ],
     "extra": {
       "eas": {

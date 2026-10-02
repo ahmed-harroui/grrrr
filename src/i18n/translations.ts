@@ -50,7 +50,8 @@ export const translations = {
       title: "Explorer",
       comingSoon: "Bientôt disponible",
       adoptionTitle: "Adoption",
-      adoptionText: "Vos pets ont eu des bébés ? Proposez-les à l'adoption.",
+      adoptionText: "Des bébés à adopter, proposés par deux compagnons qui se sont plu.",
+      adoptionLink: "Voir les bébés ›",
     },
     myPet: {
       title: "Mon Animal",
@@ -136,7 +137,8 @@ export const translations = {
       title: "Explore",
       comingSoon: "Coming soon",
       adoptionTitle: "Adoption",
-      adoptionText: "Your pets had babies? Offer them for adoption.",
+      adoptionText: "Babies to adopt, offered by two companions who hit it off.",
+      adoptionLink: "See the babies ›",
     },
     myPet: {
       title: "My Pet",

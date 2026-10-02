@@ -31,6 +31,8 @@ export interface PetRecord {
   is_bot?: boolean;
   /** Starter pet created with the account (migration 008), filled by the pet setup screen */
   setup_pending?: boolean;
+  /** Family profile of an account that came to adopt (migration 015): hidden from Discover and Trending */
+  adopter_only?: boolean;
   // Health fields, also edited in GRRRR Care
   birthday?: string | null;
   weight?: number | null;
@@ -91,7 +93,8 @@ const placeholderPhoto = (species: string, id: number) =>
 
 export function petRecordToPet(record: PetRecord): Pet {
   const id = stablePetId(record.id ?? record.owner_id);
-  const photo = record.photo_url || placeholderPhoto(record.species, id);
+  // A family profile gets no stand-in pet picture.
+  const photo = record.photo_url || (record.adopter_only ? "" : placeholderPhoto(record.species, id));
   return {
     id,
     dbId: record.id,
@@ -113,6 +116,7 @@ export function petRecordToPet(record: PetRecord): Pet {
     xp: record.xp ?? 0,
     isBot: record.is_bot ?? false,
     setupPending: record.setup_pending ?? false,
+    adopterOnly: record.adopter_only ?? false,
     health: {
       birthday: record.birthday ?? null,
       weight: record.weight ?? null,
@@ -129,7 +133,7 @@ export async function getDiscoverablePetProfiles(ownerId?: string) {
   let query = supabase.from("pets").select("*").order("created_at", { ascending: false });
   if (ownerId) query = query.neq("owner_id", ownerId);
   const { data, error } = await query;
-  return { data: (data ?? []) as PetRecord[], error };
+  return { data: ((data ?? []) as PetRecord[]).filter((pet) => !pet.adopter_only), error };
 }
 
 /** Trending profiles: the pets with the most XP in the database, every account included. */
@@ -141,7 +145,7 @@ export async function getTopXpPetProfiles(limit = 60) {
     .order("xp", { ascending: false })
     .order("level", { ascending: false })
     .limit(limit);
-  return { data: (data ?? []) as PetRecord[], error };
+  return { data: ((data ?? []) as PetRecord[]).filter((pet) => !pet.adopter_only), error };
 }
 
 export async function getPetsByIds(ids: string[]) {
@@ -185,6 +189,15 @@ export async function uploadPetPhoto(ownerId: string, photo: LocalPhoto): Promis
   const { error } = await supabase.storage.from(PET_PHOTOS_BUCKET).upload(path, base64ToBytes(photo.base64), { contentType });
   if (error) return { url: "", error };
   return { url: supabase.storage.from(PET_PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl, error: null };
+}
+
+/** "I came to adopt": the starter pet becomes the family profile, named after the account. */
+export async function becomeAdopter(ownerId: string, starterPetId: string | null, familyName: string) {
+  if (!supabase) return { error: null };
+  const { data: account } = await getAccountProfile(ownerId);
+  const changes = { pet_name: familyName, bio: "", photo_url: account?.avatar_url ?? "", adopter_only: true, setup_pending: false };
+  if (starterPetId) return updatePetProfile(starterPetId, ownerId, changes);
+  return createPetProfile({ ...changes, owner_id: ownerId, species: "dog", breed: "", age: 0, city: "", energy: 2, mode: 0, tags: [] });
 }
 
 /** Deletes one of my pets; its swipes, matches and messages go with it (on delete cascade). */

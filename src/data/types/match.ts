@@ -1,4 +1,5 @@
-export type MatchType = "FRIEND" | "LOVE" | "BOTH";
+// ADOPT: a conversation opened by an adoption request (migration 012), not a like-back match.
+export type MatchType = "FRIEND" | "LOVE" | "BOTH" | "ADOPT";
 
 export interface MatchScore {
   total: number;

@@ -3,6 +3,7 @@ import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, Tex
 import { fonts, radii } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { useAuth } from "@/context/AuthContext";
+import { googleSignInAvailable } from "@/lib/googleAuth";
 
 import { useTranslation } from "@/i18n/useTranslation";
 
@@ -10,7 +11,7 @@ export default function AuthScreen({ onDemo, onAuthenticated }: { onDemo: () => 
   const colors = useThemedColors();
   const styles = getStyles(colors);
   const { tx } = useTranslation();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,6 +30,15 @@ export default function AuthScreen({ onDemo, onAuthenticated }: { onDemo: () => 
     else onAuthenticated();
   };
 
+  // A new Google account is created on the first time, then goes to the pet setup like any other.
+  const continueWithGoogle = async () => {
+    setBusy(true);
+    const result = await signInWithGoogle();
+    setBusy(false);
+    if (result.error) Alert.alert(tx("Connexion Google impossible", "Google sign-in failed"), result.error);
+    else if (!result.cancelled) onAuthenticated();
+  };
+
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={styles.hero}>
@@ -38,6 +48,21 @@ export default function AuthScreen({ onDemo, onAuthenticated }: { onDemo: () => 
       </View>
 
       <View style={styles.form}>
+        {googleSignInAvailable && (
+          <>
+            <Pressable style={({ pressed }) => [styles.google, pressed && styles.pressed]} onPress={continueWithGoogle} disabled={busy}>
+              <Text style={styles.googleG}>
+                <Text style={{ color: "#4285F4" }}>G</Text>
+              </Text>
+              <Text style={styles.googleText}>{tx("Continuer avec Google", "Continue with Google")}</Text>
+            </Pressable>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>{tx("ou avec ton email", "or with your email")}</Text>
+              <View style={styles.dividerLine} />
+            </View>
+          </>
+        )}
         <Text style={styles.label}>EMAIL</Text>
         <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder={tx("toi@exemple.com", "you@example.com")} placeholderTextColor={colors.grey} style={styles.input} />
         <Text style={styles.label}>{tx("MOT DE PASSE", "PASSWORD")}</Text>
@@ -70,6 +95,12 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     primary: { backgroundColor: colors.coral, borderRadius: radii.sm, alignItems: "center", paddingVertical: 15, marginTop: 4 },
     primaryText: { color: colors.white, fontFamily: fonts.bodyBold, fontSize: 14 },
     pressed: { opacity: 0.82 },
+    google: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, height: 50, borderRadius: radii.sm, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DADCE0", marginBottom: 4 },
+    googleG: { fontFamily: fonts.displayExtra, fontSize: 20 },
+    googleText: { fontFamily: fonts.bodySemi, fontSize: 14, color: "#3C4043" },
+    divider: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 16 },
+    dividerLine: { flex: 1, height: 1, backgroundColor: colors.line },
+    dividerText: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.grey },
     switchButton: { alignItems: "center", paddingTop: 18 },
     switchText: { color: colors.coralDark, fontFamily: fonts.bodySemi, fontSize: 13 },
     demoButton: { alignItems: "center", paddingTop: 24 },

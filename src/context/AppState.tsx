@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import { LIKED_BACK, ME, Pet } from "@/data/mockPets";
 import { awardTreats, loadTreatBalance } from "@/data/api/treats";
-import { loadMeetingTraces, removeMeetingTrace, saveMeetingTrace, updateMeetingTraceStatus } from "@/data/api/meetings";
+import { getLiveMeetings, loadMeetingTraces, removeMeetingTrace, saveMeetingTrace, updateMeetingTraceStatus } from "@/data/api/meetings";
 import { getMatches, createMatch, getMatchType } from "@/data/api/matches";
 import type { MatchType } from "@/data/types/match";
 import { createSwipe } from "@/data/api/swipes";
@@ -29,7 +29,12 @@ export interface ChatMessage {
 export interface Chat {
   pet: Pet;
   messages: ChatMessage[];
+  /** Last activity (new match or message): Messages lists the most recent first */
+  lastAt?: string;
 }
+
+const now = () => new Date().toISOString();
+const latest = (a?: string, b?: string) => (!a ? b : !b ? a : a > b ? a : b);
 
 export type MeetingMarker = "pink" | "blue";
 export interface MeetingTrace {
@@ -69,6 +74,8 @@ interface AppStateShape {
   likePet: (pet: Pet, superLike?: boolean) => void;
   sendMessage: (petId: number, text: string) => void;
   markChatRead: (petId: number) => void;
+  /** Reloads the database conversations (new ones, and messages written by the database) */
+  refreshConversations: () => Promise<void>;
   meetingMarkers: Record<number, MeetingMarker | undefined>;
   setMeetingMarker: (petId: number, marker: MeetingMarker) => void;
   meetingTraces: Record<number, MeetingTrace | undefined>;
@@ -76,6 +83,8 @@ interface AppStateShape {
   confirmMeetingTrace: (petId: number) => void;
   deleteMeetingTrace: (petId: number) => void;
   treats: number;
+  /** Reads the active pet's treats again (after a daily gift) */
+  refreshTreats: () => void;
   petProgress: PetProgress;
   progressByPet: Record<number, PetProgress>;
 }
@@ -124,13 +133,33 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       const next = [...current];
       for (const { conversation, pet } of loaded) {
         const messages: ChatMessage[] = conversation.messages.map((m) => ({ from: m.sender_pet_id === myDbId ? "me" : "them", text: m.body, read: true }));
+        // Last activity: the latest message, or the match itself.
+        const lastAt = conversation.messages[conversation.messages.length - 1]?.created_at ?? conversation.createdAt;
         const index = next.findIndex((chat) => chat.pet.id === pet.id);
-        if (index >= 0) next[index] = { pet, messages: messages.length ? messages : next[index].messages };
-        else next.push({ pet, messages });
+        if (index >= 0) next[index] = { pet, messages: messages.length ? messages : next[index].messages, lastAt: latest(next[index].lastAt, lastAt) };
+        else next.push({ pet, messages, lastAt });
       }
       return next;
     });
+
+    // Outings shared by both owners (migration 017): their spots on the map, on both sides.
+    const live = await getLiveMeetings(loaded.map(({ conversation }) => conversation.matchId));
+    const liveByMatch = new Map(live.map((proposal) => [proposal.matchId, proposal]));
+    const traces: Record<number, MeetingTrace | undefined> = {};
+    for (const { conversation, pet } of loaded) {
+      const proposal = liveByMatch.get(conversation.matchId);
+      traces[pet.id] = proposal
+        ? { latitude: proposal.latitude, longitude: proposal.longitude, marker: proposal.marker, status: proposal.status === "accepted" ? "confirmed" : "pending", requestedBy: proposal.proposerPetId === myDbId ? "me" : "them" }
+        : undefined;
+    }
+    setMeetingTraces((current) => ({ ...current, ...traces }));
+    setMeetingMarkers((current) => ({ ...current, ...Object.fromEntries(Object.entries(traces).map(([petId, trace]) => [petId, trace?.marker])) }));
   }, []);
+
+  // After a relation or adoption action: the database wrote the message, the chats follow.
+  const refreshConversations = useCallback(async () => {
+    if (activePet.dbId) await loadDbConversations(activePet.dbId);
+  }, [activePet.dbId, loadDbConversations]);
 
   // Saves a message in the database conversation with this pet (when there is one).
   const persistMessage = useCallback((petId: number, text: string) => {
@@ -146,6 +175,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     const myDbId = activePet.dbId;
     if (!session?.user.id || !myDbId) return;
     return subscribeToNewMatches(myDbId, async (otherId, type) => {
+      // An adoption request opens a conversation, without the match celebration.
+      if (type === "ADOPT") {
+        void loadDbConversations(myDbId);
+        return;
+      }
       if (recentlyLikedRef.current.has(otherId)) return;
       const { data } = await getPetsByIds([otherId]);
       if (!data[0]) return;
@@ -165,7 +199,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       if (message.sender_pet_id === myDbId) return;
       const petId = petByMatch.get(message.match_id);
       if (petId === undefined) return;
-      setChats((prev) => prev.map((chat) => (chat.pet.id === petId ? { ...chat, messages: [...chat.messages, { from: "them", text: message.body, read: false }] } : chat)));
+      setChats((prev) => prev.map((chat) => (chat.pet.id === petId ? { ...chat, messages: [...chat.messages, { from: "them", text: message.body, read: false }], lastAt: message.created_at ?? now() } : chat)));
     });
   }, [activePet.dbId, matchIds]);
 
@@ -241,6 +275,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     }
   }, [activePet.id, session?.user.id, updateProgress]);
 
+  const refreshTreats = useCallback(() => {
+    void loadTreatBalance(apiPetId(activePet)).then(({ balance }) => setTreats(balance));
+    if (activePet.dbId) void refreshPetProgress(activePet.dbId, false);
+  }, [activePet]);
+
   const collectTreats = useCallback(async (amount: number, reason: "match" | "outing", contextKey: string) => {
     if (claimedTreatKeys.has(contextKey)) return;
     setClaimedTreatKeys((current) => new Set(current).add(contextKey));
@@ -305,12 +344,14 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
             {
               pet,
               messages: [{ from: "them", text: `Salut ! ${activePet.name} et ${pet.name} se sont plu 🐾\n\n${matchEmoji} Match ${matchType} ✦`, read: false }],
+              lastAt: now(),
             },
           ]
     );
     setPendingMatch({ ...pet, matchType } as any);
     updateProgress(activePet.id, { matches: petProgress.matches + 1 });
-    void collectTreats(10, "match", `match:${activePet.id}:${pet.id}`);
+    // Treats are rare: 1 per match (the database caps it too, migration 018).
+    void collectTreats(1, "match", `match:${activePet.id}:${pet.id}`);
 
     // Database matches are created server side: load the conversation (e.g. the bot's hello).
     if (pet.dbId) {
@@ -329,7 +370,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const sendMessage = useCallback((petId: number, text: string) => {
     if (!text.trim()) return;
     setChats((prev) =>
-      prev.map((c) => (c.pet.id === petId ? { ...c, messages: [...c.messages, { from: "me", text }] } : c))
+      prev.map((c) => (c.pet.id === petId ? { ...c, messages: [...c.messages, { from: "me", text }], lastAt: now() } : c))
     );
     persistMessage(petId, text);
     if (isSupabaseConfigured) return;
@@ -421,7 +462,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setMeetingMarkers((prev) => ({ ...prev, [petId]: nextTrace.marker }));
     if (session?.user.id) void saveMeetingTrace(session.user.id, activePet.id, petId, nextTrace);
     updateProgress(activePet.id, { outings: petProgress.outings + 1 });
-    void collectTreats(5, "outing", `outing:${activePet.id}:${petId}`);
+    // Demo outings only; real ones earn their 2 treats once accepted (migration 018).
+    void collectTreats(2, "outing", `outing:${activePet.id}:${petId}`);
 
     const modeText = nextTrace.marker === "pink" ? "Amoureux ❤️ (Hot)" : "Amical 🐾 (Friend)";
     const messageText = `📍 Sortie organisée : Rendez-vous ${modeText} sélectionné ! Retrouvons-nous sur la carte.`;
@@ -460,8 +502,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   }, [activePet.id, session?.user.id]);
 
   const value = useMemo(
-    () => ({ activePet, setActivePet, ownedPets, refreshOwnedPets, mode, setMode: updateMode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, meetingMarkers, setMeetingMarker, meetingTraces, setMeetingTrace, confirmMeetingTrace, deleteMeetingTrace, treats, petProgress, progressByPet }),
-    [activePet, setActivePet, ownedPets, refreshOwnedPets, mode, updateMode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, meetingMarkers, setMeetingMarker, meetingTraces, setMeetingTrace, confirmMeetingTrace, deleteMeetingTrace, treats, petProgress, progressByPet]
+    () => ({ activePet, setActivePet, ownedPets, refreshOwnedPets, mode, setMode: updateMode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, refreshConversations, meetingMarkers, setMeetingMarker, meetingTraces, setMeetingTrace, confirmMeetingTrace, deleteMeetingTrace, treats, refreshTreats, petProgress, progressByPet }),
+    [activePet, setActivePet, ownedPets, refreshOwnedPets, mode, updateMode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, refreshConversations, meetingMarkers, setMeetingMarker, meetingTraces, setMeetingTrace, confirmMeetingTrace, deleteMeetingTrace, treats, refreshTreats, petProgress, progressByPet]
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;

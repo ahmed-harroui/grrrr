@@ -1,4 +1,8 @@
 <resources>
   <string name="app_name">GRRRR</string>
+  <string name="widget_grrrrpet_description" translatable="false">Niveau, XP, croquettes et série de ton compagnon</string>
+  <string name="widget_grrrrmatch_description" translatable="false">Likes reçus, matchs et messages à lire</string>
+  <string name="widget_grrrrranking_description" translatable="false">Le top 3 des compagnons et ta position</string>
+  <string name="widget_grrrrday_description" translatable="false">Anniversaire, conseil santé ou le savais-tu du jour</string>
   <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
 </resources>

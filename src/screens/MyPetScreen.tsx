@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { fonts, radii } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { ME } from "@/data/mockPets";
@@ -76,6 +77,7 @@ export default function MyPetScreen() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [levelInfoOpen, setLevelInfoOpen] = useState(false);
   const [addPetOpen, setAddPetOpen] = useState(false);
+  const navigation = useNavigation<any>();
   const [customPets, setCustomPets] = useState<PetItem[]>([]);
   // Guest mode: edits to demo pets live only in memory.
   const [localEdits, setLocalEdits] = useState<Record<string, PetItem>>({});
@@ -100,6 +102,18 @@ export default function MyPetScreen() {
   // Signed in: XP computed by the server from real activity. Guest: local estimate.
   const { progression, error: progressionError, refresh: refreshProgression } = usePetProgression(selectedDbId);
   const level = progression ? levelFromXp(progression.xp) : getPetLevel(treats, petProgress, completion);
+  // A level gained since the pets were loaded: reload them, so the ring stays right after switching.
+  const selectedItemLevel = allPets.find((pet) => pet.key === selectedKey)?.level;
+  useEffect(() => {
+    if (session && progression && selectedItemLevel !== undefined && selectedItemLevel !== level.level) void refreshOwnedPets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [level.level, selectedItemLevel]);
+  // Avatar ring: the rank of each pet's real level (the database's), the selected one with its
+  // freshest progression; never a local estimate, which made unselected pets look Bronze.
+  const rankColorOf = (pet: PetItem) => {
+    const petLevel = pet.key === selectedKey && progression ? level.level : pet.level;
+    return PET_RANKS[Math.max(0, Math.min(PET_RANKS.length - 1, petLevel - 1))].color;
+  };
 
   useEffect(() => setPhotoIndex(0), [selectedKey, gallery.length]);
 
@@ -140,13 +154,19 @@ export default function MyPetScreen() {
         if (upload.error) Alert.alert(tx("Photo non envoyée", "Photo not uploaded"), `${upload.error.message}\n\n${tx("Tu pourras l'ajouter depuis « Modifier le profil ».", "You can add it from \"Edit profile\".")}`);
         profile.photo_url = upload.url;
       }
-      const { error } = await createPetProfile({ ...profile, owner_id: session.user.id, species: pet.species, tags: pet.tags, gender: pet.gender });
+      // An adopter's family profile becomes this first pet: its adoption requests and
+      // conversations stay attached to it.
+      const familyProfileId = activePet.adopterOnly ? activePet.dbId : undefined;
+      const record = { ...profile, owner_id: session.user.id, species: pet.species, tags: pet.tags, gender: pet.gender };
+      const { error } = familyProfileId
+        ? await updatePetProfile(familyProfileId, session.user.id, { ...record, adopter_only: false, setup_pending: false })
+        : await createPetProfile(record);
       if (error) {
         Alert.alert(tx("Profil non enregistré", "Profile not saved"), error.message);
         return;
       }
       const pets = await refreshOwnedPets();
-      const created = pets[pets.length - 1];
+      const created = familyProfileId ? pets.find((item) => item.dbId === familyProfileId) : pets[pets.length - 1];
       if (created) {
         setSelectedKey(toPetItem(created).key);
         setActivePet(created);
@@ -275,6 +295,29 @@ export default function MyPetScreen() {
     return true;
   };
 
+  // An account that came to adopt has no pet yet: only the way to add one.
+  if (activePet.adopterOnly) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <Header />
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.hero}>
+            <Text style={styles.heroSticker}>🍼  ✦  ♡</Text>
+            <Text style={styles.heroTitle}>{tx("Ta famille adopte", "Your family is adopting")}</Text>
+            <Text style={styles.heroSubtitle}>{tx("Glisse vers le haut dans Discover les compagnons dont tu veux un bébé, ou parcours Adopt.", "Swipe up in Discover the companions you would like a baby from, or browse Adopt.")}</Text>
+          </View>
+          <View style={styles.addAnother}>
+            <Text style={styles.addAnotherTitle}>🐾 {tx("Tu as déjà un compagnon ?", "Already have a companion?")}</Text>
+            <Text style={styles.addAnotherText}>{tx("Ajoute-le pour qu'il ait son profil, ses matchs et son XP.", "Add them so they get their own profile, matches and XP.")}</Text>
+            <Pressable onPress={() => setAddPetOpen(true)}><Text style={styles.addAnotherAction}>＋ {tx("Ajouter un pet", "Add a pet")}</Text></Pressable>
+            <Pressable onPress={() => navigation.navigate("Adopt")}><Text style={styles.addAnotherAction}>🍼 {tx("Voir les bébés à adopter", "See the babies to adopt")}</Text></Pressable>
+          </View>
+        </ScrollView>
+        <AddPetSheet visible={addPetOpen} onClose={() => setAddPetOpen(false)} onCreate={createPet} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <Header />
@@ -291,7 +334,7 @@ export default function MyPetScreen() {
             <Pressable key={pet.key} onPress={() => {
               if (pet.key !== selectedKey) setPendingPetKey(pet.key);
             }} onLongPress={() => setDeleteKey(pet.key)} delayLongPress={450} style={[styles.petChoice, selectedKey === pet.key && styles.petChoiceActive]}>
-              <View style={[styles.avatarRing, { borderColor: getPetLevel(pet.key === selectedKey ? treats : 0, progressByPet[pet.key === selectedKey ? activePet.id : -1] ?? { matches: 0, outings: 0, messagesReceived: 0, sessions: 0 }, pet.key === selectedKey ? completion : 0).rank.color }]}>{pet.profile.photo_url ? <Image source={{ uri: pet.profile.photo_url }} style={styles.petAvatar} /> : <View style={[styles.petAvatar, styles.photoPlaceholder]}><Text style={styles.placeholderIconSmall}>{speciesInfo(pet.species)?.icon ?? "🐾"}</Text></View>}</View>
+              <View style={[styles.avatarRing, { borderColor: rankColorOf(pet) }]}>{pet.profile.photo_url ? <Image source={{ uri: pet.profile.photo_url }} style={styles.petAvatar} /> : <View style={[styles.petAvatar, styles.photoPlaceholder]}><Text style={styles.placeholderIconSmall}>{speciesInfo(pet.species)?.icon ?? "🐾"}</Text></View>}</View>
               <Text style={[styles.petChoiceName, selectedKey === pet.key && styles.petChoiceNameActive]}>{pet.profile.pet_name}</Text>
             </Pressable>
           ))}

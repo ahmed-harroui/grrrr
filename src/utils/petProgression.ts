@@ -24,7 +24,7 @@ export const XP_SOURCES: Record<XpSourceKey, { icon: string; title: string; titl
   weekly: { icon: "🔥", title: "Connexion hebdo", titleEn: "Weekly visit", rule: "15 XP par semaine, bonus qui grandit avec la série", ruleEn: "15 XP per week, with a bonus that grows with your streak" },
   treats: { icon: "🦴", title: "Croquettes", titleEn: "Treats", rule: "1 XP par croquette gagnée", ruleEn: "1 XP per treat earned" },
   care: { icon: "🩺", title: "GRRRR Care", titleEn: "GRRRR Care", rule: "150 XP en liant Care, + vaccins, visites, puce, poids", ruleEn: "150 XP for linking Care, + vaccines, visits, microchip, weight" },
-  adoption: { icon: "🍼", title: "Adoption", titleEn: "Adoption", rule: "200 XP en activant l'adoption, 20 XP par bébé proposé", ruleEn: "200 XP for enabling adoption, 20 XP per baby offered" },
+  adoption: { icon: "🍼", title: "Adoption", titleEn: "Adoption", rule: "200 XP quand sa relation est acceptée, 20 XP par famille intéressée, 40 XP par demande d'adoption envoyée", ruleEn: "200 XP when their relationship is accepted, 20 XP per interested family, 40 XP per adoption request sent" },
 };
 
 export function levelFromXp(xp: number) {

@@ -46,6 +46,8 @@ export interface Pet {
   isBot?: boolean;
   /** Starter card created with the account; the owner hasn't filled the pet setup yet */
   setupPending?: boolean;
+  /** Family profile of an account that came to adopt (migration 015): not a real pet */
+  adopterOnly?: boolean;
   /** Health fields shared with GRRRR Care (same pets row) */
   health?: PetHealth;
 }

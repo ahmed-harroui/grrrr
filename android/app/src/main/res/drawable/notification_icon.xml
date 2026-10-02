@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GRRRR paw, the small icon of every notification (status bar). Android draws it in one color:
+     white in the status bar, @color/notification_icon_color (coral) in the notification. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!-- Toes -->
+  <path android:fillColor="#FFFFFFFF" android:pathData="M3.6,9.6 a2.3,2.7 -20 1,0 4.6,-1.6 a2.3,2.7 -20 1,0 -4.6,1.6 z" />
+  <path android:fillColor="#FFFFFFFF" android:pathData="M7.4,4.9 a2.3,2.8 -8 1,0 4.6,0 a2.3,2.8 -8 1,0 -4.6,0 z" />
+  <path android:fillColor="#FFFFFFFF" android:pathData="M12,4.9 a2.3,2.8 8 1,0 4.6,0 a2.3,2.8 8 1,0 -4.6,0 z" />
+  <path android:fillColor="#FFFFFFFF" android:pathData="M15.8,8 a2.3,2.7 20 1,0 4.6,1.6 a2.3,2.7 20 1,0 -4.6,-1.6 z" />
+  <!-- Pad -->
+  <path android:fillColor="#FFFFFFFF" android:pathData="M12,11.2 C9,11.2 5.6,14.9 5.6,17.6 C5.6,19.4 7,20.4 8.6,20.4 C10,20.4 10.9,19.6 12,19.6 C13.1,19.6 14,20.4 15.4,20.4 C17,20.4 18.4,19.4 18.4,17.6 C18.4,14.9 15,11.2 12,11.2 Z" />
+</vector>

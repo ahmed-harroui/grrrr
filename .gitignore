@@ -4,6 +4,17 @@ node_modules/
 .env.*
 !.env.example
 
+# Firebase service account keys (secret: uploaded to EAS credentials, never committed)
+grrrr-11adb-*.json
+*firebase-adminsdk*.json
+
+# Built apps downloaded into the project
+*.apk
+*.aab
+
 # JVM crash logs
 hs_err_pid*.log
 replay_pid*.log
+
+# Supabase CLI local state
+supabase/.temp/

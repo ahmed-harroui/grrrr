@@ -12,6 +12,8 @@ import { usePartners } from "@/hooks/usePartners";
 import { Partner } from "@/data/api/partners";
 import { useTheme } from "@/context/ThemeContext";
 import { useTranslation } from "@/i18n/useTranslation";
+import MeetingComposer from "@/components/MeetingComposer";
+import { NATIVE_MAPS_AVAILABLE } from "@/lib/maps";
 
 type Colors = ReturnType<typeof useThemedColors>;
 
@@ -23,64 +25,23 @@ export type MeetingRequest = {
 
 const PINK_PAW = require("../../assets/pink_clic.png");
 const BLUE_PAW = require("../../assets/bleue_clic.png");
-const MEETING_TIMES = ["12:00", "15:00", "18:00", "20:00"];
 
-// Asks to confirm a HOT / friendly meeting, saves the trace and opens the chat.
+// A spot tapped on the map: the outing sheet opens there, then the chat (where the match answers).
 export function MeetingConfirmModal({ request, onClose, onConfirmed }: { request: MeetingRequest | null; onClose: () => void; onConfirmed?: () => void }) {
-  const { setMeetingMarker, setMeetingTrace } = useAppState();
   const navigation = useNavigation<any>();
-  const colors = useThemedColors();
-  const styles = getStyles(colors);
-  const { tx } = useTranslation();
-  const [meetingTime, setMeetingTime] = useState("18:00");
-
-  const confirm = () => {
-    if (!request) return;
-    if (request.coord) {
-      setMeetingTrace(request.pet.id, { latitude: request.coord.latitude, longitude: request.coord.longitude, marker: request.marker });
-    }
-    setMeetingMarker(request.pet.id, request.marker);
-    onClose();
-    onConfirmed?.();
-    navigation.navigate("ChatThread", { petId: request.pet.id });
-  };
-
   return (
-    <Modal visible={!!request} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.confirmOverlay}>
-        <View style={styles.confirmCard}>
-          <Text style={styles.confirmLogo}>
-            GR<Text style={{ color: colors.coral }}>RRR</Text> 🐾
-          </Text>
-          <Image source={request?.marker === "pink" ? PINK_PAW : BLUE_PAW} style={styles.confirmPawImage} />
-          <Text style={styles.confirmTitle}>{request?.marker === "pink" ? tx("Sortie Coup de Cœur ❤️", "Crush date ❤️") : tx("Sortie Amicale 🐾", "Friendly outing 🐾")}</Text>
-          <Text style={styles.confirmSub}>
-            {request?.marker === "pink"
-              ? tx(`Voulez-vous planifier un rendez-vous HOT / Amoureux avec ${request?.pet.name} ?`, `Plan a HOT / romantic date with ${request?.pet.name}?`)
-              : tx(`Voulez-vous planifier une sortie Amicale avec ${request?.pet.name} ?`, `Plan a friendly outing with ${request?.pet.name}?`)}
-          </Text>
-          <Text style={styles.timeLabel}>{tx("Choisissez l'heure de rencontre", "Pick a meeting time")}</Text>
-          <View style={styles.timeChoices}>
-            {MEETING_TIMES.map((time) => (
-              <Pressable key={time} onPress={() => setMeetingTime(time)} style={[styles.timeChoice, meetingTime === time && styles.timeChoiceActive]}>
-                <Text style={[styles.timeChoiceText, meetingTime === time && styles.timeChoiceTextActive]}>{time}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <View style={styles.confirmNoticeBox}>
-            <Text style={styles.confirmNoticeText}>📍 {tx("La proposition expire dans 24 h ou à l'heure du rendez-vous. Votre match pourra accepter ou refuser.", "The proposal expires in 24 h or at the meeting time. Your match can accept or decline.")}</Text>
-          </View>
-          <View style={styles.confirmActions}>
-            <Pressable style={styles.confirmPrimaryBtn} onPress={confirm}>
-              <Text style={styles.confirmPrimaryText}>{tx("Confirmer avec GRRRR 🐾", "Confirm with GRRRR 🐾")}</Text>
-            </Pressable>
-            <Pressable style={styles.confirmSecondaryBtn} onPress={onClose}>
-              <Text style={styles.confirmSecondaryText}>{tx("Annuler", "Cancel")}</Text>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </Modal>
+    <MeetingComposer
+      pet={request?.pet ?? null}
+      initialCoord={request?.coord}
+      initialMarker={request?.marker}
+      onClose={onClose}
+      onSent={() => {
+        const petId = request?.pet.id;
+        onClose();
+        onConfirmed?.();
+        if (petId !== undefined) navigation.navigate("ChatThread", { petId });
+      }}
+    />
   );
 }
 
@@ -221,7 +182,7 @@ export default function MeetingMap() {
           </View>
         </View>
         <View style={styles.mapWrap}>
-          {Platform.OS === "web" ? webMap(tx("Touche cette zone pour placer la patte du match sélectionné.", "Tap this area to place the selected match's paw.")) : (
+          {!NATIVE_MAPS_AVAILABLE ? webMap(tx("Touche cette zone pour placer la patte du match sélectionné.", "Tap this area to place the selected match's paw.")) : (
             <>
               {nativeMap(styles.map)}
               {!selectedPartner && (
@@ -250,7 +211,7 @@ export default function MeetingMap() {
             <Pressable onPress={() => setMapExpanded(false)} style={styles.closeMap}><Text style={styles.closeMapText}>×</Text></Pressable>
           </View>
           <View style={styles.fullMapWrap}>
-            {Platform.OS === "web" ? webMap(tx("Touche cette zone pour placer la patte.", "Tap this area to place the paw.")) : nativeMap(styles.fullMap)}
+            {!NATIVE_MAPS_AVAILABLE ? webMap(tx("Touche cette zone pour placer la patte.", "Tap this area to place the paw.")) : nativeMap(styles.fullMap)}
             {selectedPartner && <PartnerCard partner={selectedPartner} onClose={() => setSelectedPartner(null)} />}
           </View>
           <Text style={styles.fullMapHint}>{selectedPet ? tx(`Pet sélectionné : ${selectedPet.name}. Touche la carte pour placer la trace.`, `Selected pet: ${selectedPet.name}. Tap the map to place the paw.`) : tx("Sélectionne un match pour placer une trace.", "Select a match to place a paw.")}</Text>

@@ -11,9 +11,13 @@ import type { Liker } from "@/data/api/likes";
 
 const { width } = Dimensions.get("window");
 const SWIPE_THRESHOLD = 110;
+const SWIPE_UP_THRESHOLD = 120;
+
+// Up: "waiting to adopt" from this pet (no like is sent; see migration 015).
+export type SwipeDirection = "left" | "right" | "adopt";
 
 export interface SwipeCardHandle {
-  triggerSwipe: (direction: "left" | "right" | "super") => void;
+  triggerSwipe: (direction: SwipeDirection) => void;
 }
 
 interface Props {
@@ -24,7 +28,7 @@ interface Props {
   depth: number;
   /** Set when this pet already liked mine: liking back makes the match */
   likedMe?: Liker;
-  onSwiped: (direction: "left" | "right" | "super") => void;
+  onSwiped: (direction: SwipeDirection) => void;
 }
 
 const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
@@ -42,7 +46,9 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 6 || Math.abs(g.dy) > 6,
       onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
       onPanResponderRelease: (_, g) => {
-        if (g.dx > SWIPE_THRESHOLD) {
+        if (g.dy < -SWIPE_UP_THRESHOLD && Math.abs(g.dx) < SWIPE_THRESHOLD) {
+          flyOut("adopt");
+        } else if (g.dx > SWIPE_THRESHOLD) {
           flyOut("right");
         } else if (g.dx < -SWIPE_THRESHOLD) {
           flyOut("left");
@@ -53,9 +59,9 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
     })
   ).current;
 
-  const flyOut = (direction: "left" | "right" | "super") => {
+  const flyOut = (direction: SwipeDirection) => {
     const toX = direction === "right" ? width * 1.4 : direction === "left" ? -width * 1.4 : 0;
-    const toY = direction === "super" ? -900 : 0;
+    const toY = direction === "adopt" ? -900 : 0;
     Animated.timing(pan, {
       toValue: { x: toX, y: toY },
       duration: 260,
@@ -80,6 +86,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
   const likeOpacity = pan.x.interpolate({ inputRange: [20, 110], outputRange: [0, 1], extrapolate: "clamp" });
   const nopeOpacity = pan.x.interpolate({ inputRange: [-110, -20], outputRange: [1, 0], extrapolate: "clamp" });
   const likePhotoOpacity = pan.x.interpolate({ inputRange: [20, 110], outputRange: [0, 0.13], extrapolate: "clamp" });
+  const adoptOpacity = pan.y.interpolate({ inputRange: [-130, -40], outputRange: [1, 0], extrapolate: "clamp" });
   const nopePhotoOpacity = pan.x.interpolate({ inputRange: [-110, -20], outputRange: [0.13, 0], extrapolate: "clamp" });
 
   const cardStyle = isTop
@@ -120,6 +127,9 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
         <>
           <Animated.View style={[styles.stamp, styles.stampLike, { opacity: likeOpacity }]}>
             <Text style={[styles.stampText, { color: colors.friend, borderColor: colors.friend }]}>LIKE</Text>
+          </Animated.View>
+          <Animated.View style={[styles.stamp, styles.stampAdopt, { opacity: adoptOpacity }]}>
+            <Text style={[styles.stampText, styles.stampAdoptText]}>🍼 {tx("ADOPTER", "ADOPT")}</Text>
           </Animated.View>
           <Animated.View style={[styles.stamp, styles.stampNope, { opacity: nopeOpacity }]}>
             <Text style={[styles.stampText, { color: colors.coral, borderColor: colors.coral }]}>NOPE</Text>
@@ -192,6 +202,8 @@ const styles = StyleSheet.create({
   },
   stampLike: { left: 20 },
   stampNope: { right: 20 },
+  stampAdopt: { left: 0, right: 0, top: 70, alignItems: "center" },
+  stampAdoptText: { color: "#C97A1E", borderColor: "#FFB35C", backgroundColor: "rgba(255,255,255,0.85)", fontSize: 30 },
   stampText: {
     fontFamily: fonts.displayExtra,
     fontSize: 36,

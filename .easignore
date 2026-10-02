@@ -1,0 +1,37 @@
+# Used by EAS Build instead of the .gitignore files — keep in sync with them.
+node_modules/
+.expo/
+.git/
+
+# .env is deliberately NOT ignored here: it only holds EXPO_PUBLIC_* values,
+# which are bundled into the app anyway, and the build needs them.
+.env.*
+!.env.example
+
+# Firebase service account keys: secret, given to EAS through its credentials, not the build
+grrrr-11adb-*.json
+*firebase-adminsdk*.json
+
+# Built apps downloaded into the project
+*.apk
+*.aab
+
+# JVM crash logs
+hs_err_pid*.log
+replay_pid*.log
+
+# Android build output and Gradle caches (locked by running Gradle daemons)
+android/.gradle/
+android/build/
+android/app/build/
+android/app/.cxx/
+android/.idea/
+android/local.properties
+android/**/*.iml
+android/**/*.hprof
+android/app/src/main/java/inline/
+*.jsbundle
+
+# Not needed to build the app
+.github/
+supabase/

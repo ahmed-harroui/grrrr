@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { GoogleSignInResult, signInWithGoogle, signOutGoogle } from "@/lib/googleAuth";
 
 interface AuthContextValue {
   session: Session | null;
@@ -8,6 +9,8 @@ interface AuthContextValue {
   demoMode: boolean;
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string) => Promise<string | null>;
+  /** "Continue with Google": a new account is created on the first time */
+  signInWithGoogle: () => Promise<GoogleSignInResult>;
   signOut: () => Promise<void>;
 }
 
@@ -48,7 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { error } = await supabase.auth.signUp({ email, password });
         return error?.message ?? null;
       },
+      signInWithGoogle,
       signOut: async () => {
+        await signOutGoogle();
         if (supabase) await supabase.auth.signOut();
       },
     }),
