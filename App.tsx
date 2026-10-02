@@ -21,6 +21,7 @@ import OnboardingScreen from "@/screens/OnboardingScreen";
 import AuthScreen from "@/screens/AuthScreen";
 import PetProfileSetupScreen from "@/screens/PetProfileSetupScreen";
 import RootNavigator from "@/navigation/RootNavigator";
+import "@/lib/webAlert";
 
 SplashAPI.preventAutoHideAsync().catch(() => {});
 
