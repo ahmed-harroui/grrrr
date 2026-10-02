@@ -18,6 +18,7 @@ const INK_SOFT = "#8A6F54";
 const GLASS = "rgba(255,255,255,0.62)";
 const GLASS_BORDER = "rgba(255,255,255,0.92)";
 const CARE_AI_LOGO = require("../../assets/rewards/care-ai-month.png");
+const TREAT_LOGO = require("../../assets/initiale_log.png");
 
 type Tx = (fr: string, en: string) => string;
 
@@ -29,7 +30,8 @@ function rewardLabel(reward: DailyReward, tx: Tx) {
 
 function RewardIcon({ reward, size }: { reward: DailyReward; size: number }) {
   if (reward.kind === "care_ai") return <Image source={CARE_AI_LOGO} style={{ width: size * 1.5, height: size * 1.5 }} resizeMode="contain" />;
-  return <Text style={{ fontSize: size }}>{reward.kind === "voucher" ? "🎁" : "🦴"}</Text>;
+  if (reward.kind === "treats") return <Image source={TREAT_LOGO} style={{ width: size * 1.4, height: size * 1.4 }} resizeMode="contain" />;
+  return <Text style={{ fontSize: size }}>🎁</Text>;
 }
 
 export default function DailyRewards() {
