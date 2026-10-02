@@ -6,7 +6,8 @@ import { supabase } from "@/lib/supabase";
 // (grr_thread_likes); the counter is kept by a database trigger.
 
 export type ThreadCategory = "fact" | "history" | "culture" | "science" | "story" | "tip";
-export type ThreadAnimal = "all" | "dog" | "cat";
+// The website's animal families (strategie-ecosysteme-gr: lib/community/limits.ts, supabase/animals.sql).
+export type ThreadAnimal = "all" | "dog" | "cat" | "rabbit" | "rodent" | "bird" | "fish" | "reptile" | "horse" | "ferret" | "farm";
 
 /** [French, English] */
 export const THREAD_CATEGORIES: Record<ThreadCategory, [string, string]> = {
@@ -22,6 +23,14 @@ export const THREAD_ANIMALS: Record<ThreadAnimal, [string, string]> = {
   all: ["Tous", "All pets"],
   dog: ["Chiens", "Dogs"],
   cat: ["Chats", "Cats"],
+  rabbit: ["Lapins", "Rabbits"],
+  rodent: ["Rongeurs", "Small rodents"],
+  bird: ["Oiseaux", "Birds"],
+  fish: ["Poissons", "Fish"],
+  reptile: ["Reptiles", "Reptiles"],
+  horse: ["Chevaux", "Horses"],
+  ferret: ["Furets", "Ferrets"],
+  farm: ["Basse-cour", "Farm animals"],
 };
 
 // Same limits as the database checks.
