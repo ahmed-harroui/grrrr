@@ -44,8 +44,9 @@ export default function MatchesScreen() {
   );
   // Removing a family makes room for another one (5 at most, migration 022).
   const confirmRemove = (interest: AdoptionInterest) => {
-    const name = interest.pet.name;
-    Alert.alert(tx(`Retirer ${name} ?`, `Remove ${name}?`), tx(`${name} n'attendra plus les bébés de ${activePet.name}.`, `${name} will no longer wait for ${activePet.name}'s babies.`), [
+    const name = interest.pet.adopterOnly ? tx("cette personne", "this person") : interest.pet.name;
+    const who = name.charAt(0).toUpperCase() + name.slice(1);
+    Alert.alert(tx(`Retirer ${name} ?`, `Remove ${name}?`), tx(`${who} n'attendra plus les bébés de ${activePet.name}.`, `${who} will no longer wait for ${activePet.name}'s babies.`), [
       { text: tx("Annuler", "Cancel"), style: "cancel" },
       {
         text: tx("Retirer", "Remove"),
@@ -98,7 +99,7 @@ export default function MatchesScreen() {
                     : tx("Leur demande part dès que tu proposes une relation 💞 dans un chat.", "Their request leaves as soon as you propose a relationship 💞 in a chat.")}
                 </Text>
                 {waiting.map((item) => (
-                  <WaitingTile key={item.pet.id} interest={item} onPress={() => setProfilePet(item.pet)} onRemove={() => confirmRemove(item)} styles={styles} />
+                  <WaitingTile key={item.pet.id} interest={item} petName={activePet.name} onPress={() => setProfilePet(item.pet)} onRemove={() => confirmRemove(item)} styles={styles} />
                 ))}
               </View>
             )}
@@ -118,22 +119,36 @@ export default function MatchesScreen() {
   );
 }
 
-// A family that swiped my pet up: who, and whether they want to adopt or buy.
-function WaitingTile({ interest, onPress, onRemove, styles }: { interest: AdoptionInterest; onPress: () => void; onRemove: () => void; styles: ReturnType<typeof getStyles> }) {
+// A family that swiped my pet up: who, and whether they want to adopt or buy. An account with
+// no pet of its own (adopter mode) has nothing to show: no name, just what it is waiting for.
+function WaitingTile({ interest, petName, onPress, onRemove, styles }: { interest: AdoptionInterest; petName: string; onPress: () => void; onRemove: () => void; styles: ReturnType<typeof getStyles> }) {
   const { tx, language } = useTranslation();
   const { pet, intent } = interest;
   const buy = intent === "BUY";
+  const noPet = Boolean(pet.adopterOnly);
   return (
-    <Pressable style={styles.waitingCard} onPress={onPress}>
+    <Pressable style={styles.waitingCard} onPress={noPet ? undefined : onPress}>
       <View style={styles.waitingRing}>
-        {pet.photo ? <Image source={{ uri: pet.photo }} style={styles.waitingAvatar} /> : <View style={[styles.waitingAvatar, styles.waitingFamily]}><Text style={styles.waitingFamilyIcon}>👪</Text></View>}
+        {noPet || !pet.photo ? (
+          <View style={[styles.waitingAvatar, styles.waitingFamily]}>
+            <Text style={styles.waitingFamilyIcon}>{buy ? "💶" : "🍼"}</Text>
+          </View>
+        ) : (
+          <Image source={{ uri: pet.photo }} style={styles.waitingAvatar} />
+        )}
       </View>
       <View style={styles.info}>
         <View style={styles.nameRow}>
-          <Text style={styles.waitingName} numberOfLines={1}>{pet.adopterOnly ? tx(`Famille ${pet.name}`, `${pet.name}'s family`) : pet.name}</Text>
+          <Text style={styles.waitingName} numberOfLines={1}>
+            {noPet ? (buy ? tx("Veut acheter", "Wants to buy") : tx("Veut adopter", "Wants to adopt")) : pet.name}
+          </Text>
           <Text style={[styles.intentPill, { backgroundColor: buy ? BUY : ADOPT }]}>{buy ? tx("💶 Acheter", "💶 Buy") : tx("🍼 Adopter", "🍼 Adopt")}</Text>
         </View>
-        <Text style={styles.meetingPlace} numberOfLines={1}>{[pet.adopterOnly ? "" : pet.breed, timeAgo(interest.since, language)].filter(Boolean).join(" · ")}</Text>
+        <Text style={styles.meetingPlace} numberOfLines={1}>
+          {noPet
+            ? [tx(`Attend les bébés de ${petName}`, `Waiting for ${petName}'s babies`), timeAgo(interest.since, language)].join(" · ")
+            : [pet.breed, timeAgo(interest.since, language)].filter(Boolean).join(" · ")}
+        </Text>
       </View>
       <Pressable onPress={onRemove} hitSlop={10} style={styles.waitingRemove}>
         <Text style={styles.waitingRemoveText}>✕</Text>
@@ -150,16 +165,24 @@ function MysteryTile({ liker, petName, onPress, styles }: { liker: Liker; petNam
   return (
     <Pressable style={[styles.card, { borderColor: tint }]} onPress={onPress}>
       <View style={styles.mysteryAvatar}>
-        <Image source={{ uri: liker.photo_url || undefined }} style={styles.mysteryPhoto} blurRadius={7} />
+        {liker.adopter_only ? (
+          <Text style={styles.waitingFamilyIcon}>🍼</Text>
+        ) : (
+          <Image source={{ uri: liker.photo_url || undefined }} style={styles.mysteryPhoto} blurRadius={7} />
+        )}
       </View>
       <View style={styles.info}>
         <View style={styles.nameRow}>
-          <Text style={styles.name} numberOfLines={1}>{liker.pet_name ?? tx("Un pet", "A pet")}</Text>
+          <Text style={styles.name} numberOfLines={1}>{liker.adopter_only ? tx("Veut adopter", "Wants to adopt") : liker.pet_name ?? tx("Un pet", "A pet")}</Text>
           <Text style={[styles.intentPill, { backgroundColor: tint }]}>{hot ? "✦ Hot" : "🐾 Friend"}</Text>
           {liker.super_like && <Text style={styles.superLike}>⭐</Text>}
         </View>
-        {!!liker.breed && <Text style={styles.detailLine} numberOfLines={1}>{liker.breed}</Text>}
-        <Text style={styles.meetingPlace} numberOfLines={1}>{tx(`A liké ${petName} · like en retour dans Discover 👀`, `Liked ${petName} · like back in Discover 👀`)}</Text>
+        {!liker.adopter_only && !!liker.breed && <Text style={styles.detailLine} numberOfLines={1}>{liker.breed}</Text>}
+        <Text style={styles.meetingPlace} numberOfLines={1}>
+          {liker.adopter_only
+            ? tx(`Pas encore de pet · attend des bébés à adopter`, `No pet yet · waiting for babies to adopt`)
+            : tx(`A liké ${petName} · like en retour dans Discover 👀`, `Liked ${petName} · like back in Discover 👀`)}
+        </Text>
       </View>
       <View style={styles.chatButton}><Text style={styles.chatButtonText}>💌</Text></View>
     </Pressable>

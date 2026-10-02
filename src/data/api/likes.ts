@@ -4,7 +4,7 @@ import type { MatchType } from "@/data/types/match";
 
 // Pets that liked my pet but that it hasn't answered yet (a one-sided like, not a match).
 // intent / super_like come with migration 009.
-export type Liker = { id: string; photo_url: string; species: string; liked_at: string; intent?: LikeIntent; super_like?: boolean; pet_name?: string; breed?: string };
+export type Liker = { id: string; photo_url: string; species: string; liked_at: string; intent?: LikeIntent; super_like?: boolean; pet_name?: string; breed?: string; adopter_only?: boolean };
 
 export async function getPetLikers(petId?: string): Promise<Liker[]> {
   if (!supabase || !petId || !/^[0-9a-f-]{36}$/i.test(petId)) return [];
@@ -15,10 +15,13 @@ export async function getPetLikers(petId?: string): Promise<Liker[]> {
   }
   const likers = (data ?? []) as Liker[];
   if (likers.length === 0) return likers;
-  // Name and breed are shown next to the blurred photo.
-  const { data: pets } = await supabase.from("pets").select("id, pet_name, breed").in("id", likers.map((liker) => liker.id));
+  // Name and breed are shown next to the blurred photo (none for an account without a pet).
+  const { data: pets } = await supabase.from("pets").select("id, pet_name, breed, adopter_only").in("id", likers.map((liker) => liker.id));
   const byId = new Map((pets ?? []).map((pet) => [pet.id, pet]));
-  return likers.map((liker) => ({ ...liker, pet_name: byId.get(liker.id)?.pet_name, breed: byId.get(liker.id)?.breed }));
+  return likers.map((liker) => {
+    const pet = byId.get(liker.id);
+    return { ...liker, pet_name: pet?.pet_name, breed: pet?.breed, adopter_only: Boolean(pet?.adopter_only) };
+  });
 }
 
 /** Calls onMatch with the other pet's id and the match type whenever a new match involving my pet is created. */

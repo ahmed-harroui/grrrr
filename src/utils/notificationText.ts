@@ -21,6 +21,11 @@ export function describeNotification(notification: AppNotification, language: La
     case "adoption":
       return { icon: "🍼", title: tx("Demande d'adoption", "Adoption request"), body: data.preview ?? tx(`${actor} aimerait adopter un bébé de ${myPetName}.`, `${actor} would like to adopt one of ${myPetName}'s babies.`) };
     case "adoption_interest":
+      // No pet of their own (adopter mode): no name, only what they wait for (migration 024).
+      if (data.anonymous)
+        return data.intent === "BUY"
+          ? { icon: "💶", title: tx(`Quelqu'un veut acheter un bébé de ${myPetName}`, `Someone wants to buy one of ${myPetName}'s babies`), body: tx("Pas encore de pet : il attend les bébés. Retrouve-le dans Matchs.", "No pet yet: they're waiting for the babies. Find them in Matches.") }
+          : { icon: "🍼", title: tx(`Quelqu'un veut adopter un bébé de ${myPetName}`, `Someone wants to adopt one of ${myPetName}'s babies`), body: tx("Pas encore de pet : il attend les bébés. Retrouve-le dans Matchs.", "No pet yet: they're waiting for the babies. Find them in Matches.") };
       return data.intent === "BUY"
         ? { icon: "💶", title: tx(`${actor} aimerait acheter un bébé de ${myPetName}`, `${actor} would like to buy one of ${myPetName}'s babies`), body: tx("Sa demande partira dès que tu proposeras une portée. Retrouve-le dans Matchs.", "Their request leaves as soon as you offer a litter. Find them in Matches.") }
         : { icon: "🍼", title: tx(`${actor} aimerait adopter un bébé de ${myPetName}`, `${actor} would like to adopt one of ${myPetName}'s babies`), body: tx("Sa demande partira dès que tu proposeras une portée. Retrouve-le dans Matchs.", "Their request leaves as soon as you offer a litter. Find them in Matches.") };

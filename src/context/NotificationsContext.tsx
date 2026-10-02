@@ -81,7 +81,11 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     () => ({ dbId: activePet.dbId ?? "", name: activePet.name, species: activePet.species, photo: activePet.photo }),
     [activePet.dbId, activePet.name, activePet.photo, activePet.species]
   );
-  const actorOf = useCallback((notification: AppNotification) => notification.actor ?? myActor, [myActor]);
+  // Someone waiting without a pet of their own stays anonymous: no photo (migration 024).
+  const actorOf = useCallback(
+    (notification: AppNotification) => (notification.data?.anonymous && notification.actor ? { ...notification.actor, photo: "" } : notification.actor ?? myActor),
+    [myActor]
+  );
 
   useEffect(() => {
     AsyncStorage.getItem(PREFS_KEY).then((stored) => stored && setPrefs({ ...DEFAULT_PREFS, ...JSON.parse(stored) })).catch(() => {});

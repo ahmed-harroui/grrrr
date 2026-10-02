@@ -40,6 +40,11 @@ function describe(type: string, data: Row, actor: string, me: string, en: boolea
     case "adoption":
       return { title: tx("🍼 Demande d'adoption", "🍼 Adoption request"), body: data.preview ?? tx(`${actor} aimerait adopter un bébé de ${me}.`, `${actor} would like to adopt one of ${me}'s babies.`) };
     case "adoption_interest":
+      // No pet of their own (adopter mode): no name, only what they wait for (migration 024).
+      if (data.anonymous)
+        return data.intent === "BUY"
+          ? { title: tx(`💶 Quelqu'un veut acheter un bébé de ${me}`, `💶 Someone wants to buy one of ${me}'s babies`), body: tx("Pas encore de pet : il attend les bébés. Retrouve-le dans Matchs.", "No pet yet: they're waiting for the babies. Find them in Matches.") }
+          : { title: tx(`🍼 Quelqu'un veut adopter un bébé de ${me}`, `🍼 Someone wants to adopt one of ${me}'s babies`), body: tx("Pas encore de pet : il attend les bébés. Retrouve-le dans Matchs.", "No pet yet: they're waiting for the babies. Find them in Matches.") };
       return data.intent === "BUY"
         ? { title: tx(`💶 ${actor} aimerait acheter un bébé de ${me}`, `💶 ${actor} would like to buy one of ${me}'s babies`), body: tx("Sa demande partira dès que tu proposeras une portée. Retrouve-le dans Matchs.", "Their request leaves as soon as you offer a litter. Find them in Matches.") }
         : { title: tx(`🍼 ${actor} aimerait adopter un bébé de ${me}`, `🍼 ${actor} would like to adopt one of ${me}'s babies`), body: tx("Sa demande partira dès que tu proposeras une portée. Retrouve-le dans Matchs.", "Their request leaves as soon as you offer a litter. Find them in Matches.") };
@@ -140,8 +145,9 @@ async function notificationMessages(row: Row) {
   return ((tokens ?? []) as Token[]).filter((token) => allowed(token, row.type)).flatMap((token) => {
     const text = describe(row.type, { ...(row.data ?? {}), pending }, actor?.pet_name ?? (token.language === "en" ? "A companion" : "Un compagnon"), pet.pet_name, token.language === "en");
     if (!text) return [];
-    // The sender's avatar as the picture; my own pet's for its own news (level up). Never a liker's.
-    const image = isLike ? null : actor?.photo_url || (row.actor_pet_id ? null : pet.photo_url) || null;
+    // The sender's avatar as the picture; my own pet's for its own news (level up). Never a liker's,
+    // nor that of someone waiting without a pet of their own (anonymous, migration 024).
+    const image = isLike || row.data?.anonymous ? null : actor?.photo_url || (row.actor_pet_id ? null : pet.photo_url) || null;
     const category = categoryOf(row.type, row.data ?? {});
     const outingSoon = row.type === "reminder" && row.data?.kind === "outing";
     return [{
