@@ -131,9 +131,10 @@ export async function addAdoptionInterest(petId?: string, adopterPetId?: string,
 /** The owner removes a family waiting for their pet: it makes room for another (5 at most). */
 export async function removeWaitingFamily(petId: string, adopterPetId: string): Promise<boolean> {
   if (!supabase) return false;
-  const { error } = await supabase.from("adoption_interests").delete().eq("pet_id", petId).eq("adopter_pet_id", adopterPetId);
+  // A delete the database refuses removes nothing without an error: count what went.
+  const { data, error } = await supabase.from("adoption_interests").delete().eq("pet_id", petId).eq("adopter_pet_id", adopterPetId).select("pet_id");
   if (error) console.warn("Waiting family not removed", error.message);
-  return !error;
+  return !error && (data?.length ?? 0) > 0;
 }
 
 /** Most families that can wait for one pet (same limit as the database). */

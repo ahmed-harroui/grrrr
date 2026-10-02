@@ -55,7 +55,10 @@ export default function MatchesScreen() {
           if (!activePet.dbId || !interest.pet.dbId) return;
           setWaiting((current) => current.filter((item) => item.pet.dbId !== interest.pet.dbId));
           const removed = await removeWaitingFamily(activePet.dbId, interest.pet.dbId);
-          if (!removed) getWaitingForMyPet(activePet.dbId).then(setWaiting);
+          if (!removed) {
+            getWaitingForMyPet(activePet.dbId).then(setWaiting);
+            Alert.alert(tx("Pas retiré", "Not removed"), tx("La liste n'a pas pu être modifiée. Réessaie dans un instant.", "The list could not be changed. Try again in a moment."));
+          }
         },
       },
     ]);
@@ -126,34 +129,38 @@ function WaitingTile({ interest, petName, onPress, onRemove, styles }: { interes
   const { pet, intent } = interest;
   const buy = intent === "BUY";
   const noPet = Boolean(pet.adopterOnly);
+  // The ✕ sits beside the tappable part, not inside it: nested in the card, its taps could go
+  // to the card (the profile) instead.
   return (
-    <Pressable style={styles.waitingCard} onPress={noPet ? undefined : onPress}>
-      <View style={styles.waitingRing}>
-        {noPet || !pet.photo ? (
-          <View style={[styles.waitingAvatar, styles.waitingFamily]}>
-            <Text style={styles.waitingFamilyIcon}>{buy ? "💶" : "🍼"}</Text>
-          </View>
-        ) : (
-          <Image source={{ uri: pet.photo }} style={styles.waitingAvatar} />
-        )}
-      </View>
-      <View style={styles.info}>
-        <View style={styles.nameRow}>
-          <Text style={styles.waitingName} numberOfLines={1}>
-            {noPet ? (buy ? tx("Veut acheter", "Wants to buy") : tx("Veut adopter", "Wants to adopt")) : pet.name}
-          </Text>
-          <Text style={[styles.intentPill, { backgroundColor: buy ? BUY : ADOPT }]}>{buy ? tx("💶 Acheter", "💶 Buy") : tx("🍼 Adopter", "🍼 Adopt")}</Text>
+    <View style={styles.waitingCard}>
+      <Pressable style={styles.waitingMain} onPress={noPet ? undefined : onPress}>
+        <View style={styles.waitingRing}>
+          {noPet || !pet.photo ? (
+            <View style={[styles.waitingAvatar, styles.waitingFamily]}>
+              <Text style={styles.waitingFamilyIcon}>{buy ? "💶" : "🍼"}</Text>
+            </View>
+          ) : (
+            <Image source={{ uri: pet.photo }} style={styles.waitingAvatar} />
+          )}
         </View>
-        <Text style={styles.meetingPlace} numberOfLines={1}>
-          {noPet
-            ? [tx(`Attend les bébés de ${petName}`, `Waiting for ${petName}'s babies`), timeAgo(interest.since, language)].join(" · ")
-            : [pet.breed, timeAgo(interest.since, language)].filter(Boolean).join(" · ")}
-        </Text>
-      </View>
-      <Pressable onPress={onRemove} hitSlop={10} style={styles.waitingRemove}>
+        <View style={styles.info}>
+          <View style={styles.nameRow}>
+            <Text style={styles.waitingName} numberOfLines={1}>
+              {noPet ? (buy ? tx("Veut acheter", "Wants to buy") : tx("Veut adopter", "Wants to adopt")) : pet.name}
+            </Text>
+            <Text style={[styles.intentPill, { backgroundColor: buy ? BUY : ADOPT }]}>{buy ? tx("💶 Acheter", "💶 Buy") : tx("🍼 Adopter", "🍼 Adopt")}</Text>
+          </View>
+          <Text style={styles.meetingPlace} numberOfLines={1}>
+            {noPet
+              ? [tx(`Attend les bébés de ${petName}`, `Waiting for ${petName}'s babies`), timeAgo(interest.since, language)].join(" · ")
+              : [pet.breed, timeAgo(interest.since, language)].filter(Boolean).join(" · ")}
+          </Text>
+        </View>
+      </Pressable>
+      <Pressable onPress={onRemove} hitSlop={12} style={({ pressed }) => [styles.waitingRemove, pressed && styles.waitingRemovePressed]} accessibilityLabel={tx("Retirer de la liste", "Remove from the list")}>
         <Text style={styles.waitingRemoveText}>✕</Text>
       </Pressable>
-    </Pressable>
+    </View>
   );
 }
 
@@ -220,7 +227,9 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     waitingHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
     waitingCount: { fontFamily: fonts.bodyBold, fontSize: 11, color: "#C97A1E", backgroundColor: colors.white, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radii.pill, overflow: "hidden" },
     waitingCountFull: { color: colors.white, backgroundColor: "#C97A1E" },
-    waitingRemove: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.cream2, alignItems: "center", justifyContent: "center" },
+    waitingMain: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 9 },
+    waitingRemove: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.cream2, alignItems: "center", justifyContent: "center" },
+    waitingRemovePressed: { backgroundColor: colors.line },
     waitingRemoveText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.grey },
     messagesLink: { alignSelf: "center", marginTop: 8, paddingHorizontal: 14, paddingVertical: 9, borderRadius: radii.pill, backgroundColor: colors.cream2, borderWidth: 1, borderColor: colors.line },
     messagesLinkText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.coralDark },
