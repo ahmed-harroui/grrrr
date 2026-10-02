@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import * as Notifications from "expo-notifications";
+import type * as NotificationsModule from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { supabase } from "@/lib/supabase";
@@ -10,6 +10,8 @@ import { supabase } from "@/lib/supabase";
 // Expo Go has no remote push since SDK 53 (it only warns): push only in the real app (EAS builds).
 const isExpoGo = Constants.executionEnvironment === "storeClient";
 const isNative = (Platform.OS === "ios" || Platform.OS === "android") && !isExpoGo;
+// Loaded only where it works: in Expo Go, merely importing it logs an error and a warning.
+const Notifications: typeof NotificationsModule = isNative ? require("expo-notifications") : (null as any);
 
 // App open: the in-app banner shows the notification, the system one stays quiet.
 if (isNative) {
@@ -25,7 +27,7 @@ const pick = (language: Language, fr: string, en: string) => (language === "en" 
 // send-push picks the channel by type (keep the ids in sync with supabase/functions/send-push).
 async function setUpChannels(language: Language) {
   if (Platform.OS !== "android") return;
-  const channel = (id: string, fr: string, en: string, importance: Notifications.AndroidImportance, descriptionFr: string, descriptionEn: string) =>
+  const channel = (id: string, fr: string, en: string, importance: NotificationsModule.AndroidImportance, descriptionFr: string, descriptionEn: string) =>
     Notifications.setNotificationChannelAsync(id, { name: pick(language, fr, en), description: pick(language, descriptionFr, descriptionEn), importance, lightColor: "#FF5D73", vibrationPattern: [0, 180, 120, 180], showBadge: true });
   await Promise.all([
     channel("messages", "Messages", "Messages", Notifications.AndroidImportance.HIGH, "Les messages de tes matchs", "Messages from your matches"),
@@ -96,7 +98,7 @@ export type PushResponse = { data: Record<string, any>; action: "open" | "reply"
 export function onPushOpened(onResponse: (response: PushResponse) => void) {
   if (!isNative) return () => {};
   let active = true;
-  const handle = (response: Notifications.NotificationResponse) => {
+  const handle = (response: NotificationsModule.NotificationResponse) => {
     const id = response.actionIdentifier;
     const action = id === "reply" || id === "accept" || id === "decline" ? id : "open";
     onResponse({ data: response.notification.request.content.data ?? {}, action, text: response.userText?.trim() || undefined });
