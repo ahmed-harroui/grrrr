@@ -8,8 +8,7 @@ import { useTheme, ThemeMode } from "@/context/ThemeContext";
 import { useLocalization } from "@/context/LocalizationContext";
 import { useTranslation } from "@/i18n/useTranslation";
 import { useThemedColors } from "@/hooks/useThemedColors";
-import { getAccountProfile, saveAccountProfile, updatePetProfile } from "@/data/api/profile";
-import { useAppState } from "@/context/AppState";
+import { getAccountProfile, saveAccountProfile } from "@/data/api/profile";
 import { supabase } from "@/lib/supabase";
 
 export default function SettingsScreen() {
@@ -19,22 +18,10 @@ export default function SettingsScreen() {
   const { language, setLanguage } = useLocalization();
   const { t, tx } = useTranslation();
   const colors = useThemedColors();
-  const { activePet, ownedPets, refreshOwnedPets, setMode } = useAppState();
   const [loading, setLoading] = useState(Boolean(session));
   const [saving, setSaving] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-  // The pet being edited: the active one (the one used in Discover, Matches and Chat).
-  const pet = ownedPets.find((item) => item.id === activePet.id) ?? ownedPets[0];
-  const [petName, setPetName] = useState("");
-  const [petBreed, setPetBreed] = useState("");
-  const [petAge, setPetAge] = useState("");
-  const [petGender, setPetGender] = useState<"M" | "F">("M");
-  const [petCity, setPetCity] = useState("");
-  const [petCountry, setPetCountry] = useState("");
-  const [petBio, setPetBio] = useState("");
-  const [petEnergy, setPetEnergy] = useState<1 | 2 | 3 | 4>(2);
-  const [petMode, setPetMode] = useState(50);
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
@@ -53,26 +40,8 @@ export default function SettingsScreen() {
     });
   }, [session?.user.id]);
 
-  // Fill the pet fields with what was entered when the pet was created.
-  useEffect(() => {
-    if (!pet) return;
-    setPetName(pet.name);
-    setPetBreed(pet.breed);
-    setPetAge(pet.age ? String(pet.age) : "");
-    setPetGender(pet.gender);
-    setPetCity(pet.city ?? "");
-    setPetCountry(pet.country ?? "");
-    setPetBio(pet.bio);
-    setPetEnergy(pet.energy);
-    setPetMode(nearestMode(pet.mode));
-  }, [pet?.dbId]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const saveSettings = async () => {
     if (!session?.user.id) return;
-    if (pet?.dbId && !petName.trim()) {
-      Alert.alert(tx("Il manque un nom", "Name missing"), tx("Ton compagnon doit avoir un nom.", "Your companion needs a name."));
-      return;
-    }
     setSaving(true);
     const accountResult = await saveAccountProfile({ user_id: session.user.id, display_name: displayName.trim(), avatar_url: avatarUrl.trim() });
     if (accountResult.error) {
@@ -80,28 +49,6 @@ export default function SettingsScreen() {
       Alert.alert(t.settings.impossible, accountResult.error.message);
       return;
     }
-
-    if (pet?.dbId) {
-      const petResult = await updatePetProfile(pet.dbId, session.user.id, {
-        pet_name: petName.trim(),
-        breed: petBreed.trim(),
-        age: Math.min(80, Number(petAge) || 0),
-        gender: petGender,
-        city: petCity.trim(),
-        country: petCountry.trim() || null,
-        bio: petBio.trim(),
-        energy: petEnergy,
-        mode: petMode,
-      });
-      if (petResult.error) {
-        setSaving(false);
-        Alert.alert(t.settings.impossible, petResult.error.message);
-        return;
-      }
-      await refreshOwnedPets();
-      if (pet.id === activePet.id) setMode(petMode);
-    }
-
     setSaving(false);
     Alert.alert(t.settings.modified, t.settings.modifiedDesc);
   };
@@ -165,21 +112,7 @@ export default function SettingsScreen() {
           <ThemeSelector themeMode={themeMode} onThemeChange={setThemeMode} colors={colors} />
         </Section>
 
-        <Section title={pet ? `${t.settings.pet} · ${pet.name}` : t.settings.pet} colors={colors}>
-          {pet?.dbId ? <>
-            <Text style={[styles.note, { color: colors.grey, marginTop: 0 }]}>{tx("Les infos données à la création. Pour les photos, l'espèce et les habitudes : My Pet › Modifier le profil.", "The info given at creation. For photos, species and habits: My Pet › Edit profile.")}</Text>
-            <Field label={t.settings.petName} value={petName} onChangeText={setPetName} placeholder={t.settings.petName} colors={colors} />
-            <Field label={t.settings.petBreed} value={petBreed} onChangeText={setPetBreed} placeholder={t.settings.petBreed} colors={colors} />
-            <Field label={tx("Âge", "Age")} value={petAge} onChangeText={(value) => setPetAge(value.replace(/[^0-9]/g, ""))} placeholder={tx("Ex. 3", "E.g. 3")} keyboardType="number-pad" colors={colors} />
-            <Choice label={tx("Genre", "Gender")} value={petGender} onChange={setPetGender} options={[["M", tx("♂ Mâle", "♂ Male")], ["F", tx("♀ Femelle", "♀ Female")]]} colors={colors} />
-            <Field label={t.settings.petCity} value={petCity} onChangeText={setPetCity} placeholder={t.settings.petCity} colors={colors} />
-            <Field label={tx("Pays", "Country")} value={petCountry} onChangeText={setPetCountry} placeholder={tx("Ex. France", "E.g. France")} colors={colors} />
-            <Field label={t.settings.petBio} value={petBio} onChangeText={setPetBio} placeholder={t.settings.petBio} multiline colors={colors} />
-            <Choice label={tx("Énergie", "Energy")} value={petEnergy} onChange={setPetEnergy} options={[[1, "Chill"], [2, tx("Calme", "Calm")], [3, tx("Actif", "Active")], [4, tx("Très actif", "Very active")]]} colors={colors} />
-            <Choice label={tx("Intention de rencontre", "Looking for")} value={petMode} onChange={setPetMode} options={[[0, "🐾 Friend"], [50, "✨ Both"], [100, "❤️ Hot"]]} colors={colors} />
-          </> : <Text style={[styles.note, { color: colors.grey }]}>{t.settings.createPetFirst}</Text>}
-        </Section>
-
+        {/* The pet's own details are edited in My Pet › Edit profile, not here. */}
         <Pressable style={[styles.saveButton, { backgroundColor: colors.coral }, saving && styles.saveButtonDisabled]} onPress={saveSettings} disabled={saving}>
           <Text style={styles.saveText}>{saving ? t.settings.saving : t.settings.saveChanges}</Text>
         </Pressable>
@@ -206,38 +139,17 @@ function Field({ label, value, onChangeText, placeholder, editable = true, multi
   return <View style={styles.field}><Text style={[styles.label, { color: colors.dark }]}>{label}</Text><TextInput style={[styles.input, { backgroundColor: colors.cream, borderColor: colors.line, color: colors.dark }, multiline && styles.multiline, !editable && [styles.inputDisabled, { backgroundColor: colors.cream2 }]]} value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={colors.grey} editable={editable} multiline={multiline} secureTextEntry={secureTextEntry} autoCapitalize={autoCapitalize} keyboardType={keyboardType} /></View>;
 }
 
-// Snaps any saved mode to the three choices offered at creation.
-const nearestMode = (mode: number) => (mode < 25 ? 0 : mode > 75 ? 100 : 50);
-
-function Choice<T extends string | number>({ label, value, onChange, options, colors }: { label: string; value: T; onChange: (value: T) => void; options: [T, string][]; colors: ReturnType<typeof useThemedColors> }) {
-  return (
-    <View style={styles.field}>
-      <Text style={[styles.label, { color: colors.dark }]}>{label}</Text>
-      <View style={styles.choiceRow}>
-        {options.map(([option, text]) => {
-          const active = option === value;
-          return (
-            <Pressable key={String(option)} onPress={() => onChange(option)} style={[styles.choice, { borderColor: active ? colors.coral : colors.line, backgroundColor: active ? colors.cream2 : colors.cream }]}>
-              <Text style={[styles.choiceText, { color: active ? colors.coralDark : colors.dark }]}>{text}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
 function LanguageSelector({ language, onLanguageChange, colors }: { language: string; onLanguageChange: (lang: "fr" | "en") => Promise<void>; colors: ReturnType<typeof useThemedColors> }) {
   const { t } = useTranslation();
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: colors.dark }]}>{t.common.language}</Text>
       <View style={[styles.languageButtons, { borderColor: colors.line }]}>
-        <Pressable style={[styles.langBtn, language === "fr" && [styles.langBtnActive, { backgroundColor: colors.coral }]]} onPress={() => onLanguageChange("fr")}>
-          <Text style={[styles.langBtnText, language === "fr" && { color: colors.white }]}>Français</Text>
+        <Pressable style={[styles.langBtn, { borderRightColor: colors.line }, language === "fr" && [styles.langBtnActive, { backgroundColor: colors.coral }]]} onPress={() => onLanguageChange("fr")}>
+          <Text style={[styles.langBtnText, { color: language === "fr" ? "#FFFFFF" : colors.dark }]}>Français</Text>
         </Pressable>
-        <Pressable style={[styles.langBtn, language === "en" && [styles.langBtnActive, { backgroundColor: colors.coral }]]} onPress={() => onLanguageChange("en")}>
-          <Text style={[styles.langBtnText, language === "en" && { color: colors.white }]}>English</Text>
+        <Pressable style={[styles.langBtn, { borderRightWidth: 0 }, language === "en" && [styles.langBtnActive, { backgroundColor: colors.coral }]]} onPress={() => onLanguageChange("en")}>
+          <Text style={[styles.langBtnText, { color: language === "en" ? "#FFFFFF" : colors.dark }]}>English</Text>
         </Pressable>
       </View>
     </View>
@@ -253,10 +165,10 @@ function ThemeSelector({ themeMode, onThemeChange, colors }: { themeMode: ThemeM
         {(["light", "dark", "system"] as const).map((mode) => (
           <Pressable
             key={mode}
-            style={[styles.themeBtn, themeMode === mode && [styles.themeBtnActive, { backgroundColor: colors.coral }]]}
+            style={[styles.themeBtn, { borderRightColor: colors.line }, mode === "system" && { borderRightWidth: 0 }, themeMode === mode && [styles.themeBtnActive, { backgroundColor: colors.coral }]]}
             onPress={() => onThemeChange(mode)}
           >
-            <Text style={[styles.themeBtnText, themeMode === mode && { color: colors.white }]}>
+            <Text style={[styles.themeBtnText, { color: themeMode === mode ? "#FFFFFF" : colors.dark }]}>
               {mode === "light" ? t.common.lightMode : mode === "dark" ? t.common.darkMode : t.common.systemMode}
             </Text>
           </Pressable>

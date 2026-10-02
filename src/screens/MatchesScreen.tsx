@@ -11,6 +11,7 @@ import { useTranslation } from "@/i18n/useTranslation";
 import { getPetLikers, Liker } from "@/data/api/likes";
 import { AdoptionInterest, getWaitingForMyPet, removeWaitingFamily, WAITLIST_LIMIT } from "@/data/api/adoption";
 import PetProfileSheet from "@/components/PetProfileSheet";
+import AdopterSheet from "@/components/AdopterSheet";
 import type { Pet } from "@/data/mockPets";
 import { timeAgo } from "@/utils/notificationText";
 
@@ -30,6 +31,8 @@ export default function MatchesScreen() {
   const [likers, setLikers] = useState<Liker[]>([]);
   const [waiting, setWaiting] = useState<AdoptionInterest[]>([]);
   const [profilePet, setProfilePet] = useState<Pet | null>(null);
+  // Someone without a pet: a person card instead of a pet profile.
+  const [adopter, setAdopter] = useState<AdoptionInterest | null>(null);
 
   // One-sided likes: blurred until my pet likes back in Discover. Below them, the swipes up.
   useFocusEffect(
@@ -102,7 +105,7 @@ export default function MatchesScreen() {
                     : tx("Leur demande part dès que tu proposes une relation 💞 dans un chat.", "Their request leaves as soon as you propose a relationship 💞 in a chat.")}
                 </Text>
                 {waiting.map((item) => (
-                  <WaitingTile key={item.pet.id} interest={item} petName={activePet.name} onPress={() => setProfilePet(item.pet)} onRemove={() => confirmRemove(item)} styles={styles} />
+                  <WaitingTile key={item.pet.id} interest={item} petName={activePet.name} onPress={() => (item.pet.adopterOnly ? setAdopter(item) : setProfilePet(item.pet))} onRemove={() => confirmRemove(item)} styles={styles} />
                 ))}
               </View>
             )}
@@ -118,6 +121,16 @@ export default function MatchesScreen() {
         renderItem={({ item }) => <MysteryTile liker={item} petName={activePet.name} onPress={() => navigation.navigate("Discover")} styles={styles} />}
       />
       <PetProfileSheet pet={profilePet} onClose={() => setProfilePet(null)} />
+      <AdopterSheet
+        interest={adopter}
+        petName={activePet.name}
+        onClose={() => setAdopter(null)}
+        onRemove={() => {
+          const current = adopter;
+          setAdopter(null);
+          if (current) confirmRemove(current);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -133,7 +146,7 @@ function WaitingTile({ interest, petName, onPress, onRemove, styles }: { interes
   // to the card (the profile) instead.
   return (
     <View style={styles.waitingCard}>
-      <Pressable style={styles.waitingMain} onPress={noPet ? undefined : onPress}>
+      <Pressable style={styles.waitingMain} onPress={onPress}>
         <View style={styles.waitingRing}>
           {noPet || !pet.photo ? (
             <View style={[styles.waitingAvatar, styles.waitingFamily]}>
