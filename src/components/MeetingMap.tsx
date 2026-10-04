@@ -1,8 +1,10 @@
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { FlatList, Image, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useAuth } from "@/context/AuthContext";
+import { FriendOnMap, getFriendsOnMap, getMapBubbles, getMapVisibility, getMyPosition, MapBubble, MapVisibility, setMapVisibility, shareMyPosition } from "@/data/api/presence";
 import { fonts, radii } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { MeetingMarker, useAppState } from "@/context/AppState";
@@ -48,6 +50,8 @@ export function MeetingConfirmModal({ request, onClose, onConfirmed }: { request
 // "Carte des rencontres": partner places plus the meeting traces placed with matches.
 export default function MeetingMap() {
   const { activePet, matches, meetingTraces } = useAppState();
+  const { session } = useAuth();
+  const navigation = useNavigation<any>();
   const colors = useThemedColors();
   const styles = getStyles(colors);
   const { tx } = useTranslation();
@@ -63,6 +67,58 @@ export default function MeetingMap() {
   const [pendingAction, setPendingAction] = useState<"expand" | "click">("click");
   const [pendingClickEvent, setPendingClickEvent] = useState<{ type: "native" | "web"; event: any } | null>(null);
   const [confirmRequest, setConfirmRequest] = useState<MeetingRequest | null>(null);
+  // Who is around (migration 028): my matches one by one, everyone else as a count per district.
+  // It is mutual: I only see others once I am on the map myself.
+  const [visibility, setVisibility] = useState<MapVisibility>("off");
+  const [friends, setFriends] = useState<FriendOnMap[]>([]);
+  const [bubbles, setBubbles] = useState<MapBubble[]>([]);
+  const [presenceNote, setPresenceNote] = useState<string | null>(null);
+  const userId = session?.user.id;
+  const myPetId = activePet.dbId;
+
+  const loadPresence = useCallback(
+    async (current: MapVisibility, ask: boolean) => {
+      if (current === "off" || !myPetId) {
+        setFriends([]);
+        setBubbles([]);
+        return true;
+      }
+      const position = await getMyPosition(ask);
+      if (!position) return false;
+      await shareMyPosition(myPetId, position);
+      const [nextFriends, nextBubbles] = await Promise.all([getFriendsOnMap(myPetId), getMapBubbles(myPetId, position)]);
+      setFriends(nextFriends);
+      setBubbles(nextBubbles);
+      return true;
+    },
+    [myPetId]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      getMapVisibility(userId).then((saved) => {
+        if (!active) return;
+        setVisibility(saved);
+        void loadPresence(saved, false);
+      });
+      return () => {
+        active = false;
+      };
+    }, [userId, loadPresence])
+  );
+
+  const chooseVisibility = async (next: MapVisibility) => {
+    setPresenceNote(null);
+    if (next !== "off" && !(await loadPresence(next, true))) {
+      setPresenceNote(tx("Autorise la position dans les réglages du téléphone pour apparaître sur la carte.", "Allow location in your phone's settings to appear on the map."));
+      return;
+    }
+    setVisibility(next);
+    await setMapVisibility(next);
+    if (next === "off") void loadPresence("off", false);
+  };
+
   const selectedPet = matches.find((pet) => pet.id === selectedPetId) ?? matches[0];
   const initialRegion: Region = HOME_CITY_REGION;
   const mapTheme = { customMapStyle: isDark ? darkMapStyle : lightMapStyle, userInterfaceStyle: isDark ? "dark" as const : "light" as const };
@@ -161,6 +217,41 @@ export default function MeetingMap() {
     >
       <PartnerMarkers partners={partners} onSelect={setSelectedPartner} />
       {traceMarkers}
+      {/* Everyone else nearby: a count per district, which opens Discover */}
+      {bubbles.map((bubble) => (
+        <Marker
+          key={`bubble-${bubble.latitude}-${bubble.longitude}`}
+          coordinate={{ latitude: bubble.latitude, longitude: bubble.longitude }}
+          tracksViewChanges={false}
+          onPress={(event) => {
+            event.stopPropagation?.();
+            setMapExpanded(false);
+            navigation.navigate("MainTabs", { screen: "Discover" });
+          }}
+        >
+          <View style={styles.bubble}><Text style={styles.bubbleText}>🐾 {bubble.pets}</Text></View>
+        </Marker>
+      ))}
+      {/* My matches who are on the map: their avatar, which opens the chat */}
+      {friends.map((friend) => (
+        <Marker
+          key={`friend-${friend.petId}`}
+          coordinate={{ latitude: friend.latitude, longitude: friend.longitude }}
+          title={friend.name}
+          tracksViewChanges={false}
+          onPress={(event) => {
+            event.stopPropagation?.();
+            const match = matches.find((pet) => pet.dbId === friend.petId);
+            if (!match) return;
+            setMapExpanded(false);
+            navigation.navigate("ChatThread", { petId: match.id });
+          }}
+        >
+          <View style={styles.friendPin}>
+            {friend.photo ? <Image source={{ uri: friend.photo }} style={styles.friendPhoto} /> : <Text style={styles.friendInitial}>{friend.name.slice(0, 1)}</Text>}
+          </View>
+        </Marker>
+      ))}
     </MapView>
   );
 
@@ -197,6 +288,27 @@ export default function MeetingMap() {
           </View>
           {selectedPartner && !mapExpanded && <PartnerCard partner={selectedPartner} onClose={() => setSelectedPartner(null)} />}
         </View>
+        {/* Who sees me on the map: off by default, and I only see others once I am on it */}
+        {Boolean(userId && myPetId) && (
+          <View style={styles.presence}>
+            <Text style={styles.presenceLabel}>{tx("Qui me voit sur la carte ?", "Who sees me on the map?")}</Text>
+            <View style={styles.presenceChoices}>
+              {([["off", tx("Personne", "Nobody")], ["friends", tx("Mes amis", "My friends")], ["area", tx("Ma zone", "My area")]] as [MapVisibility, string][]).map(([value, label]) => (
+                <Pressable key={value} onPress={() => chooseVisibility(value)} style={[styles.presenceChoice, visibility === value && styles.presenceChoiceActive]}>
+                  <Text style={[styles.presenceChoiceText, visibility === value && styles.presenceChoiceTextActive]}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Text style={styles.presenceHint}>
+              {presenceNote ??
+                (visibility === "off"
+                  ? tx("Active-la pour voir tes amis et combien de compagnons sont autour.", "Switch it on to see your friends and how many pets are around.")
+                  : visibility === "friends"
+                    ? tx(`Tes matchs te voient à environ 500 m près. ${friends.length} ami(s) sur la carte.`, `Your matches see you to about 500 m. ${friends.length} friend(s) on the map.`)
+                    : tx(`Tes matchs te voient ; les autres ne voient qu'un nombre par quartier. ${friends.length} ami(s) sur la carte.`, `Your matches see you; others only see a count per district. ${friends.length} friend(s) on the map.`))}
+            </Text>
+          </View>
+        )}
         {matches.length > 0 && (
           <FlatList horizontal data={matches} keyExtractor={(pet) => String(pet.id)} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.petSelector} renderItem={({ item }) => <Pressable onPress={() => setSelectedPetId(item.id)} style={[styles.petChip, selectedPet?.id === item.id && styles.petChipActive]}><Image source={{ uri: item.photo }} style={styles.petChipImage} /><Text style={styles.petChipText}>{item.name}</Text></Pressable>} />
         )}
@@ -271,6 +383,19 @@ function getStyles(colors: Colors) {
     recenterIcon: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.friend, lineHeight: 22 },
     mapControlsHint: { position: "absolute", left: 10, bottom: 8, backgroundColor: "rgba(255,255,255,0.84)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.pill },
     mapControlsText: { fontFamily: fonts.bodyMedium, fontSize: 9, color: colors.grey },
+    bubble: { minWidth: 44, height: 30, paddingHorizontal: 9, borderRadius: 15, backgroundColor: "rgba(255,179,92,0.95)", borderWidth: 2, borderColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
+    bubbleText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#3A2A18" },
+    friendPin: { width: 40, height: 40, borderRadius: 20, borderWidth: 3, borderColor: colors.coral, backgroundColor: colors.cream2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+    friendPhoto: { width: "100%", height: "100%" },
+    friendInitial: { fontFamily: fonts.displaySemi, fontSize: 16, color: colors.dark },
+    presence: { paddingHorizontal: 10, paddingTop: 10, gap: 6 },
+    presenceLabel: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.dark },
+    presenceChoices: { flexDirection: "row", gap: 6 },
+    presenceChoice: { flex: 1, alignItems: "center", paddingVertical: 7, borderRadius: radii.pill, backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.line },
+    presenceChoiceActive: { backgroundColor: colors.coral, borderColor: colors.coral },
+    presenceChoiceText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.dark },
+    presenceChoiceTextActive: { color: "#FFFFFF" },
+    presenceHint: { fontFamily: fonts.body, fontSize: 10, lineHeight: 14, color: colors.grey },
     petSelector: { padding: 10, gap: 8 },
     petChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 5, paddingHorizontal: 8, borderRadius: radii.pill, backgroundColor: colors.cream },
     petChipActive: { backgroundColor: colors.cream2, borderWidth: 1, borderColor: colors.coral },
