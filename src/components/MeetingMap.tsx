@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, Image, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -44,6 +44,59 @@ export function MeetingConfirmModal({ request, onClose, onConfirmed }: { request
         if (petId !== undefined) navigation.navigate("ChatThread", { petId });
       }}
     />
+  );
+}
+
+// On Android a marker is a picture taken of its view, and it is taken before the text is laid
+// out or the photo has loaded: the marker came out empty. It keeps following its view for a
+// moment (and until `ready`), then stops, which is what keeps a map with many markers smooth.
+function useMarkerTracking(ready = true) {
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (!ready) return;
+    const timer = setTimeout(() => setSettled(true), 1200);
+    return () => clearTimeout(timer);
+  }, [ready]);
+  return !settled;
+}
+
+// Everyone else nearby: how many pets in this district.
+function BubbleMarker({ bubble, onPress, styles }: { bubble: MapBubble; onPress: () => void; styles: ReturnType<typeof getStyles> }) {
+  const tracking = useMarkerTracking();
+  return (
+    <Marker
+      coordinate={{ latitude: bubble.latitude, longitude: bubble.longitude }}
+      tracksViewChanges={tracking}
+      onPress={(event) => {
+        event.stopPropagation?.();
+        onPress();
+      }}
+    >
+      <View style={styles.bubble}><Text style={styles.bubbleText}>🐾 {bubble.pets}</Text></View>
+    </Marker>
+  );
+}
+
+// A match on the map: their avatar.
+function FriendMarker({ friend, onPress, styles }: { friend: FriendOnMap; onPress: () => void; styles: ReturnType<typeof getStyles> }) {
+  const [loaded, setLoaded] = useState(!friend.photo);
+  const tracking = useMarkerTracking(loaded);
+  return (
+    <Marker
+      coordinate={{ latitude: friend.latitude, longitude: friend.longitude }}
+      title={friend.name}
+      tracksViewChanges={tracking}
+      onPress={(event) => {
+        event.stopPropagation?.();
+        onPress();
+      }}
+    >
+      <View style={styles.friendPin}>
+        {/* The initial stays underneath: a photo that Android does not draw in a marker never leaves it empty */}
+        <Text style={styles.friendInitial}>{friend.name.slice(0, 1).toUpperCase()}</Text>
+        {!!friend.photo && <Image source={{ uri: friend.photo }} style={styles.friendPhoto} fadeDuration={0} onLoad={() => setLoaded(true)} onError={() => setLoaded(true)} />}
+      </View>
+    </Marker>
   );
 }
 
@@ -219,38 +272,29 @@ export default function MeetingMap() {
       {traceMarkers}
       {/* Everyone else nearby: a count per district, which opens Discover */}
       {bubbles.map((bubble) => (
-        <Marker
+        <BubbleMarker
           key={`bubble-${bubble.latitude}-${bubble.longitude}`}
-          coordinate={{ latitude: bubble.latitude, longitude: bubble.longitude }}
-          tracksViewChanges={false}
-          onPress={(event) => {
-            event.stopPropagation?.();
+          bubble={bubble}
+          styles={styles}
+          onPress={() => {
             setMapExpanded(false);
             navigation.navigate("MainTabs", { screen: "Discover" });
           }}
-        >
-          <View style={styles.bubble}><Text style={styles.bubbleText}>🐾 {bubble.pets}</Text></View>
-        </Marker>
+        />
       ))}
       {/* My matches who are on the map: their avatar, which opens the chat */}
       {friends.map((friend) => (
-        <Marker
+        <FriendMarker
           key={`friend-${friend.petId}`}
-          coordinate={{ latitude: friend.latitude, longitude: friend.longitude }}
-          title={friend.name}
-          tracksViewChanges={false}
-          onPress={(event) => {
-            event.stopPropagation?.();
+          friend={friend}
+          styles={styles}
+          onPress={() => {
             const match = matches.find((pet) => pet.dbId === friend.petId);
             if (!match) return;
             setMapExpanded(false);
             navigation.navigate("ChatThread", { petId: match.id });
           }}
-        >
-          <View style={styles.friendPin}>
-            {friend.photo ? <Image source={{ uri: friend.photo }} style={styles.friendPhoto} /> : <Text style={styles.friendInitial}>{friend.name.slice(0, 1)}</Text>}
-          </View>
-        </Marker>
+        />
       ))}
     </MapView>
   );
@@ -383,11 +427,12 @@ function getStyles(colors: Colors) {
     recenterIcon: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.friend, lineHeight: 22 },
     mapControlsHint: { position: "absolute", left: 10, bottom: 8, backgroundColor: "rgba(255,255,255,0.84)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.pill },
     mapControlsText: { fontFamily: fonts.bodyMedium, fontSize: 9, color: colors.grey },
-    bubble: { minWidth: 44, height: 30, paddingHorizontal: 9, borderRadius: 15, backgroundColor: "rgba(255,179,92,0.95)", borderWidth: 2, borderColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
-    bubbleText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#3A2A18" },
-    friendPin: { width: 40, height: 40, borderRadius: 20, borderWidth: 3, borderColor: colors.coral, backgroundColor: colors.cream2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-    friendPhoto: { width: "100%", height: "100%" },
-    friendInitial: { fontFamily: fonts.displaySemi, fontSize: 16, color: colors.dark },
+    // A fixed size: Android measures a marker before its text, and a flexible one came out empty.
+    bubble: { width: 58, height: 30, borderRadius: 15, backgroundColor: "rgba(255,179,92,0.95)", borderWidth: 2, borderColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
+    bubbleText: { fontSize: 12, fontWeight: "700", color: "#3A2A18", textAlign: "center", width: 54 },
+    friendPin: { width: 44, height: 44, borderRadius: 22, borderWidth: 3, borderColor: colors.coral, backgroundColor: colors.cream2, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+    friendPhoto: { position: "absolute", top: 0, left: 0, width: 38, height: 38, borderRadius: 19 },
+    friendInitial: { fontSize: 17, fontWeight: "800", color: colors.coralDark, textAlign: "center", width: 38 },
     presence: { paddingHorizontal: 10, paddingTop: 10, gap: 6 },
     presenceLabel: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.dark },
     presenceChoices: { flexDirection: "row", gap: 6 },
