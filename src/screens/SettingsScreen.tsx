@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { fonts, radii } from "@/theme/theme";
@@ -8,8 +8,10 @@ import { useTheme, ThemeMode } from "@/context/ThemeContext";
 import { useLocalization } from "@/context/LocalizationContext";
 import { useTranslation } from "@/i18n/useTranslation";
 import { useThemedColors } from "@/hooks/useThemedColors";
-import { getAccountProfile, saveAccountProfile } from "@/data/api/profile";
+import { deleteMyAccount, getAccountProfile, saveAccountProfile } from "@/data/api/profile";
 import { supabase } from "@/lib/supabase";
+
+const SITE_URL = "https://grrrr-main.vercel.app";
 
 export default function SettingsScreen() {
   const navigation = useNavigation<any>();
@@ -25,6 +27,30 @@ export default function SettingsScreen() {
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // For good: the account, its pets, matches, messages and health records (migration 026).
+  const confirmDelete = () => {
+    Alert.alert(
+      tx("Supprimer ton compte ?", "Delete your account?"),
+      tx("Ton compte, tes compagnons, tes matchs, tes messages et le carnet de santé GRR Care seront supprimés définitivement. C'est irréversible.", "Your account, your pets, matches, messages and the GRR Care health record will be deleted for good. This cannot be undone."),
+      [
+        { text: tx("Annuler", "Cancel"), style: "cancel" },
+        {
+          text: tx("Supprimer définitivement", "Delete for good"),
+          style: "destructive",
+          onPress: async () => {
+            if (!session?.user.id) return;
+            setDeleting(true);
+            const { error } = await deleteMyAccount(session.user.id);
+            setDeleting(false);
+            if (error) Alert.alert(tx("Suppression impossible", "Could not delete"), tx("Réessaie dans un instant.", "Try again in a moment."));
+            else await signOut();
+          },
+        },
+      ]
+    );
+  };
 
   useEffect(() => {
     if (!session?.user.id) {
@@ -126,6 +152,16 @@ export default function SettingsScreen() {
           </Pressable>
         </Section>
         <Pressable style={styles.signOutButton} onPress={signOut}><Text style={[styles.signOutText, { color: colors.coralDark }]}>{t.settings.signOut}</Text></Pressable>
+
+        {/* Legal pages (on the website) and account deletion, both asked for by the stores */}
+        <View style={styles.legalRow}>
+          <Pressable onPress={() => Linking.openURL(`${SITE_URL}/privacy`)}><Text style={[styles.legalLink, { color: colors.grey }]}>{tx("Confidentialité", "Privacy")}</Text></Pressable>
+          <Text style={{ color: colors.grey }}>·</Text>
+          <Pressable onPress={() => Linking.openURL(`${SITE_URL}/terms`)}><Text style={[styles.legalLink, { color: colors.grey }]}>{tx("Conditions", "Terms")}</Text></Pressable>
+        </View>
+        <Pressable style={styles.deleteButton} onPress={confirmDelete} disabled={deleting}>
+          <Text style={styles.deleteText}>{deleting ? tx("Suppression…", "Deleting…") : tx("Supprimer mon compte", "Delete my account")}</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -203,6 +239,10 @@ const styles = StyleSheet.create({
   passwordButtonText: { fontFamily: fonts.bodyBold, fontSize: 13 },
   saveText: { color: "#FFFFFF", fontFamily: fonts.bodyBold, fontSize: 13 },
   signOutButton: { alignItems: "center", paddingVertical: 16 },
+  legalRow: { flexDirection: "row", justifyContent: "center", gap: 10, marginTop: 4 },
+  legalLink: { fontFamily: fonts.bodySemi, fontSize: 12, textDecorationLine: "underline" },
+  deleteButton: { alignItems: "center", paddingVertical: 18 },
+  deleteText: { fontFamily: fonts.bodySemi, fontSize: 12, color: "#C0392B" },
   signOutText: { fontFamily: fonts.bodySemi, fontSize: 13 },
   empty: { flex: 1, justifyContent: "center", alignItems: "center", padding: 36 },
   emptyTitle: { fontFamily: fonts.displaySemi, fontSize: 19, textAlign: "center" },

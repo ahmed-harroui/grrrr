@@ -9,6 +9,7 @@ import { useTranslation } from "@/i18n/useTranslation";
 import { SPECIES } from "@/components/AddPetSheet";
 import { AdoptionListing, AdoptionParent, answerAdoption, getAdoptionFeed } from "@/data/api/adoption";
 import { refreshPetProgress } from "@/data/api/progress";
+import GiveList from "@/components/GiveList";
 
 // GRRRR Adopt: the litters two matched pets agreed to entrust to adopters (migration 012),
 // answered one by one like Discover. Its own look: white glass on a warm orange light.
@@ -35,6 +36,7 @@ export default function AdoptScreen() {
   const [loaded, setLoaded] = useState(false);
   const [sentTo, setSentTo] = useState<AdoptionListing | null>(null);
   const [failed, setFailed] = useState(false);
+  const [tab, setTab] = useState<"babies" | "give">("babies");
   const topCardRef = useRef<CardHandle>(null);
   const petId = activePet.dbId;
 
@@ -86,10 +88,20 @@ export default function AdoptScreen() {
           </Pressable>
           <View style={styles.headCopy}>
             <Text style={styles.eyebrow}>GRRRR ADOPT</Text>
-            <Text style={styles.title}>{tx("Des bébés à adopter", "Babies to adopt")}</Text>
+            <Text style={styles.title}>{tab === "give" ? tx("Des animaux à donner", "Pets to give") : tx("Des bébés à adopter", "Babies to adopt")}</Text>
           </View>
         </View>
 
+        {/* Two parts, as on the website: the litters of matched couples, and the pets to give */}
+        <View style={styles.tabs}>
+          {(["babies", "give"] as const).map((key) => (
+            <Pressable key={key} style={[styles.tab, tab === key && styles.tabActive]} onPress={() => setTab(key)}>
+              <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>{key === "babies" ? tx("🍼 Bébés à venir", "🍼 Babies to come") : tx("🏡 À donner", "🏡 To give")}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {tab === "give" ? <GiveList /> : <>
         {sentTo && (
           <Pressable style={styles.notice} onPress={() => navigation.navigate("MainTabs", { screen: "Chat" })}>
             <Text style={styles.noticeTitle}>🍼 {tx("Demande envoyée", "Request sent")}</Text>
@@ -135,6 +147,7 @@ export default function AdoptScreen() {
             </Pressable>
           </View>
         )}
+        </>}
       </SafeAreaView>
     </View>
   );
@@ -260,6 +273,11 @@ const styles = StyleSheet.create({
   noticeTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: INK },
   noticeText: { fontFamily: fonts.body, fontSize: 12, lineHeight: 17, color: INK_SOFT, marginTop: 2 },
   stack: { flex: 1, marginHorizontal: 16, position: "relative" },
+  tabs: { flexDirection: "row", gap: 8, paddingHorizontal: 18, marginBottom: 12 },
+  tab: { flex: 1, alignItems: "center", paddingVertical: 9, borderRadius: 999, backgroundColor: GLASS, borderWidth: 1.5, borderColor: GLASS_BORDER },
+  tabActive: { backgroundColor: INK, borderColor: INK },
+  tabText: { fontFamily: fonts.bodyBold, fontSize: 12, color: INK },
+  tabTextActive: { color: "#FFFFFF" },
   emptyCard: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28, borderRadius: 28, backgroundColor: GLASS, borderWidth: 1.5, borderColor: GLASS_BORDER },
   emptyIcon: { fontSize: 44 },
   emptyTitle: { fontFamily: fonts.displaySemi, fontSize: 19, color: INK, textAlign: "center", marginTop: 10 },

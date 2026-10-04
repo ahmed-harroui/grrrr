@@ -212,3 +212,17 @@ export async function updatePetProfile(petId: string, ownerId: string, changes: 
   const { error } = await supabase.from("pets").update(changes).eq("id", petId).eq("owner_id", ownerId);
   return { error };
 }
+
+/**
+ * Deletes the signed-in account for good (migration 026): its photos and documents are removed
+ * from Storage first, then the account, and with it its pets, matches, messages and records.
+ */
+export async function deleteMyAccount(userId: string): Promise<{ error: string | null }> {
+  if (!supabase) return { error: "offline" };
+  for (const bucket of [PET_PHOTOS_BUCKET, "pet-documents"]) {
+    const { data: files } = await supabase.storage.from(bucket).list(userId, { limit: 1000 });
+    if (files?.length) await supabase.storage.from(bucket).remove(files.map((file) => `${userId}/${file.name}`));
+  }
+  const { error } = await supabase.rpc("delete_my_account");
+  return { error: error?.message ?? null };
+}

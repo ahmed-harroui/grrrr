@@ -188,3 +188,22 @@ export async function answerAdoption(litterId: string, petId: string, adopt: boo
   const { data, error } = await supabase.rpc("answer_adoption", { p_litter_id: litterId, p_pet_id: petId, p_adopt: adopt });
   return { sent: data === true, error: error ? toError(error.message) : null };
 }
+
+/** A pet its owner can no longer keep, posted on the website (migration 025). */
+export type RehomingListing = { id: string; petName: string; species: string; breed: string; age: string; gender: "M" | "F" | "U"; city: string; story: string; photo: string; reserved: boolean };
+
+/** Pets to give still looking for a home, newest first. */
+export async function getRehomingListings(): Promise<RehomingListing[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("rehoming_listings")
+    .select("id, pet_name, species, breed, age, gender, city, story, photo_url, status")
+    .in("status", ["open", "reserved"])
+    .order("created_at", { ascending: false })
+    .limit(60);
+  if (error) {
+    console.warn("Pets to give could not be loaded", error.message);
+    return [];
+  }
+  return (data ?? []).map((row) => ({ id: row.id, petName: row.pet_name, species: row.species, breed: row.breed ?? "", age: row.age ?? "", gender: row.gender, city: row.city, story: row.story, photo: row.photo_url ?? "", reserved: row.status === "reserved" }));
+}
