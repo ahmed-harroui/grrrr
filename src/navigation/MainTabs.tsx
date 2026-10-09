@@ -97,6 +97,8 @@ export default function MainTabs() {
         tabBarInactiveTintColor: colors.grey,
         tabBarStyle: getTabBarStyle(insets.bottom, colors),
         tabBarItemStyle: { paddingHorizontal: 2 },
+        // Always under the icon: on a wide window the navigator would put it beside, but the app stays a phone-wide column
+        tabBarLabelPosition: "below-icon",
         tabBarLabel: ({ color }) => (
           <Text style={{ fontFamily: fonts.bodySemi, fontSize: 10.5, color }}>{tx(...LABELS[route.name])}</Text>
         ),

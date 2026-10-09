@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef } from "react";
-import { Animated, Dimensions, Image, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Image, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { fonts, radii } from "@/theme/theme";
 import { ENERGY_LABEL, Pet } from "@/data/mockPets";
@@ -8,8 +8,9 @@ import { useTranslation } from "@/i18n/useTranslation";
 import PetRankBadge from "@/components/PetRankBadge";
 import PetProfileSheet from "@/components/PetProfileSheet";
 import type { Liker } from "@/data/api/likes";
+import { appWidth } from "@/utils/wideScreen";
 
-const { width } = Dimensions.get("window");
+const width = appWidth();
 const SWIPE_THRESHOLD = 110;
 const SWIPE_UP_THRESHOLD = 120;
 

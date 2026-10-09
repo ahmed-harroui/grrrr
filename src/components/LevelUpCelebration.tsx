@@ -7,6 +7,7 @@ import { onPetLevel } from "@/data/api/progress";
 import { useAppState } from "@/context/AppState";
 import { useTranslation } from "@/i18n/useTranslation";
 import { PET_RANKS } from "@/utils/petProgression";
+import { appWidth } from "@/utils/wideScreen";
 
 // Transparent decor sheets. Swap BIG_DECOR for assets/decor/big.png once it exists.
 const SMALL_DECOR = require("../../assets/decor/small.png");
@@ -51,7 +52,9 @@ export default function LevelUpCelebration() {
 
 function CelebrationCard({ level, petName, tx, onClose }: { level: number; petName: string; tx: (fr: string, en: string) => string; onClose: () => void }) {
   const rank = PET_RANKS[Math.max(0, Math.min(PET_RANKS.length - 1, level - 1))];
-  const { width, height } = useWindowDimensions();
+  // On a wide screen the app is a centred column: the decor is sized to it, not to the window
+  const { width: windowWidth, height } = useWindowDimensions();
+  const width = Math.min(windowWidth, appWidth());
   const backdrop = useRef(new Animated.Value(0)).current;
   const card = useRef(new Animated.Value(0)).current;
   const emblem = useRef(new Animated.Value(0)).current;

@@ -1,5 +1,5 @@
 import React, { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "react";
-import { Animated, Dimensions, Image, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Image, PanResponder, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -10,6 +10,7 @@ import { SPECIES } from "@/components/AddPetSheet";
 import { AdoptionListing, AdoptionParent, answerAdoption, getAdoptionFeed } from "@/data/api/adoption";
 import { refreshPetProgress } from "@/data/api/progress";
 import GiveList from "@/components/GiveList";
+import { appWidth } from "@/utils/wideScreen";
 
 // GRRRR Adopt: the litters two matched pets agreed to entrust to adopters (migration 012),
 // answered one by one like Discover. Its own look: white glass on a warm orange light.
@@ -20,7 +21,7 @@ const INK_SOFT = "#8A6F54";
 const GLASS = "rgba(255,255,255,0.58)";
 const GLASS_BORDER = "rgba(255,255,255,0.9)";
 
-const { width } = Dimensions.get("window");
+const width = appWidth();
 const SWIPE_THRESHOLD = 110;
 
 type Direction = "left" | "right";

@@ -22,8 +22,12 @@ import AuthScreen from "@/screens/AuthScreen";
 import PetProfileSetupScreen from "@/screens/PetProfileSetupScreen";
 import RootNavigator from "@/navigation/RootNavigator";
 import "@/lib/webAlert";
+import { installWideScreenFrame } from "@/utils/wideScreen";
 
 SplashAPI.preventAutoHideAsync().catch(() => {});
+
+// Tablets and computers: the app as a centred column instead of a phone layout stretched across the window
+installWideScreenFrame({ light: "#EFE4D8", dark: "#0C0B09" });
 
 type Stage = "splash" | "auth" | "onboarding" | "profileSetup" | "app";
 

@@ -1,6 +1,5 @@
 import React, { useRef, useState } from "react";
 import {
-  Dimensions,
   FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -11,12 +10,13 @@ import {
 } from "react-native";
 import { fonts, radii } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
+import { appWidth } from "@/utils/wideScreen";
 
 interface Props {
   onDone: () => void;
 }
 
-const { width } = Dimensions.get("window");
+const width = appWidth();
 
 const SLIDES = [
   {

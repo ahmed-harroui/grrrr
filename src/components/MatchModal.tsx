@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef } from "react";
-import { Animated, Dimensions, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { fonts } from "@/theme/theme";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { Pet } from "@/data/mockPets";
 import { useAppState } from "@/context/AppState";
 import { useTranslation } from "@/i18n/useTranslation";
+import { appWidth } from "@/utils/wideScreen";
 
 interface Props {
   visible: boolean;
@@ -13,7 +14,7 @@ interface Props {
   onKeepSwiping: () => void;
 }
 
-const { width } = Dimensions.get("window");
+const width = appWidth();
 const SPARKLE_COLORS = ["#FFD7E1", "#FFC0D1", "#FFE8A3", "#BFF5E5"];
 
 export default function MatchModal({ visible, pet, onKeepSwiping }: Props) {
