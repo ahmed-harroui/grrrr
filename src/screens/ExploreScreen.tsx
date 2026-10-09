@@ -46,7 +46,7 @@ export default function ExploreScreen() {
             </View>
             <View style={styles.rightColumn}>
               <Text style={styles.columnTitle}>{tx("La boutique", "The shop")}</Text>
-              <Pressable style={styles.storeCard} onPress={() => Linking.openURL("https://grrrr-store-89il.vercel.app/")}><Image source={STORE_IMAGE} style={styles.storeImage} resizeMode="cover" /><View style={styles.storeOverlay}><Text style={styles.storeEyebrow}>GRRRR SHOP</Text><Text style={styles.storeTitle}>{tx("Pour les balades qui comptent.", "For the walks that matter.")}</Text><Text style={styles.storeButton}>{tx("Visiter la boutique ↗", "Visit the shop ↗")}</Text></View></Pressable>
+              <Pressable style={styles.storeCard} onPress={() => Linking.openURL("https://store.greatrascals.com/")}><Image source={STORE_IMAGE} style={styles.storeImage} resizeMode="cover" /><View style={styles.storeOverlay}><Text style={styles.storeEyebrow}>GRRRR SHOP</Text><Text style={styles.storeTitle}>{tx("Pour les balades qui comptent.", "For the walks that matter.")}</Text><Text style={styles.storeButton}>{tx("Visiter la boutique ↗", "Visit the shop ↗")}</Text></View></Pressable>
               <View style={styles.storeNote}><Text style={styles.storeNoteIcon}>✦</Text><Text style={styles.storeNoteText}>{tx("Une sélection pensée pour chaque tempérament.", "A selection designed for every temperament.")}</Text></View>
               <Pressable style={styles.careCard} onPress={() => Linking.openURL(careUrlForPet(activePet.dbId))}>
                 <View style={styles.careHeader}><Text style={styles.careIcon}>🩺</Text><Text style={styles.careEyebrow}>GRRRR CARE</Text></View>
