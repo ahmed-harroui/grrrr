@@ -27,7 +27,10 @@ import { installWideScreenFrame } from "@/utils/wideScreen";
 SplashAPI.preventAutoHideAsync().catch(() => {});
 
 // Tablets and computers: the app as a centred column instead of a phone layout stretched across the window
-installWideScreenFrame({ light: "#EFE4D8", dark: "#0C0B09" });
+installWideScreenFrame({
+  light: { from: "#FFE1E8", to: "#FFC2D0", paw: "rgba(244, 63, 94, .16)" },
+  dark: { from: "#3B1320", to: "#1A0A10", paw: "rgba(255, 110, 135, .13)" },
+});
 
 type Stage = "splash" | "auth" | "onboarding" | "profileSetup" | "app";
 
