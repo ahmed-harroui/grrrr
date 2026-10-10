@@ -22,15 +22,17 @@ import AuthScreen from "@/screens/AuthScreen";
 import PetProfileSetupScreen from "@/screens/PetProfileSetupScreen";
 import RootNavigator from "@/navigation/RootNavigator";
 import "@/lib/webAlert";
-import { installWideScreenFrame } from "@/utils/wideScreen";
+import { CARD_WIDTH, framed, installWideModals } from "@/utils/wideScreen";
 
 SplashAPI.preventAutoHideAsync().catch(() => {});
 
-// Tablets and computers: the app as a centred column instead of a phone layout stretched across the window
-installWideScreenFrame({
-  light: { from: "#FFE1E8", to: "#FFC2D0", paw: "rgba(244, 63, 94, .16)" },
-  dark: { from: "#3B1320", to: "#1A0A10", paw: "rgba(255, 110, 135, .13)" },
-});
+// Tablets and computers: sheets open as a centred panel instead of a band across the window
+installWideModals();
+
+// Sign-in, the welcome pages and the pet setup are forms: they keep a form's width on a wide screen
+const Auth = framed(AuthScreen, 480);
+const Onboarding = framed(OnboardingScreen, CARD_WIDTH);
+const PetProfileSetup = framed(PetProfileSetupScreen, 620);
 
 type Stage = "splash" | "auth" | "onboarding" | "profileSetup" | "app";
 
@@ -101,9 +103,9 @@ function AppContent({ stage, setStage }: { stage: Stage; setStage: (stage: Stage
 
   if (stage === "splash") return <SplashScreen onFinish={() => setStage("auth")} />;
   if (loading) return null;
-  if (stage === "auth") return <AuthScreen onDemo={() => { setGuestMode(true); setStage("onboarding"); }} onAuthenticated={() => {}} />;
-  if (stage === "onboarding") return <OnboardingScreen onDone={() => setStage("app")} />;
-  if (stage === "profileSetup") return <PetProfileSetupScreen onDone={() => void enterSignedIn()} />;
+  if (stage === "auth") return <Auth onDemo={() => { setGuestMode(true); setStage("onboarding"); }} onAuthenticated={() => {}} />;
+  if (stage === "onboarding") return <Onboarding onDone={() => setStage("app")} />;
+  if (stage === "profileSetup") return <PetProfileSetup onDone={() => void enterSignedIn()} />;
   return (
     <PetSelectorProvider>
       <RootNavigator />

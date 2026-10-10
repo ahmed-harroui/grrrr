@@ -16,8 +16,18 @@ import { useAppState } from "@/context/AppState";
 import { useTranslation } from "@/i18n/useTranslation";
 import LevelUpCelebration from "@/components/LevelUpCelebration";
 import MatchModal from "@/components/MatchModal";
+import SideTabs from "@/navigation/SideTabs";
+import { framed, SIDEBAR_WIDTH, useDevice } from "@/utils/wideScreen";
 
 const Tab = createBottomTabNavigator();
+
+// Each tab at the width it reads best on a tablet or a laptop (phones get the screens as they are)
+const Discover = framed(DiscoverScreen, 620);
+const Matches = framed(MatchesScreen, 1100);
+const Chat = framed(ChatListScreen, 820);
+const Explore = framed(ExploreScreen, 1100);
+const MyPet = framed(MyPetScreen, 900);
+const TABLET_BAR = 560;
 
 const ICONS: Record<string, number> = {
   Discover: require("../../assets/navbar/descover.png"),
@@ -88,16 +98,22 @@ export default function MainTabs() {
   // The home-screen widgets show the same numbers.
   useWidgetSync({ likes: pendingLikers.length, lastLikerName: pendingLikers[0]?.pet_name, unread: unreadMessages });
 
+  // A laptop gets a sidebar and the screens beside it; on a tablet the bar keeps a phone's width, centred
+  const { isLaptop, isWide, width } = useDevice();
+  const tabletInset = isWide ? Math.max(10, (width - TABLET_BAR) / 2) : 10;
+
   return (
     <>
     <Tab.Navigator
+      sceneContainerStyle={isLaptop ? { paddingLeft: SIDEBAR_WIDTH, backgroundColor: colors.cream } : undefined}
+      tabBar={isLaptop ? (props) => <SideTabs {...props} labels={LABELS} /> : undefined}
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.coralDark,
         tabBarInactiveTintColor: colors.grey,
-        tabBarStyle: getTabBarStyle(insets.bottom, colors),
+        tabBarStyle: { ...getTabBarStyle(insets.bottom, colors), marginHorizontal: tabletInset },
         tabBarItemStyle: { paddingHorizontal: 2 },
-        // Always under the icon: on a wide window the navigator would put it beside, but the app stays a phone-wide column
+        // Always under the icon: on a wide window the navigator would put it beside
         tabBarLabelPosition: "below-icon",
         tabBarLabel: ({ color }) => (
           <Text style={{ fontFamily: fonts.bodySemi, fontSize: 10.5, color }}>{tx(...LABELS[route.name])}</Text>
@@ -117,11 +133,11 @@ export default function MainTabs() {
         ),
       })}
     >
-      <Tab.Screen name="Discover" component={DiscoverScreen} />
-      <Tab.Screen name="Matches" component={MatchesScreen} />
-      <Tab.Screen name="Chat" component={ChatListScreen} />
-      <Tab.Screen name="Explore" component={ExploreScreen} />
-      <Tab.Screen name="MyPet" component={MyPetScreen} />
+      <Tab.Screen name="Discover" component={Discover} />
+      <Tab.Screen name="Matches" component={Matches} />
+      <Tab.Screen name="Chat" component={Chat} />
+      <Tab.Screen name="Explore" component={Explore} />
+      <Tab.Screen name="MyPet" component={MyPet} />
     </Tab.Navigator>
     {/* Shown on any tab: a like back can arrive while browsing elsewhere */}
     <MatchModal visible={!!pendingMatch} pet={pendingMatch} onMessage={clearPendingMatch} onKeepSwiping={clearPendingMatch} />
