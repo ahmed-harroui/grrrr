@@ -154,7 +154,7 @@ export default function DailyRewards() {
                 </View>
               ) : needsGame ? (
                 <>
-                  <Text style={styles.gameText}>{tx("Le cadeau du jour 7 se débloque en finissant une partie du jeu « Aide tes compagnons » dans GRRR Care cette semaine (90 secondes, même compte).", "Day 7's gift unlocks by finishing a game of “Help your pets” in GRRR Care this week (90 seconds, same account).")}</Text>
+                  <Text style={styles.gameText}>{tx("Le cadeau du jour 7 se débloque en finissant une partie du jeu « Aide tes compagnons » dans GRRR Care cette semaine (2 minutes, même compte).", "Day 7's gift unlocks by finishing a game of “Help your pets” in GRRR Care this week (2 minutes, same account).")}</Text>
                   <Pressable style={styles.claim} onPress={() => void Linking.openURL(CARE_GAME_URL)}>
                     <Text style={styles.claimText}>{tx("Jouer dans GRRR Care", "Play in GRRR Care")}</Text>
                   </Pressable>
