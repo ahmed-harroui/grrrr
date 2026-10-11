@@ -53,6 +53,7 @@ type MapViewProps = {
   initialRegion?: Region;
   region?: Region;
   onPress?: (event: MapPressEvent) => void;
+  onRegionChangeComplete?: (region: Region) => void;
   children?: React.ReactNode;
   /** The native-only props (map style, gestures...) are accepted and ignored. */
   [prop: string]: any;
@@ -60,7 +61,9 @@ type MapViewProps = {
 
 export type MapViewHandle = { animateToRegion: (region: Region, duration?: number) => void };
 
-const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView({ style, initialRegion, region, onPress, children }, ref) {
+const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView({ style, initialRegion, region, onPress, onRegionChangeComplete, children }, ref) {
+  const movedRef = useRef<((region: Region) => void) | undefined>(onRegionChangeComplete);
+  movedRef.current = onRegionChangeComplete;
   const { tx } = useTranslation();
   const container = useRef<any>(null);
   const [ready, setReady] = useState<{ L: any; map: any } | null>(null);
@@ -79,6 +82,12 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView({ style
         map = L.map(container.current, { zoomControl: true, attributionControl: true }).setView([start.latitude, start.longitude], zoomFor(start));
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
         map.on("click", (event: any) => pressRef.current?.({ nativeEvent: { coordinate: { latitude: event.latlng.lat, longitude: event.latlng.lng } } }));
+        // Dragged or zoomed: where the view ended up, as react-native-maps reports it
+        map.on("moveend", () => {
+          const centre = map.getCenter();
+          const bounds = map.getBounds();
+          movedRef.current?.({ latitude: centre.lat, longitude: centre.lng, latitudeDelta: bounds.getNorth() - bounds.getSouth(), longitudeDelta: bounds.getEast() - bounds.getWest() });
+        });
         // The container may get its size after the first layout (modals, cards).
         setTimeout(() => map?.invalidateSize(), 200);
         setReady({ L, map });

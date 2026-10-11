@@ -109,8 +109,11 @@ export default function MeetingMap() {
   const styles = getStyles(colors);
   const { tx } = useTranslation();
   const { isDark } = useTheme();
-  // The places around the city the map opens on
-  const { partners } = usePartners(HOME_CITY_REGION);
+  // Where the map opens: on me once my position is known, else on the home city. The places shown are those
+  // around the part of the map being looked at: they follow when it is dragged far enough.
+  const [myPosition, setMyPosition] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [placesCentre, setPlacesCentre] = useState({ latitude: HOME_CITY_REGION.latitude, longitude: HOME_CITY_REGION.longitude });
+  const { partners } = usePartners(placesCentre);
   const mapRef = useRef<MapView>(null);
   const [selectedPetId, setSelectedPetId] = useState<number | null>(matches[0]?.id ?? null);
   const [selectedMarker, setSelectedMarker] = useState<MeetingMarker>("pink");
@@ -173,8 +176,28 @@ export default function MeetingMap() {
     if (next === "off") void loadPresence("off", false);
   };
 
+  // My position, asked for only when `ask` (the app's own dialog was accepted): the map and its places move to it.
+  const locate = useCallback(async (ask: boolean) => {
+    const position = await getMyPosition(ask);
+    if (!position) return;
+    setMyPosition(position);
+    setPlacesCentre(position);
+    mapRef.current?.animateToRegion({ ...position, latitudeDelta: HOME_CITY_REGION.latitudeDelta, longitudeDelta: HOME_CITY_REGION.longitudeDelta }, 450);
+  }, []);
+
+  // Already allowed on an earlier visit: no question, the map opens where I am
+  useEffect(() => {
+    void locate(false);
+  }, [locate]);
+
+  // Dragged away from the places loaded: load those around the new view (about 10 km is "away")
+  const followMap = (region: Region) => {
+    const moved = Math.abs(region.latitude - placesCentre.latitude) > 0.1 || Math.abs(region.longitude - placesCentre.longitude) > 0.14;
+    if (moved) setPlacesCentre({ latitude: region.latitude, longitude: region.longitude });
+  };
+
   const selectedPet = matches.find((pet) => pet.id === selectedPetId) ?? matches[0];
-  const initialRegion: Region = HOME_CITY_REGION;
+  const initialRegion: Region = myPosition ? { ...HOME_CITY_REGION, ...myPosition } : HOME_CITY_REGION;
   const mapTheme = { customMapStyle: isDark ? darkMapStyle : lightMapStyle, userInterfaceStyle: isDark ? "dark" as const : "light" as const };
 
   const handleOpenMapClick = () => {
@@ -220,6 +243,8 @@ export default function MeetingMap() {
   const grantLocationPermission = () => {
     setLocationPermissionGranted(true);
     setShowLocationModal(false);
+    // The app's dialog was accepted: the device may now be asked, and the map goes where I am
+    void locate(true);
     if (pendingAction === "expand") {
       setMapExpanded(true);
     } else if (pendingAction === "click" && pendingClickEvent) {
@@ -253,11 +278,15 @@ export default function MeetingMap() {
   const nativeMap = (style: object) => (
     <MapView
       ref={mapRef}
+      // Made again when my position first arrives, so a map already on screen opens on it too
+      key={myPosition ? "located" : "home"}
       style={style}
       initialRegion={initialRegion}
       mapType="standard"
       {...mapTheme}
       onPress={(e) => handleMapPress("native", e)}
+      onRegionChangeComplete={followMap}
+      showsUserLocation={Boolean(myPosition)}
       scrollEnabled
       zoomEnabled
       rotateEnabled
@@ -271,6 +300,12 @@ export default function MeetingMap() {
     >
       <PartnerMarkers partners={partners} onSelect={setSelectedPartner} />
       {traceMarkers}
+      {/* The phones draw my position themselves (showsUserLocation); the web map gets a dot */}
+      {Platform.OS === "web" && myPosition && (
+        <Marker coordinate={myPosition} title={tx("Tu es ici", "You are here")}>
+          <View style={styles.meDot} />
+        </Marker>
+      )}
       {/* Everyone else nearby: a count per district, which opens Discover */}
       {bubbles.map((bubble) => (
         <BubbleMarker
@@ -424,6 +459,7 @@ function getStyles(colors: Colors) {
     webMapText: { fontFamily: fonts.body, fontSize: 10, lineHeight: 14, color: colors.grey, textAlign: "center", maxWidth: 280, marginTop: 2 },
     webMarker: { position: "absolute" },
     mapMarker: { width: 32, height: 32 },
+    meDot: { width: 18, height: 18, borderRadius: 9, backgroundColor: "#2F7CF6", borderWidth: 3, borderColor: "#FFFFFF" },
     recenterButton: { position: "absolute", right: 10, bottom: 28, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.94)", alignItems: "center", justifyContent: "center", shadowColor: colors.dark, shadowOpacity: 0.16, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
     recenterIcon: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.friend, lineHeight: 22 },
     mapControlsHint: { position: "absolute", left: 10, bottom: 8, backgroundColor: "rgba(255,255,255,0.84)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.pill },
