@@ -109,7 +109,8 @@ export default function MeetingMap() {
   const styles = getStyles(colors);
   const { tx } = useTranslation();
   const { isDark } = useTheme();
-  const { partners } = usePartners();
+  // The places around the city the map opens on
+  const { partners } = usePartners(HOME_CITY_REGION);
   const mapRef = useRef<MapView>(null);
   const [selectedPetId, setSelectedPetId] = useState<number | null>(matches[0]?.id ?? null);
   const [selectedMarker, setSelectedMarker] = useState<MeetingMarker>("pink");

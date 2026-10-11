@@ -21,15 +21,24 @@ export type Partner = {
 
 const PARTNER_COLUMNS = "id, name, category, description, address, phone, email, website, latitude, longitude, rating, is_featured, logo_url, services";
 
-// Only published partners with usable coordinates can be pinned on the map.
-export async function getPartners(): Promise<Partner[]> {
+// The table holds every vet, pet shop and groomer of the country (GRRR Care migration 018): the map only
+// gets the published places around the point it shows, about 45 km each way, never the whole list.
+const AROUND_DEGREES = 0.4;
+const MAX_PLACES = 400;
+
+export async function getPartners(center: { latitude: number; longitude: number }): Promise<Partner[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("partners")
     .select(PARTNER_COLUMNS)
     .eq("is_published", true)
-    .not("latitude", "is", null)
-    .not("longitude", "is", null);
+    .gte("latitude", center.latitude - AROUND_DEGREES)
+    .lte("latitude", center.latitude + AROUND_DEGREES)
+    .gte("longitude", center.longitude - AROUND_DEGREES * 1.4)
+    .lte("longitude", center.longitude + AROUND_DEGREES * 1.4)
+    // Establishments that joined GRRR Care first, so they are never the ones left out
+    .order("is_partner", { ascending: false })
+    .limit(MAX_PLACES);
   if (error) throw error;
   return (data ?? []) as Partner[];
 }

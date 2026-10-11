@@ -51,6 +51,8 @@ export function installWideModals() {
   style.id = "wide-modals";
   style.textContent = `@media (min-width: ${TABLET_FROM}px) {
   [aria-modal="true"] { max-width: ${MODAL_WIDTH}px; margin: 0 auto; left: 0 !important; right: 0 !important; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .45); }
+  /* A map opened in full is the exception: it is better the larger it gets */
+  [aria-modal="true"]:has(.leaflet-container) { max-width: none; box-shadow: none; }
 }`;
   document.head.appendChild(style);
 }

@@ -3,5 +3,8 @@ import { Platform } from "react-native";
 // On Android, react-native-maps draws Google Maps, which closes the app without an API key.
 // The key (EXPO_PUBLIC_GOOGLE_MAPS_API_KEY in .env) is also put in the Android manifest by
 // android/app/build.gradle. Without it, the screens show a tappable area instead of the map.
-// iOS uses Apple Maps (no key); the web has its own placeholder (maps.web.tsx).
-export const NATIVE_MAPS_AVAILABLE = Platform.OS === "ios" || (Platform.OS === "android" && Boolean(process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY));
+// iOS uses Apple Maps (no key). On the web, metro.config.js swaps react-native-maps for the Leaflet
+// map of maps.web.tsx, so a map is always there. The web is named here too because this file, not
+// maps.web.tsx, is the one "@/lib/maps" resolves to in the web build (".ts" is tried before ".web.tsx").
+export const NATIVE_MAPS_AVAILABLE =
+  Platform.OS === "web" || Platform.OS === "ios" || (Platform.OS === "android" && Boolean(process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY));
