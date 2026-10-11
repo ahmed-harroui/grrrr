@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
 import { fonts, radii } from "@/theme/theme";
@@ -7,6 +7,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useAppState } from "@/context/AppState";
 import { useTranslation } from "@/i18n/useTranslation";
 import { claimDailyReward, DailyReward, DailyStreak, getDailyStreak, weekFor } from "@/data/api/rewards";
+
+// The week's big gift (day 7) is given once the game "help your pets" of GRRR Care was finished that week
+const CARE_GAME_URL = "https://care.greatrascals.com/game";
 
 // The daily gifts: a chain button in the header (next to the notifications) opens the week's
 // chain, in Adopt's look (white glass on a warm orange). One gift a day; a missed day starts
@@ -74,11 +77,13 @@ export default function DailyRewards() {
     if (result.reward) {
       setWon(result.reward);
       if (result.reward.kind === "treats") refreshTreats();
-    } else if (result.error !== "ALREADY_CLAIMED") {
+    } else if (result.error !== "ALREADY_CLAIMED" && result.error !== "GAME_REQUIRED") {
       setFailed(true);
     }
     load();
   };
+  // Day 7 waits for the week's game, played in GRRR Care (same account)
+  const needsGame = Boolean(streak && !streak.claimedToday && (streak.day ?? 1) === 7 && !streak.gamePlayed);
 
   const day = streak?.day ?? 1;
   const week = weekFor(streak?.aiMonthUsed);
@@ -147,6 +152,13 @@ export default function DailyRewards() {
                   <Text style={styles.wonTitle}>{tx("Cadeau du jour récupéré ✓", "Today's gift collected ✓")}</Text>
                   <Text style={styles.wonText}>{day >= 7 ? tx("Semaine complète ! Demain, une nouvelle chaîne commence.", "Week complete! A new chain starts tomorrow.") : tx(`Demain : ${rewardLabel(week[day], tx)}. Ne casse pas la chaîne !`, `Tomorrow: ${rewardLabel(week[day], tx)}. Don't break the chain!`)}</Text>
                 </View>
+              ) : needsGame ? (
+                <>
+                  <Text style={styles.gameText}>{tx("Le cadeau du jour 7 se débloque en finissant une partie du jeu « Aide tes compagnons » dans GRRR Care cette semaine (90 secondes, même compte).", "Day 7's gift unlocks by finishing a game of “Help your pets” in GRRR Care this week (90 seconds, same account).")}</Text>
+                  <Pressable style={styles.claim} onPress={() => void Linking.openURL(CARE_GAME_URL)}>
+                    <Text style={styles.claimText}>{tx("Jouer dans GRRR Care", "Play in GRRR Care")}</Text>
+                  </Pressable>
+                </>
               ) : (
                 <Pressable style={[styles.claim, busy && styles.claimBusy]} onPress={claim} disabled={busy || !streak}>
                   <Text style={styles.claimText}>{busy ? tx("Ouverture…", "Opening…") : tx(`Récupérer le cadeau du jour ${day}`, `Collect day ${day}'s gift`)}</Text>
@@ -200,6 +212,7 @@ const styles = StyleSheet.create({
   linkLabel: { fontFamily: fonts.body, fontSize: 10, color: INK_SOFT, textAlign: "center", paddingHorizontal: 2 },
   claim: { marginTop: 18, alignItems: "center", paddingVertical: 15, borderRadius: radii.pill, backgroundColor: ORANGE, borderWidth: 1.5, borderColor: "#FFFFFF", shadowColor: ORANGE_DARK, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 5 },
   claimBusy: { opacity: 0.6 },
+  gameText: { fontFamily: fonts.bodySemi, fontSize: 13, lineHeight: 19, color: "#8A6F54", textAlign: "center", marginTop: 16 },
   claimText: { fontFamily: fonts.bodyBold, fontSize: 15, color: "#FFFFFF" },
   error: { fontFamily: fonts.bodySemi, fontSize: 12, color: "#E64863", textAlign: "center", marginTop: 8 },
   wonCard: { marginTop: 18, alignItems: "center", padding: 16, borderRadius: 22, backgroundColor: GLASS, borderWidth: 1.5, borderColor: GLASS_BORDER },
