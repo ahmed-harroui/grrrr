@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { fonts, radii } from "@/theme/theme";
+import { supabase } from "@/lib/supabase";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { useAuth } from "@/context/AuthContext";
 import { googleSignInAvailable } from "@/lib/googleAuth";
@@ -18,6 +19,13 @@ export default function AuthScreen({ onDemo, onAuthenticated }: { onDemo: () => 
   const [busy, setBusy] = useState(false);
   // What went wrong, said under the form (an alert is not shown on every device)
   const [message, setMessage] = useState<string | null>(null);
+
+  // How an existing account signs in (Care migration 022): "email", "google"…
+  const signInMethods = async (address: string): Promise<string[]> => {
+    if (!supabase) return [];
+    const { data } = await supabase.rpc("sign_in_methods", { p_email: address });
+    return Array.isArray(data) ? data : [];
+  };
 
   const explain = (error: string) =>
     /invalid login|invalid credentials/i.test(error)
@@ -39,6 +47,14 @@ export default function AuthScreen({ onDemo, onAuthenticated }: { onDemo: () => 
     setBusy(true);
     if (!isSignUp) {
       const error = await signIn(email.trim(), password);
+      if (error && /invalid login|invalid credentials/i.test(error)) {
+        const methods = await signInMethods(email.trim());
+        setBusy(false);
+        setMessage(methods.includes("google") && !methods.includes("email")
+          ? tx("Ce compte a été créé avec Google : touche « Continuer avec Google » pour te connecter.", "This account was made with Google: touch “Continue with Google” to sign in.")
+          : explain(error));
+        return;
+      }
       setBusy(false);
       if (error) setMessage(explain(error));
       else onAuthenticated();
@@ -56,6 +72,12 @@ export default function AuthScreen({ onDemo, onAuthenticated }: { onDemo: () => 
       }
       setIsSignUp(false);
       setPassword("");
+      // Made with "Continue with Google": it has no password to type
+      const methods = await signInMethods(email.trim());
+      if (methods.includes("google") && !methods.includes("email")) {
+        setMessage(tx("Ce compte a été créé avec Google : touche « Continuer avec Google » pour te connecter.", "This account was made with Google: touch “Continue with Google” to sign in."));
+        return;
+      }
       setMessage(tx("Cet email a déjà un compte (le même pour GRRRR et GRRR Care). Tape son mot de passe pour te connecter.", "This email already has an account (the same for GRRRR and GRRR Care). Type its password to sign in."));
       return;
     }
