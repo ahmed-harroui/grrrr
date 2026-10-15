@@ -48,8 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       signUp: async (email, password) => {
         if (!supabase) return null;
-        const { error } = await supabase.auth.signUp({ email, password });
-        return error?.message ?? null;
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) return error.message;
+        // An email with an account already comes back without error but with no identity
+        if (data.user && data.user.identities?.length === 0) return "User already registered";
+        // No session: the email must be confirmed before signing in
+        if (!data.session) return "CONFIRM_EMAIL";
+        return null;
       },
       signInWithGoogle,
       signOut: async () => {
