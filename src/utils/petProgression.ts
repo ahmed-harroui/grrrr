@@ -5,7 +5,7 @@ import type { XpSourceKey } from "@/data/api/progress";
 export const LEVEL_THRESHOLDS = [0, 600, 1800, 4000, 8000, 14000];
 export const MAX_LEVEL = LEVEL_THRESHOLDS.length;
 export const PET_RANKS = [
-  { name: "Bronze", nameEn: "Bronze", color: "#B77A4A", image: require("../../assets/levels/bronze.png") },
+  { name: "Bronze", nameEn: "Bronze", color: "#B9503C", image: require("../../assets/levels/bronze.png") },
   { name: "Argent", nameEn: "Silver", color: "#9AA6B2", image: require("../../assets/levels/silver.png") },
   { name: "Or", nameEn: "Gold", color: "#D9A62E", image: require("../../assets/levels/gold.png") },
   { name: "Vert", nameEn: "Green", color: "#42A66A", image: require("../../assets/levels/vert.png") },
