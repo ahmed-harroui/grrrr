@@ -121,8 +121,9 @@ export default function MeetingMap() {
   const [mapExpanded, setMapExpanded] = useState(false);
   const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState<"expand" | "click">("click");
-  const [pendingClickEvent, setPendingClickEvent] = useState<{ type: "native" | "web"; event: any } | null>(null);
+  // Proposing an outing: only after "Plan an outing", the next touch on the map is the spot.
+  // Otherwise touching the map only explores it.
+  const [placing, setPlacing] = useState(false);
   const [confirmRequest, setConfirmRequest] = useState<MeetingRequest | null>(null);
   // Who is around (migration 028): my matches one by one, everyone else as a count per district.
   // It is mutual: I only see others once I am on the map myself.
@@ -200,23 +201,28 @@ export default function MeetingMap() {
   const initialRegion: Region = myPosition ? { ...HOME_CITY_REGION, ...myPosition } : HOME_CITY_REGION;
   const mapTheme = { customMapStyle: isDark ? darkMapStyle : lightMapStyle, userInterfaceStyle: isDark ? "dark" as const : "light" as const };
 
-  const handleOpenMapClick = () => {
-    if (!locationPermissionGranted) {
-      setPendingAction("expand");
-      setShowLocationModal(true);
-    } else {
-      setMapExpanded(true);
+  const handleOpenMapClick = () => setMapExpanded(true);
+
+  // A touch on the map: closes the place card; it only places an outing once asked for
+  const handleMapPress = (type: "native" | "web", event: any) => {
+    if (!placing) {
+      setSelectedPartner(null);
+      return;
     }
+    setPlacing(false);
+    executeMapPress(type, event);
   };
 
-  const handleMapPress = (type: "native" | "web", event: any) => {
-    if (!locationPermissionGranted) {
-      setPendingAction("click");
-      setPendingClickEvent({ type, event });
-      setShowLocationModal(true);
-    } else {
-      executeMapPress(type, event);
-    }
+  const startPlacing = () => {
+    setSelectedPartner(null);
+    setPlacing(true);
+  };
+
+  // Where I am: the position is only asked for here, when it is wanted
+  const recenter = () => {
+    if (myPosition) mapRef.current?.animateToRegion({ ...HOME_CITY_REGION, ...myPosition }, 450);
+    else if (locationPermissionGranted) void locate(true);
+    else setShowLocationModal(true);
   };
 
   const executeMapPress = (type: "native" | "web", event: any) => {
@@ -245,13 +251,24 @@ export default function MeetingMap() {
     setShowLocationModal(false);
     // The app's dialog was accepted: the device may now be asked, and the map goes where I am
     void locate(true);
-    if (pendingAction === "expand") {
-      setMapExpanded(true);
-    } else if (pendingAction === "click" && pendingClickEvent) {
-      executeMapPress(pendingClickEvent.type, pendingClickEvent.event);
-      setPendingClickEvent(null);
-    }
   };
+
+  // Over the map: "Plan an outing", or while placing, what to do and how to cancel
+  const placingControls = () =>
+    placing ? (
+      <View style={styles.placingBanner}>
+        <Image source={selectedMarker === "pink" ? PINK_PAW : BLUE_PAW} style={styles.placingPaw} />
+        <Text style={styles.placingText}>{tx(`Touche l'endroit du rendez-vous avec ${selectedPet?.name ?? ""}`, `Touch the meeting spot with ${selectedPet?.name ?? ""}`)}</Text>
+        <Pressable onPress={() => setPlacing(false)} style={styles.placingCancel} hitSlop={6}>
+          <Text style={styles.placingCancelText}>{tx("Annuler", "Cancel")}</Text>
+        </Pressable>
+      </View>
+    ) : selectedPet && !selectedPartner ? (
+      <Pressable onPress={startPlacing} style={styles.placeButton}>
+        <Image source={selectedMarker === "pink" ? PINK_PAW : BLUE_PAW} style={styles.placeButtonPaw} />
+        <Text style={styles.placeButtonText}>{tx("Proposer une sortie", "Plan an outing")}</Text>
+      </Pressable>
+    ) : null;
 
   const traceMarkers = matches.map((pet) => {
     const trace = meetingTraces[pet.id];
@@ -341,7 +358,7 @@ export default function MeetingMap() {
         <View style={styles.mapHeader}>
           <View style={{ flex: 1, marginRight: 8 }}>
             <Text style={styles.mapTitle}>{tx("Notre carte des rencontres", "Our meetup map")}</Text>
-            <Text style={styles.mapHint}>{selectedPet ? tx(`Touchez pour placer ${selectedPet.name}`, `Tap to place ${selectedPet.name}`) : tx("Nos partenaires près de chez vous", "Our partners near you")}</Text>
+            <Text style={styles.mapHint}>{tx("Explore les lieux et les compagnons autour de toi", "Explore the places and pets around you")}</Text>
           </View>
           <View style={styles.markerChoices}>
             <Pressable onPress={handleOpenMapClick} style={styles.expandButton}><Text style={styles.expandText}>{tx("Ouvrir", "Open")}</Text></Pressable>
@@ -353,19 +370,22 @@ export default function MeetingMap() {
           </View>
         </View>
         <View style={styles.mapWrap}>
-          {!NATIVE_MAPS_AVAILABLE ? webMap(tx("Touche cette zone pour placer la patte du match sélectionné.", "Tap this area to place the selected match's paw.")) : (
+          {!NATIVE_MAPS_AVAILABLE ? webMap(tx("Touche « Proposer une sortie », puis cette zone.", "Touch “Plan an outing”, then this area.")) : (
             <>
               {nativeMap(styles.map)}
               {!selectedPartner && (
-                <Pressable style={styles.recenterButton} onPress={() => mapRef.current?.animateToRegion(initialRegion, 450)}>
+                <Pressable style={styles.recenterButton} onPress={recenter} accessibilityLabel={tx("Me localiser", "Find me")}>
                   <Text style={styles.recenterIcon}>◎</Text>
                 </Pressable>
               )}
             </>
           )}
-          <View style={styles.mapControlsHint} pointerEvents="none">
-            <Text style={styles.mapControlsText}>{tx("Glissez pour explorer", "Drag to explore")}</Text>
-          </View>
+          {!selectedPet && (
+            <View style={styles.mapControlsHint} pointerEvents="none">
+              <Text style={styles.mapControlsText}>{tx("Glisse pour explorer", "Drag to explore")}</Text>
+            </View>
+          )}
+          {!mapExpanded && placingControls()}
           {selectedPartner && !mapExpanded && <PartnerCard partner={selectedPartner} onClose={() => setSelectedPartner(null)} />}
         </View>
         {/* Who sees me on the map: off by default, and I only see others once I am on it */}
@@ -403,10 +423,16 @@ export default function MeetingMap() {
             <Pressable onPress={() => setMapExpanded(false)} style={styles.closeMap}><Text style={styles.closeMapText}>×</Text></Pressable>
           </View>
           <View style={styles.fullMapWrap}>
-            {!NATIVE_MAPS_AVAILABLE ? webMap(tx("Touche cette zone pour placer la patte.", "Tap this area to place the paw.")) : nativeMap(styles.fullMap)}
+            {!NATIVE_MAPS_AVAILABLE ? webMap(tx("Touche « Proposer une sortie », puis cette zone.", "Touch “Plan an outing”, then this area.")) : nativeMap(styles.fullMap)}
+            {!selectedPartner && NATIVE_MAPS_AVAILABLE && (
+              <Pressable style={styles.recenterButton} onPress={recenter} accessibilityLabel={tx("Me localiser", "Find me")}>
+                <Text style={styles.recenterIcon}>◎</Text>
+              </Pressable>
+            )}
             {selectedPartner && <PartnerCard partner={selectedPartner} onClose={() => setSelectedPartner(null)} />}
+            {placingControls()}
           </View>
-          <Text style={styles.fullMapHint}>{selectedPet ? tx(`Pet sélectionné : ${selectedPet.name}. Touche la carte pour placer la trace.`, `Selected pet: ${selectedPet.name}. Tap the map to place the paw.`) : tx("Sélectionne un match pour placer une trace.", "Select a match to place a paw.")}</Text>
+          <Text style={styles.fullMapHint}>{selectedPet ? tx(`Pour proposer une sortie à ${selectedPet.name} : « Proposer une sortie », puis l'endroit.`, `To plan an outing with ${selectedPet.name}: “Plan an outing”, then the spot.`) : tx("Touche un lieu pour voir sa fiche.", "Touch a place to see its card.")}</Text>
         </SafeAreaView>
       </Modal>
 
@@ -420,7 +446,7 @@ export default function MeetingMap() {
               <Text style={{ fontSize: 28 }}>⌖</Text>
             </View>
             <Text style={styles.confirmTitle}>{tx("Autoriser la localisation", "Allow location")}</Text>
-            <Text style={styles.confirmSub}>{tx("GRRRR a besoin de votre position GPS pour afficher les lieux de rencontre à proximité et placer vos empreintes de patte sur la carte.", "GRRRR needs your GPS location to show nearby meetup spots and place your paw prints on the map.")}</Text>
+            <Text style={styles.confirmSub}>{tx("Pour centrer la carte sur toi et montrer les lieux autour.", "To centre the map on you and show the places around.")}</Text>
             <View style={styles.confirmNoticeBox}>
               <Text style={styles.confirmNoticeText}>🔒 {tx("Vos données de position sont sécurisées et utilisées uniquement pour vos sorties entre animaux.", "Your location data is secure and only used for your pet outings.")}</Text>
             </View>
@@ -462,6 +488,14 @@ function getStyles(colors: Colors) {
     meDot: { width: 18, height: 18, borderRadius: 9, backgroundColor: "#2F7CF6", borderWidth: 3, borderColor: "#FFFFFF" },
     recenterButton: { position: "absolute", right: 10, bottom: 28, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(255,255,255,0.94)", alignItems: "center", justifyContent: "center", shadowColor: colors.dark, shadowOpacity: 0.16, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
     recenterIcon: { fontFamily: fonts.bodyBold, fontSize: 20, color: colors.friend, lineHeight: 22 },
+    placeButton: { position: "absolute", left: 10, bottom: 26, flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingLeft: 8, paddingRight: 12, borderRadius: radii.pill, backgroundColor: colors.coral, shadowColor: colors.dark, shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
+    placeButtonPaw: { width: 20, height: 20 },
+    placeButtonText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#FFFFFF" },
+    placingBanner: { position: "absolute", left: 10, right: 10, top: 10, flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: radii.md, backgroundColor: "rgba(255,255,255,0.97)", borderWidth: 2, borderColor: colors.coral, shadowColor: colors.dark, shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 5 },
+    placingPaw: { width: 24, height: 24 },
+    placingText: { flex: 1, fontFamily: fonts.bodySemi, fontSize: 12, lineHeight: 16, color: colors.dark },
+    placingCancel: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: radii.pill, backgroundColor: colors.cream2 },
+    placingCancelText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.coralDark },
     mapControlsHint: { position: "absolute", left: 10, bottom: 8, backgroundColor: "rgba(255,255,255,0.84)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: radii.pill },
     mapControlsText: { fontFamily: fonts.bodyMedium, fontSize: 9, color: colors.grey },
     // A fixed size: Android measures a marker before its text, and a flexible one came out empty.
