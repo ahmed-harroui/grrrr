@@ -252,7 +252,7 @@ returns void
 language sql
 security definer
 set search_path = public
-as $ update public.pets set review_requested_at = null, approved_at = now() where id = p_pet_id $;
+as $$ update public.pets set review_requested_at = null, approved_at = now() where id = p_pet_id $$;
 
 revoke execute on function public.admin_pet_queue(text, integer) from public, anon, authenticated;
 revoke execute on function public.admin_ban_pet(uuid, text) from public, anon, authenticated;
