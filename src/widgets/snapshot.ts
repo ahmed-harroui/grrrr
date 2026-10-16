@@ -5,6 +5,7 @@ import { pick } from "@/i18n/useTranslation";
 import { levelFromXp } from "@/utils/petProgression";
 import { SPECIES } from "@/components/AddPetSheet";
 import { formatMeetingTime } from "@/data/api/meetings";
+import { funMessage, idleHeadline } from "@/widgets/variety";
 
 // What the home-screen widgets show. The app builds it (texts already in the user's
 // language) and hands it to the widgets, which only draw it: they can't reach the app's state.
@@ -115,21 +116,25 @@ export interface SnapshotInput {
   now?: Date;
 }
 
-/** The word of the day: a birthday today, an outing soon, a birthday this month, a health tip, or a fact. */
+/**
+ * The word of the day: a birthday today, an outing soon, a birthday this month; then, by turns each
+ * half-hour, the health tip (when there is one) and a fact, a challenge or what the pet thinks.
+ */
 export function dayMessage(input: { language: Language; pet: Pet; care: CareStatus | null; nextOuting?: { petName: string; scheduledAt: string } | null; now: Date }) {
   const { language, pet, care, nextOuting, now } = input;
   const tx = (fr: string, en: string) => pick(language, fr, en);
   const birthdayIn = daysUntilBirthday(pet.health?.birthday, now);
   const outingIn = nextOuting ? new Date(nextOuting.scheduledAt).getTime() - now.getTime() : null;
   const facts = FACTS[pet.species === "dog" || pet.species === "cat" ? pet.species : "other"];
-  const fact = facts[Math.floor(now.getTime() / 864e5) % facts.length];
   if (birthdayIn === 0) return { icon: "🎂", title: tx(`Joyeux anniversaire ${pet.name} !`, `Happy birthday ${pet.name}!`), body: tx("Une croquette de plus et une belle balade pour fêter ça.", "An extra treat and a nice walk to celebrate.") };
   if (nextOuting && outingIn !== null && outingIn > 0 && outingIn < 3 * 864e5) {
     return { icon: "📍", title: tx(`Sortie avec ${nextOuting.petName}`, `Outing with ${nextOuting.petName}`), body: tx(`${formatMeetingTime(nextOuting.scheduledAt, language, true)}. Le lieu est sur la carte.`, `${formatMeetingTime(nextOuting.scheduledAt, language, true)}. The spot is on the map.`) };
   }
   if (birthdayIn !== null && birthdayIn <= 30) return { icon: "🎂", title: tx(`Anniversaire de ${pet.name}`, `${pet.name}'s birthday`), body: tx(`Dans ${birthdayIn} jour${birthdayIn > 1 ? "s" : ""}. Prépare-lui quelque chose !`, `In ${birthdayIn} day${birthdayIn > 1 ? "s" : ""}. Get something ready!`) };
-  if (care?.status === "ok" && care.advice && care.level !== "good") return { icon: "🩺", title: tx(`Santé de ${pet.name}`, `${pet.name}'s health`), body: tx(care.advice.fr, care.advice.en) };
-  return { icon: "🧠", title: tx("Le savais-tu ?", "Did you know?"), body: tx(fact[0], fact[1]) };
+  // The health tip every other half-hour: important, but not the only thing to read all day
+  const evenSlot = Math.floor(now.getTime() / 18e5) % 2 === 0;
+  if (care?.status === "ok" && care.advice && care.level !== "good" && evenSlot) return { icon: "🩺", title: tx(`Santé de ${pet.name}`, `${pet.name}'s health`), body: tx(care.advice.fr, care.advice.en) };
+  return funMessage({ language: language === "en" ? "en" : "fr", name: pet.name, species: pet.species, facts, now });
 }
 
 export function buildWidgetSnapshot(input: SnapshotInput): WidgetSnapshot {
@@ -179,7 +184,7 @@ export function buildWidgetSnapshot(input: SnapshotInput): WidgetSnapshot {
         input.unread > 0 ? tx(`💬 ${input.unread} message${input.unread > 1 ? "s" : ""} à lire`, `💬 ${input.unread} message${input.unread > 1 ? "s" : ""} to read`)
         : input.likes > 0 && input.lastLikerName ? tx(`💌 ${input.lastLikerName} a liké ${pet.name} 👀`, `💌 ${input.lastLikerName} liked ${pet.name} 👀`)
         : input.likes > 0 ? tx(`💌 ${input.likes} like${input.likes > 1 ? "s" : ""} à découvrir`, `💌 ${input.likes} like${input.likes > 1 ? "s" : ""} to discover`)
-        : tx("Swipe dans Discover pour de nouvelles rencontres 🐾", "Swipe in Discover to meet new friends 🐾"),
+        : idleHeadline(language === "en" ? "en" : "fr", pet.name, now),
     },
     ranking: {
       title: tx("🏆 Classement XP", "🏆 XP ranking"),

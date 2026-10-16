@@ -4,6 +4,7 @@ import { levelFromXp } from "@/utils/petProgression";
 import { getNextOuting } from "@/data/api/meetings";
 import type { Language } from "@/i18n/translations";
 import { dayMessage, WidgetSnapshot } from "@/widgets/snapshot";
+import { idleHeadline } from "@/widgets/variety";
 
 // The widgets refresh every 30 minutes, app closed or not. The snapshot saved by the app would
 // grow old: this reads the latest numbers of the pet from the database (with the session kept
@@ -54,7 +55,7 @@ export async function refreshSnapshot(snapshot: WidgetSnapshot): Promise<WidgetS
   next.social.headline =
     unread > 0 ? tx(`💬 ${unread} message${unread > 1 ? "s" : ""} à lire`, `💬 ${unread} message${unread > 1 ? "s" : ""} to read`)
     : likes > 0 ? tx(`💌 ${likes} like${likes > 1 ? "s" : ""} à découvrir`, `💌 ${likes} like${likes > 1 ? "s" : ""} to discover`)
-    : tx("Swipe dans Discover pour de nouvelles rencontres 🐾", "Swipe in Discover to meet new friends 🐾");
+    : idleHeadline(language, pet?.pet_name ?? snapshot.pet.name, new Date());
 
   if (pet) {
     next.day = dayMessage({
@@ -64,8 +65,8 @@ export async function refreshSnapshot(snapshot: WidgetSnapshot): Promise<WidgetS
       nextOuting,
       now: new Date(),
     });
-    // The health tip needs Care: keep the app's one rather than replace it by a fact.
-    if (snapshot.day.icon === "🩺" && next.day.icon === "🧠") next.day = snapshot.day;
+    // The health tip needs Care (only the app reads it): keep the app's one, every other half-hour
+    if (snapshot.day.icon === "🩺" && ["🧠", "🎯", "💭"].includes(next.day.icon) && Math.floor(Date.now() / 18e5) % 2 === 0) next.day = snapshot.day;
   }
   return next;
 }
