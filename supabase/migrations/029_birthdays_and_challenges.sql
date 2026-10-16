@@ -56,7 +56,8 @@ begin
 
   if days = 0 then
     return jsonb_build_object('key', 'birthday:' || extract(year from next_day), 'icon', '🎂',
-      'titleFr', p_name || ' a ' || age_fr || ' aujourd''hui ! 🎂', 'titleEn', p_name || ' is ' || age_en || ' today! 🎂',
+      -- The icon is put before the title by the push (send-push): none in the text
+      'titleFr', p_name || ' a ' || age_fr || ' aujourd''hui !', 'titleEn', p_name || ' is ' || age_en || ' today!',
       'bodyFr', 'Le ' || born_fr || ', une belle histoire commençait. Une balade, une friandise… et une photo pour son album 📸',
       'bodyEn', 'On ' || born_en || ', a great story began. A walk, a treat… and a photo for the album 📸');
   end if;
