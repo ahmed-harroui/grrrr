@@ -5,7 +5,6 @@ import { fonts, radii } from "@/theme/theme";
 import { ENERGY_LABEL, Pet } from "@/data/mockPets";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { useTranslation } from "@/i18n/useTranslation";
-import PetRankBadge from "@/components/PetRankBadge";
 import PetProfileSheet from "@/components/PetProfileSheet";
 import type { Liker } from "@/data/api/likes";
 import { appWidth } from "@/utils/wideScreen";
@@ -114,7 +113,6 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
         </>
       )}
 
-      <View style={styles.rankBadge}><PetRankBadge level={pet.level ?? ((pet.id % 3) + 1)} /></View>
 
       {likedMe && (
         <View style={[styles.likedMeBadge, { backgroundColor: likedMe.intent === "HOT" ? "rgba(255,93,115,0.95)" : "rgba(47,189,180,0.95)" }]} pointerEvents="none">
@@ -193,7 +191,6 @@ const styles = StyleSheet.create({
   swipeTint: StyleSheet.absoluteFill,
   likeTint: { backgroundColor: "#2FBDB4" },
   nopeTint: { backgroundColor: "#FF5D73" },
-  rankBadge: { position: "absolute", top: -8, right: 12, zIndex: 4 },
   likedMeBadge: { position: "absolute", left: 14, bottom: 238, zIndex: 4, paddingHorizontal: 11, paddingVertical: 6, borderRadius: radii.pill },
   likedMeText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#FFFFFF" },
   stamp: {

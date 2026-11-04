@@ -15,9 +15,7 @@ import { useTranslation } from "@/i18n/useTranslation";
 import PetProfileEditor, { EMPTY_HEALTH, PetDraft } from "@/components/PetProfileEditor";
 import type { Pet } from "@/data/mockPets";
 import TreatModel from "@/components/TreatModel";
-import { getPetLevel, LEVEL_THRESHOLDS, levelFromXp, PET_RANKS, XP_SOURCES } from "@/utils/petProgression";
 import { usePetProgression } from "@/hooks/usePetProgression";
-import { replayLevelCelebration } from "@/data/api/progress";
 
 type PetProfileDraft = Omit<PetRecord, "owner_id" | "species" | "tags">;
 
@@ -35,7 +33,6 @@ const DEFAULT_PROFILE: PetProfileDraft = {
 
 interface PetItem {
   key: string;
-  level: number;
   profile: PetProfileDraft;
   species: string;
   gender: string;
@@ -46,9 +43,9 @@ interface PetItem {
 }
 
 const PETS: PetItem[] = [
-  { key: "rocky", level: 2, profile: DEFAULT_PROFILE, species: "Dog", gender: "♂ Mâle", tags: ["🎾 Joueur", "⚡ Énergique", "❤️ Sociable"], likes: 128, matches: 24, top: "18%" },
-  { key: "luna", level: 3, profile: { ...DEFAULT_PROFILE, pet_name: "Luna", breed: "Labrador", age: 2, bio: "Toujours prête pour une balade ou une sieste au soleil.", mode: 80, photo_url: "https://placedog.net/600/700?id=20", photos: ["https://placedog.net/600/700?id=21", "https://placedog.net/600/700?id=22"] }, species: "Dog", gender: "♀ Femelle", tags: ["🌊 Curieuse", "🎾 Joueuse", "🥰 Douce"], likes: 96, matches: 17, top: "24%" },
-  { key: "nala", level: 1, profile: { ...DEFAULT_PROFILE, pet_name: "Nala", breed: "Cat (European)", age: 2, bio: "Curieuse et indépendante, elle adore observer le monde depuis la fenêtre.", mode: 10, photo_url: "https://cataas.com/cat/cute?width=600&height=700", photos: [] }, species: "Cat", gender: "♀ Femelle", tags: ["🛋️ Chill", "🐾 Curieuse", "✨ Indépendante"], likes: 74, matches: 12, top: "31%" },
+  { key: "rocky", profile: DEFAULT_PROFILE, species: "Dog", gender: "♂ Mâle", tags: ["🎾 Joueur", "⚡ Énergique", "❤️ Sociable"], likes: 128, matches: 24, top: "18%" },
+  { key: "luna", profile: { ...DEFAULT_PROFILE, pet_name: "Luna", breed: "Labrador", age: 2, bio: "Toujours prête pour une balade ou une sieste au soleil.", mode: 80, photo_url: "https://placedog.net/600/700?id=20", photos: ["https://placedog.net/600/700?id=21", "https://placedog.net/600/700?id=22"] }, species: "Dog", gender: "♀ Femelle", tags: ["🌊 Curieuse", "🎾 Joueuse", "🥰 Douce"], likes: 96, matches: 17, top: "24%" },
+  { key: "nala", profile: { ...DEFAULT_PROFILE, pet_name: "Nala", breed: "Cat (European)", age: 2, bio: "Curieuse et indépendante, elle adore observer le monde depuis la fenêtre.", mode: 10, photo_url: "https://cataas.com/cat/cute?width=600&height=700", photos: [] }, species: "Cat", gender: "♀ Femelle", tags: ["🛋️ Chill", "🐾 Curieuse", "✨ Indépendante"], likes: 74, matches: 12, top: "31%" },
 ];
 
 const speciesInfo = (species: string) => SPECIES.find((item) => item.key === species.toLowerCase());
@@ -56,7 +53,6 @@ const speciesInfo = (species: string) => SPECIES.find((item) => item.key === spe
 function toPetItem(pet: Pet): PetItem {
   return {
     key: `db-${pet.id}`,
-    level: pet.level ?? 1,
     profile: { pet_name: pet.name, breed: pet.breed, age: pet.age, city: pet.city ?? "", bio: pet.bio, energy: pet.energy, mode: pet.mode, photo_url: pet.photo, photos: (pet.photos ?? []).filter((uri) => uri && uri !== pet.photo) },
     species: pet.species,
     gender: pet.gender === "F" ? "♀ Femelle" : "♂ Mâle",
@@ -70,12 +66,11 @@ function toPetItem(pet: Pet): PetItem {
 export default function MyPetScreen() {
   const colors = useThemedColors();
   const { session, signOut } = useAuth();
-  const { activePet, setActivePet, ownedPets, refreshOwnedPets, setMode, treats, petProgress, progressByPet } = useAppState();
+  const { activePet, setActivePet, ownedPets, refreshOwnedPets, setMode, treats, petProgress } = useAppState();
   const [profile, setProfile] = useState<PetProfileDraft>(DEFAULT_PROFILE);
   const styles = getStyles(colors);
   const { tx, language } = useTranslation();
   const [editorOpen, setEditorOpen] = useState(false);
-  const [levelInfoOpen, setLevelInfoOpen] = useState(false);
   const [addPetOpen, setAddPetOpen] = useState(false);
   const navigation = useNavigation<any>();
   const [customPets, setCustomPets] = useState<PetItem[]>([]);
@@ -97,23 +92,10 @@ export default function MyPetScreen() {
   const selectedMode = profile.mode;
   const gallery = useMemo(() => [profile.photo_url, ...(profile.photos ?? [])].filter(Boolean), [profile.photo_url, profile.photos]);
   const species = speciesInfo(selectedPet.species);
-  const completion = [profile.pet_name, profile.breed, profile.age, profile.city, profile.bio, profile.photo_url, selectedPet.tags.length].filter(Boolean).length / 7;
   const selectedDbId = session ? ownedPets.find((pet) => `db-${pet.id}` === selectedPet.key)?.dbId : undefined;
-  // Signed in: XP computed by the server from real activity. Guest: local estimate.
-  const { progression, error: progressionError, refresh: refreshProgression } = usePetProgression(selectedDbId);
-  const level = progression ? levelFromXp(progression.xp) : getPetLevel(treats, petProgress, completion);
-  // A level gained since the pets were loaded: reload them, so the ring stays right after switching.
-  const selectedItemLevel = allPets.find((pet) => pet.key === selectedKey)?.level;
-  useEffect(() => {
-    if (session && progression && selectedItemLevel !== undefined && selectedItemLevel !== level.level) void refreshOwnedPets();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [level.level, selectedItemLevel]);
-  // Avatar ring: the rank of each pet's real level (the database's), the selected one with its
-  // freshest progression; never a local estimate, which made unselected pets look Bronze.
-  const rankColorOf = (pet: PetItem) => {
-    const petLevel = pet.key === selectedKey && progression ? level.level : pet.level;
-    return PET_RANKS[Math.max(0, Math.min(PET_RANKS.length - 1, petLevel - 1))].color;
-  };
+  // XP and level stay on the server, never shown: they rank the profiles in Discover and trending
+  // (admins see them on the dashboard). Refreshing still counts this week's visit.
+  const { refresh: refreshProgression } = usePetProgression(selectedDbId);
 
   useEffect(() => setPhotoIndex(0), [selectedKey, gallery.length]);
 
@@ -174,7 +156,7 @@ export default function MyPetScreen() {
       setAddPetOpen(false);
       return;
     }
-    const item = { key: `custom-${pet.id}`, level: 1, profile, species: pet.species, gender: pet.gender === "F" ? "♀ Femelle" : "♂ Mâle", tags: pet.tags, likes: 0, matches: 0, top: "—" };
+    const item = { key: `custom-${pet.id}`, profile, species: pet.species, gender: pet.gender === "F" ? "♀ Femelle" : "♂ Mâle", tags: pet.tags, likes: 0, matches: 0, top: "—" };
     setCustomPets((current) => [...current, item]);
     setSelectedKey(item.key);
     setProfile(profile);
@@ -209,7 +191,6 @@ export default function MyPetScreen() {
       photo: nextPet.profile.photo_url,
       photos: [nextPet.profile.photo_url, ...(nextPet.profile.photos ?? [])].filter(Boolean),
       city: nextPet.profile.city,
-      level: nextPet.level,
     };
     setActivePet(nextActivePet);
     setPendingPetKey(null);
@@ -281,7 +262,7 @@ export default function MyPetScreen() {
       }
       await refreshOwnedPets();
       if (ownedPet.id === activePet.id) setMode(draft.mode);
-      // New photos / filled fields earn XP immediately (and can trigger the level-up animation).
+      // New photos / filled fields earn XP immediately (it ranks the profile in Discover).
       void refreshProgression();
       return true;
     }
@@ -308,7 +289,7 @@ export default function MyPetScreen() {
           </View>
           <View style={styles.addAnother}>
             <Text style={styles.addAnotherTitle}>🐾 {tx("Tu as déjà un compagnon ?", "Already have a companion?")}</Text>
-            <Text style={styles.addAnotherText}>{tx("Ajoute-le pour qu'il ait son profil, ses matchs et son XP.", "Add them so they get their own profile, matches and XP.")}</Text>
+            <Text style={styles.addAnotherText}>{tx("Ajoute-le pour qu'il ait son profil et ses matchs.", "Add them so they get their own profile and matches.")}</Text>
             <Pressable onPress={() => setAddPetOpen(true)}><Text style={styles.addAnotherAction}>＋ {tx("Ajouter un pet", "Add a pet")}</Text></Pressable>
             <Pressable onPress={() => navigation.navigate("Adopt")}><Text style={styles.addAnotherAction}>🍼 {tx("Voir les bébés à adopter", "See the babies to adopt")}</Text></Pressable>
           </View>
@@ -334,7 +315,7 @@ export default function MyPetScreen() {
             <Pressable key={pet.key} onPress={() => {
               if (pet.key !== selectedKey) setPendingPetKey(pet.key);
             }} onLongPress={() => setDeleteKey(pet.key)} delayLongPress={450} style={[styles.petChoice, selectedKey === pet.key && styles.petChoiceActive]}>
-              <View style={[styles.avatarRing, { borderColor: rankColorOf(pet) }]}>{pet.profile.photo_url ? <Image source={{ uri: pet.profile.photo_url }} style={styles.petAvatar} /> : <View style={[styles.petAvatar, styles.photoPlaceholder]}><Text style={styles.placeholderIconSmall}>{speciesInfo(pet.species)?.icon ?? "🐾"}</Text></View>}</View>
+              <View style={[styles.avatarRing, { borderColor: selectedKey === pet.key ? colors.coral : colors.line }]}>{pet.profile.photo_url ? <Image source={{ uri: pet.profile.photo_url }} style={styles.petAvatar} /> : <View style={[styles.petAvatar, styles.photoPlaceholder]}><Text style={styles.placeholderIconSmall}>{speciesInfo(pet.species)?.icon ?? "🐾"}</Text></View>}</View>
               <Text style={[styles.petChoiceName, selectedKey === pet.key && styles.petChoiceNameActive]}>{pet.profile.pet_name}</Text>
             </Pressable>
           ))}
@@ -388,16 +369,6 @@ export default function MyPetScreen() {
           <Stat big={profile.mode >= 50 ? "Hot" : "Friend"} small={tx("STATUT", "STATUS")} styles={styles} />
         </View>
 
-        <Pressable style={styles.levelCard} onPress={() => setLevelInfoOpen(true)} onLongPress={() => replayLevelCelebration(selectedDbId ?? "demo", level.level)} delayLongPress={500}>
-          <View style={styles.levelHeader}><View><Text style={styles.levelEyebrow}>{tx("PROGRESSION DE", "PROGRESS OF")} {profile.pet_name.toUpperCase()}</Text><Text style={[styles.rankName, { color: level.rank.color }]}>{tx(level.rank.name, level.rank.nameEn)} · {tx("Niveau", "Level")} {level.level}</Text></View><Image source={level.rank.image} style={styles.rankImage} /></View>
-          <View style={styles.levelTrack}><View style={[styles.levelFill, { width: `${level.progress * 100}%`, backgroundColor: level.rank.color }]} /></View>
-          <Text style={styles.levelHint}>{level.next === null ? `${level.xp} XP · ${tx("Niveau maximum atteint 👑", "Max level reached 👑")}` : `${level.xp} XP · ${tx(`encore ${level.next - level.xp} XP avant le niveau ${level.level + 1}`, `${level.next - level.xp} XP to level ${level.level + 1}`)}`}{progression && progression.weeks_streak > 1 ? `  ·  🔥 ${tx(`${progression.weeks_streak} semaines d'affilée`, `${progression.weeks_streak}-week streak`)}` : ""}</Text>
-          <View style={styles.rankRow}>{PET_RANKS.map((rank) => <View key={rank.name} style={[styles.rankDot, { backgroundColor: rank.color }, rank.name === level.rank.name && styles.rankDotActive]} />)}</View>
-          <Text style={styles.levelTapHint}>{tx("Voir les niveaux et comment progresser ›", "See levels and how to progress ›")}</Text>
-          {progressionError ? <Text style={styles.levelError}>⚠️ {tx("XP non calculée", "XP not computed")} : {progressionError}</Text> : null}
-          {session && !selectedDbId ? <Text style={styles.levelError}>⚠️ {tx("Ce pet n'est pas relié à la base de données", "This pet is not linked to the database")}</Text> : null}
-        </Pressable>
-
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{tx("À propos", "About")}</Text>
           <Pressable onPress={() => setEditorOpen(true)} hitSlop={8}>
@@ -423,8 +394,8 @@ export default function MyPetScreen() {
 
         <View style={styles.statsCard}>
           <Text style={styles.sectionTitle}>🔥 {tx("Son petit succès", "Their success")}</Text>
-          <View style={styles.publicSuccess}><Image source={level.rank.image} style={styles.successBadge} /><View><Text style={styles.popularTitle}>{tx(`${profile.pet_name} est ${level.rank.name.toLowerCase()} !`, `${profile.pet_name} is ${level.rank.nameEn.toLowerCase()}!`)}</Text><Text style={styles.successText}>{tx("Un compagnon qui crée de belles connexions.", "A companion who makes great connections.")}</Text></View></View>
-          <View style={styles.popularRow}><Stat big={`✦ ${tx("Niveau", "Level")} ${level.level}`} small={tx("RÉPUTATION", "REPUTATION")} styles={styles} /><Stat big={`💘 ${selectedPet.matches + petProgress.matches}`} small={tx("MATCHS", "MATCHES")} styles={styles} /><Stat big={`🔥 ${selectedPet.top}`} small="TOP" styles={styles} /></View>
+          <Text style={styles.successText}>{tx("Un compagnon qui crée de belles connexions.", "A companion who makes great connections.")}</Text>
+          <View style={styles.popularRow}><Stat big={`💘 ${selectedPet.matches + petProgress.matches}`} small={tx("MATCHS", "MATCHES")} styles={styles} /><Stat big={`🔥 ${selectedPet.top}`} small="TOP" styles={styles} /></View>
         </View>
 
         <Pressable style={styles.editButton} onPress={() => setEditorOpen(true)}>
@@ -464,7 +435,7 @@ export default function MyPetScreen() {
               ) : (
                 <>
                   <Text style={styles.confirmTitle}>{tx(`Supprimer ${petToDelete.profile.pet_name} ?`, `Delete ${petToDelete.profile.pet_name}?`)}</Text>
-                  <Text style={styles.confirmText}>{tx("Son profil, ses photos, ses matchs, ses messages et son XP seront supprimés définitivement.", "Their profile, photos, matches, messages and XP will be deleted for good.")}</Text>
+                  <Text style={styles.confirmText}>{tx("Son profil, ses photos, ses matchs et ses messages seront supprimés définitivement.", "Their profile, photos, matches and messages will be deleted for good.")}</Text>
                   <Pressable style={[styles.deleteButton, deleting && { opacity: 0.6 }]} onPress={deletePet} disabled={deleting}>
                     <Text style={styles.confirmButtonText}>{deleting ? tx("Suppression...", "Deleting...") : tx(`🗑️ Supprimer ${petToDelete.profile.pet_name}`, `🗑️ Delete ${petToDelete.profile.pet_name}`)}</Text>
                   </Pressable>
@@ -475,7 +446,6 @@ export default function MyPetScreen() {
           )}
         </View>
       </Modal>
-      {levelInfoOpen &&<View style={styles.modalLayer}><Pressable style={styles.modalBackdrop} onPress={() => setLevelInfoOpen(false)} /><View style={styles.levelModal}><View style={styles.modalHandle} /><Text style={styles.modalTitle}>{tx(`Les niveaux de ${profile.pet_name}`, `${profile.pet_name}'s levels`)}</Text><Text style={styles.modalSubtitle}>{tx("Chaque pet progresse avec ses propres actions.", "Each pet progresses through its own actions.")}</Text><ScrollView showsVerticalScrollIndicator={false}>{PET_RANKS.map((rank, index) => <View key={rank.name} style={[styles.levelRow, index + 1 === level.level && styles.levelRowActive]}><Image source={rank.image} style={styles.levelRowImage} /><View style={styles.levelRowCopy}><Text style={[styles.levelRowTitle, { color: rank.color }]}>{tx(rank.name, rank.nameEn)} · {tx("Niveau", "Level")} {index + 1}  <Text style={styles.levelRowXp}>{LEVEL_THRESHOLDS[index].toLocaleString(language === "en" ? "en-US" : "fr-FR")} XP</Text></Text><Text style={styles.levelRowText}>{index === 0 ? tx("Profil complété et premières connexions", "Completed profile and first connections") : index === 1 ? tx("Matchs et sorties régulières", "Regular matches and outings") : index === 2 ? tx("Une vraie présence dans GRRRR", "A real presence on GRRRR") : index === 3 ? tx("Beaucoup de rencontres positives", "Lots of positive meetups") : index === 4 ? tx("Une communauté qui le reconnaît", "A community that recognizes them") : tx("Le niveau maximum", "The highest level")}</Text></View></View>)}<Text style={styles.questTitle}>{tx("Comment gagner de l'XP", "How to earn XP")}</Text>{(progression?.sources ?? Object.keys(XP_SOURCES).map((key) => ({ key, xp: 0, max: null, count: 0, goal: null }))).map((source) => { const info = XP_SOURCES[source.key as keyof typeof XP_SOURCES]; const fill = source.max ? Math.min(1, source.xp / source.max) : source.xp > 0 ? 1 : 0; return <View key={source.key} style={styles.questRow}><Text style={styles.questIcon}>{info.icon}</Text><View style={styles.levelRowCopy}><View style={styles.questHeader}><Text style={styles.questName}>{tx(info.title, info.titleEn)}</Text><Text style={styles.questXp}>{source.xp} XP{source.max ? ` / ${source.max}` : ""}</Text></View><Text style={styles.levelRowText}>{tx(info.rule, info.ruleEn)}{source.goal ? ` · ${source.count}/${source.goal}` : ""}</Text>{source.max ? <View style={styles.questTrack}><View style={[styles.questFill, { width: `${fill * 100}%` }]} /></View> : null}</View></View>; })}</ScrollView><Pressable style={styles.modalClose} onPress={() => setLevelInfoOpen(false)}><Text style={styles.modalCloseText}>{tx("Compris", "Got it")}</Text></Pressable></View></View>}
     </SafeAreaView>
   );
 }
@@ -542,18 +512,6 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     statsRow: { flexDirection: "row", justifyContent: "center", gap: 22, marginVertical: 16 },
     statBig: { fontFamily: fonts.display, fontSize: 15, color: colors.dark },
     statSmall: { fontFamily: fonts.body, fontSize: 10.5, color: colors.grey, marginTop: 2 },
-    levelCard: { backgroundColor: colors.cream2, borderRadius: radii.md, padding: 15, marginBottom: 16, borderWidth: 1, borderColor: colors.line },
-    levelHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    levelEyebrow: { fontFamily: fonts.bodyBold, fontSize: 9, letterSpacing: 0.8, color: colors.grey },
-    rankName: { fontFamily: fonts.displayExtra, fontSize: 21, marginTop: 3 },
-    rankImage: { width: 48, height: 48 },
-    levelTrack: { height: 12, borderRadius: 6, backgroundColor: colors.line, marginTop: 14, overflow: "hidden" },
-    levelFill: { height: "100%", borderRadius: 6 },
-    levelHint: { fontFamily: fonts.body, fontSize: 11, color: colors.grey, marginTop: 7 },
-    rankRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 13, paddingHorizontal: 2 },
-    rankDot: { width: 12, height: 12, borderRadius: 6, opacity: 0.35 },
-    rankDotActive: { width: 17, height: 17, borderRadius: 9, opacity: 1, borderWidth: 2, borderColor: colors.white },
-    levelTapHint: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.coralDark, marginTop: 12 },
     sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
     sectionTitle: { fontFamily: fonts.displaySemi, fontSize: 17, color: colors.dark },
     editText: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.coralDark },
@@ -573,9 +531,6 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     infoCard: { backgroundColor: colors.cream, borderRadius: radii.md, padding: 15, marginBottom: 12 },
     infoLine: { fontFamily: fonts.body, color: colors.dark, fontSize: 13, marginTop: 9 },
     statsCard: { backgroundColor: colors.cream2, borderRadius: radii.md, padding: 15, marginBottom: 14 },
-    popularTitle: { fontFamily: fonts.displaySemi, fontSize: 15, color: colors.coralDark, marginTop: 5 },
-    publicSuccess: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 },
-    successBadge: { width: 48, height: 48 },
     successText: { fontFamily: fonts.body, fontSize: 11, color: colors.grey, marginTop: 3 },
     popularRow: { flexDirection: "row", justifyContent: "space-around", marginTop: 14 },
     editButton: { backgroundColor: colors.coral, borderRadius: radii.pill, paddingVertical: 15, alignItems: "center", borderWidth: 3, borderColor: colors.white, shadowColor: colors.coralDark, shadowOpacity: 0.2, shadowRadius: 10, elevation: 3 },
@@ -612,29 +567,6 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     deleteAvatar: { width: 78, height: 78, borderRadius: 39, alignSelf: "center", marginTop: 6, marginBottom: 12, borderWidth: 3, borderColor: colors.coral },
     deleteButton: { backgroundColor: "#D93A4F", borderRadius: radii.pill, alignItems: "center", paddingVertical: 13 },
     cancelButtonText: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.grey },
-    modalLayer: { ...StyleSheet.absoluteFill, justifyContent: "flex-end", backgroundColor: "rgba(43,39,36,0.25)", zIndex: 20 },
-    modalBackdrop: { ...StyleSheet.absoluteFill },
-    levelModal: { maxHeight: "78%", backgroundColor: colors.cream, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, paddingBottom: 24 },
     modalHandle: { width: 42, height: 5, borderRadius: 3, backgroundColor: colors.line, alignSelf: "center", marginBottom: 16 },
-    modalTitle: { fontFamily: fonts.displayExtra, fontSize: 25, color: colors.dark },
-    modalSubtitle: { fontFamily: fonts.body, fontSize: 13, color: colors.grey, marginTop: 5, marginBottom: 16 },
-    levelRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: radii.md, marginBottom: 7 },
-    levelRowActive: { backgroundColor: colors.cream2, borderWidth: 1, borderColor: colors.coral },
-    levelRowImage: { width: 43, height: 43 },
-    levelRowCopy: { flex: 1 },
-    levelRowTitle: { fontFamily: fonts.displaySemi, fontSize: 16 },
-    levelError: { fontFamily: fonts.bodySemi, fontSize: 11, color: "#D93838", marginTop: 8 },
-    levelRowXp: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.grey },
-    questTitle: { fontFamily: fonts.displaySemi, fontSize: 17, color: colors.dark, marginTop: 14, marginBottom: 8 },
-    questRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 10, borderRadius: radii.md, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, marginBottom: 7 },
-    questIcon: { fontSize: 20, marginTop: 1 },
-    questHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    questName: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.dark },
-    questXp: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.coralDark },
-    questTrack: { height: 6, borderRadius: 3, backgroundColor: colors.line, marginTop: 6, overflow: "hidden" },
-    questFill: { height: "100%", borderRadius: 3, backgroundColor: colors.coral },
-    levelRowText: { fontFamily: fonts.body, fontSize: 11, lineHeight: 16, color: colors.grey, marginTop: 2 },
-    modalClose: { backgroundColor: colors.coral, borderRadius: radii.pill, alignItems: "center", paddingVertical: 14, marginTop: 10 },
-    modalCloseText: { fontFamily: fonts.bodyBold, color: colors.white, fontSize: 13 },
   });
 }

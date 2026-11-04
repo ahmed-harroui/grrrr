@@ -1,7 +1,6 @@
 import React from "react";
-import { ColorProp, FlexWidget, ImageWidget, TextWidget } from "react-native-android-widget";
+import { FlexWidget, ImageWidget, TextWidget } from "react-native-android-widget";
 import { WIDGET_LINKS, WidgetSnapshot } from "@/widgets/snapshot";
-import { PET_RANKS } from "@/utils/petProgression";
 
 // Android home-screen widgets (names declared in app.json). They are drawn outside the app,
 // so they only use the widget components and the snapshot the app saved.
@@ -16,7 +15,6 @@ const CREAM = "#FFF7EF";
 const CREAM2 = "#FFEEE0";
 const DARK = "#2B2724";
 const GREY = "#8A8078";
-const LINE = "#EFE4D8";
 const WHITE = "#FFFFFF";
 
 const open = (uri: string) => ({ clickAction: "OPEN_URI" as const, clickActionData: { uri } });
@@ -33,8 +31,6 @@ function EmptyWidget() {
 
 function PetWidget({ snapshot }: { snapshot: WidgetSnapshot }) {
   const { pet } = snapshot;
-  // Flex weights draw the XP bar (percent widths don't exist in widgets).
-  const filled = Math.max(1, Math.round(pet.progress * 100));
   return (
     <FlexWidget style={{ height: "match_parent", width: "match_parent", backgroundColor: CREAM, borderRadius: 22, padding: 12, flexDirection: "row", alignItems: "center", flexGap: 12 }} {...open(WIDGET_LINKS.pet)}>
       {pet.photo ? <ImageWidget image={pet.photo as `https:${string}`} imageWidth={68} imageHeight={68} radius={34} /> : <TextWidget text={pet.icon} style={{ fontSize: 44 }} />}
@@ -43,16 +39,6 @@ function PetWidget({ snapshot }: { snapshot: WidgetSnapshot }) {
           <TextWidget text={`${pet.icon} ${pet.name}`} style={{ fontSize: 18, fontWeight: "bold", color: DARK }} maxLines={1} truncate="END" />
           <TextWidget text={pet.mood} style={{ fontSize: 10, fontWeight: "bold", color: WHITE, backgroundColor: pet.hot ? CORAL : FRIEND, borderRadius: 9, paddingHorizontal: 7, paddingVertical: 2 }} />
         </FlexWidget>
-        {/* The rank emblem says the level, as in the app */}
-        <FlexWidget style={{ flexDirection: "row", alignItems: "center", flexGap: 4, marginTop: 2 }}>
-          {pet.rankLevel ? <ImageWidget image={PET_RANKS[Math.max(0, Math.min(PET_RANKS.length - 1, pet.rankLevel - 1))].image} imageWidth={20} imageHeight={20} /> : null}
-          <TextWidget text={pet.rank} style={{ fontSize: 12, fontWeight: "bold", color: pet.rankColor as ColorProp }} maxLines={1} />
-        </FlexWidget>
-        <FlexWidget style={{ width: "match_parent", height: 7, flexDirection: "row", backgroundColor: LINE, borderRadius: 4, marginTop: 6 }}>
-          <FlexWidget style={{ flex: filled, height: 7, backgroundColor: CORAL, borderRadius: 4 }} />
-          <FlexWidget style={{ flex: Math.max(1, 100 - filled), height: 7 }} />
-        </FlexWidget>
-        <TextWidget text={pet.xp} style={{ fontSize: 10, color: GREY, marginTop: 3 }} maxLines={1} />
         <FlexWidget style={{ width: "match_parent", flexDirection: "row", flexGap: 10, marginTop: 5 }}>
           <TextWidget text={pet.treats} style={{ fontSize: 11, fontWeight: "bold", color: DARK }} maxLines={1} />
           <TextWidget text={pet.streak} style={{ fontSize: 11, fontWeight: "bold", color: CORAL_DARK }} maxLines={1} />
@@ -96,7 +82,6 @@ function RankingWidget({ snapshot }: { snapshot: WidgetSnapshot }) {
         {ranking.rows.map((row) => (
           <FlexWidget key={row.position} style={{ width: "match_parent", flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: row.mine ? CREAM2 : WHITE, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4 }}>
             <TextWidget text={`${row.position} ${row.name}`} style={{ fontSize: 13, fontWeight: "bold", color: row.mine ? CORAL_DARK : DARK }} maxLines={1} truncate="END" />
-            <TextWidget text={row.xp} style={{ fontSize: 11, color: GREY }} />
           </FlexWidget>
         ))}
       </FlexWidget>

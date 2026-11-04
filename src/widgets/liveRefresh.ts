@@ -1,6 +1,5 @@
 import { supabase } from "@/lib/supabase";
 import { pick } from "@/i18n/useTranslation";
-import { levelFromXp } from "@/utils/petProgression";
 import { getNextOuting } from "@/data/api/meetings";
 import type { Language } from "@/i18n/translations";
 import { dayMessage, WidgetSnapshot } from "@/widgets/snapshot";
@@ -37,12 +36,6 @@ export async function refreshSnapshot(snapshot: WidgetSnapshot): Promise<WidgetS
   const next: WidgetSnapshot = { ...snapshot, updatedAt: new Date().toISOString(), pet: { ...snapshot.pet }, social: { ...snapshot.social } };
 
   if (pet) {
-    const level = levelFromXp(pet.xp ?? 0);
-    next.pet.rankLevel = level.level;
-    next.pet.rank = tx(level.rank.name, level.rank.nameEn);
-    next.pet.rankColor = level.rank.color;
-    next.pet.progress = level.progress;
-    next.pet.xp = level.next === null ? `${format(pet.xp ?? 0)} XP · max` : `${format(pet.xp ?? 0)} / ${format(level.next)} XP`;
     next.pet.treats = `🦴 ${format(pet.treats ?? 0)} ${tx("croquettes", "treats")}`;
     if (pet.photo_url) next.pet.photo = pet.photo_url;
   }

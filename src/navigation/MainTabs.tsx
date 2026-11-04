@@ -14,7 +14,6 @@ import ExploreScreen from "@/screens/ExploreScreen";
 import MyPetScreen from "@/screens/MyPetScreen";
 import { useAppState } from "@/context/AppState";
 import { useTranslation } from "@/i18n/useTranslation";
-import LevelUpCelebration from "@/components/LevelUpCelebration";
 import MatchModal from "@/components/MatchModal";
 import SideTabs from "@/navigation/SideTabs";
 import { framed, SIDEBAR_WIDTH, useDevice } from "@/utils/wideScreen";
@@ -141,7 +140,6 @@ export default function MainTabs() {
     </Tab.Navigator>
     {/* Shown on any tab: a like back can arrive while browsing elsewhere */}
     <MatchModal visible={!!pendingMatch} pet={pendingMatch} onMessage={clearPendingMatch} onKeepSwiping={clearPendingMatch} />
-    <LevelUpCelebration />
     </>
   );
 }

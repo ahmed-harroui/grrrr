@@ -9,7 +9,6 @@ import { useAppState } from "@/context/AppState";
 import { useAuth } from "@/context/AuthContext";
 import { getTopXpPetProfiles, petRecordToPet } from "@/data/api/profile";
 import PetProfileSheet from "@/components/PetProfileSheet";
-import { PET_RANKS } from "@/utils/petProgression";
 import { useTranslation } from "@/i18n/useTranslation";
 
 type Colors = ReturnType<typeof useThemedColors>;
@@ -40,11 +39,8 @@ function DecorBackground() {
   return <Image source={frame.source} style={{ position: "absolute", width: frame.width, height: frame.height, left: frame.left, top: frame.top }} resizeMode="stretch" />;
 }
 
-const formatXp = (xp: number) => (xp >= 10000 ? `${Math.round(xp / 1000)}k` : xp >= 1000 ? `${(xp / 1000).toFixed(1).replace(".0", "")}k` : String(xp));
 
 function TrendingCard({ pet, position, isMine, onPress, styles, colors }: { pet: Pet; position: number; isMine: boolean; onPress: () => void; styles: ReturnType<typeof getStyles>; colors: Colors }) {
-  const level = pet.level ?? ((pet.id % PET_RANKS.length) + 1);
-  const rank = PET_RANKS[clamp(level - 1, 0, PET_RANKS.length - 1)];
   const isHot = pet.mode >= 50;
   const { tx } = useTranslation();
   return (
@@ -52,11 +48,9 @@ function TrendingCard({ pet, position, isMine, onPress, styles, colors }: { pet:
       <DecorBackground />
       <View style={styles.cardTop}>
         <Text style={[styles.position, position === 1 && styles.positionFirst]}>{position === 1 ? "👑 #1" : `#${position}`}</Text>
-        <Text style={styles.score}>{formatXp(pet.xp ?? 0)} XP</Text>
       </View>
-      <View style={[styles.ring, { borderColor: rank.color }]}>
+      <View style={[styles.ring, { borderColor: isHot ? colors.coral : colors.friend }]}>
         <Image source={{ uri: pet.photo }} style={styles.photo} />
-        <Image source={rank.image} style={styles.rankEmblem} resizeMode="contain" />
         {isMine && <Text style={styles.mineBadge}>{tx("⭐ Toi", "⭐ You")}</Text>}
       </View>
       <View style={styles.panel}>
@@ -103,7 +97,7 @@ export default function TrendingProfiles() {
   return (
     <View style={styles.trendingBar}>
       <View style={styles.trendingTitleRow}><Text style={styles.trendingTitle}>{tx("Profils tendances", "Trending profiles")}</Text><Text style={styles.liveDot}>● LIVE</Text></View>
-      <Text style={styles.trendingHint}>{tx("Les compagnons avec le plus d'XP", "The companions with the most XP")}</Text>
+      <Text style={styles.trendingHint}>{tx("Les compagnons les plus actifs", "The most active companions")}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
         {([['all', tx('Tous', 'All')], ['dog', tx('🐶 Chiens', '🐶 Dogs')], ['cat', tx('🐱 Chats', '🐱 Cats')]] as const).map(([key, label]) => <Pressable key={key} onPress={() => setSpeciesFilter(key)} style={[styles.filterChip, speciesFilter === key && styles.filterChipActive]}><Text style={[styles.filterText, speciesFilter === key && styles.filterTextActive]}>{label}</Text></Pressable>)}
       </ScrollView>
@@ -157,14 +151,11 @@ function getStyles(colors: Colors) {
     cardTop: { width: "100%", flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 8, paddingTop: 8 },
     position: { fontFamily: fonts.bodyBold, fontSize: 10, color: "#2B2724", backgroundColor: "rgba(255,255,255,0.88)", paddingHorizontal: 7, paddingVertical: 3, borderRadius: radii.pill, overflow: "hidden" },
     positionFirst: { backgroundColor: "#FFE8A3" },
-    score: { fontFamily: fonts.bodyBold, fontSize: 10, color: "#FFFFFF", backgroundColor: "rgba(230,72,99,0.92)", paddingHorizontal: 7, paddingVertical: 3, borderRadius: radii.pill, overflow: "hidden" },
     ring: { width: 84, height: 84, borderRadius: 42, borderWidth: 3, padding: 3, backgroundColor: "#FFFFFF", marginTop: 8 },
     photo: { width: "100%", height: "100%", borderRadius: 38 },
     mineBadge: { position: "absolute", left: -12, bottom: -6, fontFamily: fonts.bodyBold, fontSize: 9, color: "#FFFFFF", backgroundColor: colors.coral, paddingHorizontal: 6, paddingVertical: 2, borderRadius: radii.pill, overflow: "hidden" },
-    rankEmblem: { position: "absolute", right: -10, bottom: -8, width: 34, height: 34 },
     panel: { position: "absolute", left: 6, right: 6, bottom: 6, alignItems: "center", backgroundColor: "rgba(255,255,255,0.9)", borderRadius: radii.sm, paddingVertical: 6, paddingHorizontal: 4 },
     name: { fontFamily: fonts.display, fontSize: 15, lineHeight: 18, color: "#2B2724" },
-    level: { fontFamily: fonts.bodyBold, fontSize: 10 },
     mode: { fontFamily: fonts.bodyBold, fontSize: 10, marginTop: 1 },
   });
 }

@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 export type NotificationType =
   | "message" | "meeting" | "relation" | "adoption"
-  | "like" | "super_like" | "match" | "level_up" | "adoption_listed" | "adoption_interest" | "reminder"
+  | "like" | "super_like" | "match" | "adoption_listed" | "adoption_interest" | "reminder"
   | "thread" | "store" | "news"
   | "care" | "birthday"
   | "welcome";
@@ -22,7 +22,6 @@ export const CATEGORY_OF: Record<NotificationType, NotificationCategory> = {
   like: "social",
   super_like: "social",
   match: "social",
-  level_up: "social",
   adoption_listed: "social",
   // Someone swiped my pet up: they wait for its babies (migration 021)
   adoption_interest: "social",

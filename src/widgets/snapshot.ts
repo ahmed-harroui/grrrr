@@ -2,7 +2,6 @@ import type { Pet } from "@/data/mockPets";
 import type { CareStatus } from "@/data/api/care";
 import type { Language } from "@/i18n/translations";
 import { pick } from "@/i18n/useTranslation";
-import { levelFromXp } from "@/utils/petProgression";
 import { SPECIES } from "@/components/AddPetSheet";
 import { formatMeetingTime } from "@/data/api/meetings";
 import { funMessage, idleHeadline } from "@/widgets/variety";
@@ -16,21 +15,12 @@ export interface WidgetSnapshot {
   language?: Language;
   petDbId?: string;
   pet: {
-    /** 1..6: the rank emblem drawn instead of a "Lvl" label */
-    rankLevel?: number;
     name: string;
     /** Avatar URL (Android loads it directly; iOS uses photoFile) */
     photo: string;
     /** iOS: the avatar copied into the folder shared with the widgets */
     photoFile?: string;
     icon: string;
-    /** The rank's name ("Or"): the emblem says the level */
-    rank: string;
-    rankColor: string;
-    /** "1 240 / 1 800 XP" */
-    xp: string;
-    /** 0..1 towards the next level */
-    progress: number;
     treats: string;
     streak: string;
     mood: string;
@@ -49,7 +39,7 @@ export interface WidgetSnapshot {
   };
   ranking: {
     title: string;
-    rows: { position: string; name: string; xp: string; mine: boolean }[];
+    rows: { position: string; name: string; mine: boolean }[];
     /** "Rocky est #7" */
     mine: string;
   };
@@ -101,14 +91,13 @@ function daysUntilBirthday(birthday: string | null | undefined, now: Date) {
 export interface SnapshotInput {
   language: Language;
   pet: Pet;
-  xp: number;
   treats: number;
   weeksStreak: number;
   likes: number;
   lastLikerName?: string;
   matches: number;
   unread: number;
-  /** Pets sorted by XP, the best first */
+  /** Trending pets, the first first (ranked by the hidden XP) */
   ranking: Pet[];
   care: CareStatus | null;
   /** The next confirmed outing (migration 017) */
@@ -141,14 +130,12 @@ export function buildWidgetSnapshot(input: SnapshotInput): WidgetSnapshot {
   const { language, pet } = input;
   const tx = (fr: string, en: string) => pick(language, fr, en);
   const now = input.now ?? new Date();
-  const level = levelFromXp(input.xp);
   const hot = pet.mode >= 50;
 
   const position = input.ranking.findIndex((item) => (pet.dbId ? item.dbId === pet.dbId : item.id === pet.id));
   const rows = input.ranking.slice(0, 3).map((item, index) => ({
     position: ["🥇", "🥈", "🥉"][index],
     name: item.name,
-    xp: `${formatNumber(item.xp ?? 0, language)} XP`,
     mine: index === position,
   }));
 
@@ -162,11 +149,6 @@ export function buildWidgetSnapshot(input: SnapshotInput): WidgetSnapshot {
       name: pet.name,
       photo: pet.photo,
       icon: SPECIES.find((item) => item.key === pet.species)?.icon ?? "🐾",
-      rankLevel: level.level,
-      rank: tx(level.rank.name, level.rank.nameEn),
-      rankColor: level.rank.color,
-      xp: level.next === null ? `${formatNumber(input.xp, language)} XP · max` : `${formatNumber(input.xp, language)} / ${formatNumber(level.next, language)} XP`,
-      progress: level.progress,
       treats: `🦴 ${formatNumber(input.treats, language)} ${tx("croquettes", "treats")}`,
       streak: input.weeksStreak > 0 ? `🔥 ${input.weeksStreak} ${tx(input.weeksStreak > 1 ? "semaines" : "semaine", input.weeksStreak > 1 ? "weeks" : "week")}` : tx("🔥 Série à lancer", "🔥 Start a streak"),
       mood: hot ? "✦ Hot" : "🐾 Friend",
@@ -187,7 +169,7 @@ export function buildWidgetSnapshot(input: SnapshotInput): WidgetSnapshot {
         : idleHeadline(language === "en" ? "en" : "fr", pet.name, now),
     },
     ranking: {
-      title: tx("🏆 Classement XP", "🏆 XP ranking"),
+      title: tx("🏆 Tendances", "🏆 Trending"),
       rows,
       mine: position >= 0 ? tx(`${pet.name} est #${position + 1}`, `${pet.name} is #${position + 1}`) : tx(`${pet.name} n'est pas encore classé`, `${pet.name} isn't ranked yet`),
     },

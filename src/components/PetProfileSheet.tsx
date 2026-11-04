@@ -8,7 +8,6 @@ import { useAppState } from "@/context/AppState";
 import { ENERGY_LABEL, Pet } from "@/data/mockPets";
 import { computeMatch } from "@/utils/matching";
 import { SPECIES, speciesLabel } from "@/components/AddPetSheet";
-import PetRankBadge from "@/components/PetRankBadge";
 
 interface Props {
   /** The profile to show; null hides the sheet */
@@ -117,7 +116,6 @@ function ProfileContent({ pet, onClose, action }: { pet: Pet; onClose: () => voi
               <Text style={styles.name}>{pet.name}<Text style={styles.age}>, {pet.age}</Text></Text>
               <Text style={styles.meta}>{place ? `📍 ${place} · ` : "📍 "}{pet.dist} km</Text>
             </View>
-            <PetRankBadge level={pet.level ?? ((pet.id % 3) + 1)} />
           </View>
 
           <View style={styles.pills}>

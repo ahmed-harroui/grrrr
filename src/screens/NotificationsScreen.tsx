@@ -21,7 +21,7 @@ export default function NotificationsScreen() {
 
   const toggles: { key: keyof NotificationPrefs; label: string; hint: string }[] = [
     { key: "messages", label: tx("💬 Messages et sorties", "💬 Messages and outings"), hint: tx("Nouveaux messages, propositions de balade", "New messages, outing proposals") },
-    { key: "social", label: tx("💌 Likes, matchs et niveaux", "💌 Likes, matches and levels"), hint: tx("Likes reçus, super likes, matchs, rangs gagnés", "Likes received, super likes, matches, ranks earned") },
+    { key: "social", label: tx("💌 Likes et matchs", "💌 Likes and matches"), hint: tx("Likes reçus, super likes, matchs", "Likes received, super likes, matches") },
     { key: "care", label: tx("🩺 Santé et rappels", "🩺 Health and reminders"), hint: tx("Conseils GRRRR Care, anniversaire", "GRRRR Care tips, birthday") },
     { key: "news", label: tx("🛍️ Boutique et nouveautés", "🛍️ Shop and news"), hint: tx("Nouveautés de la boutique, nouveaux threads, infos de l'app", "Shop news, new threads, app updates") },
     ...(Platform.OS === "web" ? [{ key: "system" as const, label: tx("🔔 Notifications du navigateur", "🔔 Browser notifications"), hint: tx("Quand l'onglet GRRRR est en arrière-plan", "When the GRRRR tab is in the background") }] : []),

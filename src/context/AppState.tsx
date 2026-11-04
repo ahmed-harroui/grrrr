@@ -285,7 +285,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setClaimedTreatKeys((current) => new Set(current).add(contextKey));
     const result = await awardTreats(apiPetId(activePet), amount, reason, contextKey);
     if (result.awarded) setTreats((current) => result.balance ?? current + amount);
-    // A match or outing can push the pet to a new level.
+    // A match or outing earns XP (it ranks the profile in Discover).
     if (activePet.dbId) void refreshPetProgress(activePet.dbId, false);
   }, [activePet, claimedTreatKeys]);
 

@@ -33,7 +33,7 @@ async function setUpChannels(language: Language) {
     channel("messages", "Messages", "Messages", Notifications.AndroidImportance.HIGH, "Les messages de tes matchs", "Messages from your matches"),
     channel("outings", "Sorties", "Outings", Notifications.AndroidImportance.HIGH, "Propositions de sortie et réponses", "Outing proposals and answers"),
     channel("adoption", "Relations et adoption", "Relationships and adoption", Notifications.AndroidImportance.HIGH, "Relations, bébés à adopter, demandes", "Relationships, babies to adopt, requests"),
-    channel("social", "Likes et matchs", "Likes and matches", Notifications.AndroidImportance.DEFAULT, "Likes reçus, matchs, niveaux", "Likes received, matches, levels"),
+    channel("social", "Likes et matchs", "Likes and matches", Notifications.AndroidImportance.DEFAULT, "Likes reçus, matchs", "Likes received, matches"),
     channel("news", "Nouveautés", "News", Notifications.AndroidImportance.LOW, "Boutique, threads, conseils santé", "Shop, threads, health tips"),
   ]);
   // The single channel of earlier versions.

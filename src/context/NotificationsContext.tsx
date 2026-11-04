@@ -37,8 +37,8 @@ const DEFAULT_PREFS: NotificationPrefs = { messages: true, social: true, care: t
 const PREFS_KEY = "grrrr.notifications.prefs";
 const localKey = (userKey: string) => `grrrr.notifications.local.${userKey}`;
 const MAX_LOCAL = 120;
-// Matches and level-ups already have their own full-screen celebration.
-const NO_BANNER: NotificationType[] = ["match", "level_up"];
+// Matches already have their own full-screen celebration.
+const NO_BANNER: NotificationType[] = ["match"];
 
 type LocalInput = { id: string; type: NotificationType; data?: Record<string, any>; actor?: NotificationActor; createdAt?: string };
 

@@ -40,7 +40,6 @@ export function useWidgetSync({ likes, lastLikerName, unread }: { likes: number;
       const snapshot = buildWidgetSnapshot({
         language,
         pet: activePet,
-        xp: progress?.progression?.xp ?? activePet.xp ?? 0,
         treats,
         weeksStreak: progress?.progression?.weeks_streak ?? 0,
         likes,

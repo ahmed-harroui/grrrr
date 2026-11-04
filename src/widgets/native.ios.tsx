@@ -1,6 +1,6 @@
 import React from "react";
-import { HStack, Image, ProgressView, Spacer, Text, VStack } from "@expo/ui/swift-ui";
-import { aspectRatio, clipShape, containerBackground, font, foregroundStyle, frame, padding, resizable, tint } from "@expo/ui/swift-ui/modifiers";
+import { HStack, Image, Spacer, Text, VStack } from "@expo/ui/swift-ui";
+import { aspectRatio, clipShape, containerBackground, font, foregroundStyle, frame, padding, resizable } from "@expo/ui/swift-ui/modifiers";
 import { createWidget, widgetsDirectory } from "expo-widgets";
 import { File } from "expo-file-system";
 import type { WidgetSnapshot } from "@/widgets/snapshot";
@@ -32,9 +32,6 @@ const PetLayout = ({ snapshot }: Props) => {
       )}
       <VStack alignment="leading" spacing={3}>
         <Text modifiers={[font({ size: 18, weight: "bold", design: "rounded" }), foregroundStyle("#2B2724")]}>{pet.name}</Text>
-        <Text modifiers={[font({ size: 12, weight: "bold" }), foregroundStyle(pet.rankColor)]}>{pet.rank}</Text>
-        <ProgressView value={pet.progress} modifiers={[tint("#FF5D73")]} />
-        <Text modifiers={[font({ size: 10 }), foregroundStyle("#8A8078")]}>{pet.xp}</Text>
         <Text modifiers={[font({ size: 11, weight: "bold" }), foregroundStyle("#2B2724")]}>{pet.treats}</Text>
         <Text modifiers={[font({ size: 11, weight: "bold" }), foregroundStyle("#E64863")]}>{`${pet.streak} · ${pet.mood}`}</Text>
       </VStack>
@@ -88,8 +85,6 @@ const RankingLayout = ({ snapshot }: Props) => {
       {ranking.rows.map((row) => (
         <HStack key={row.position}>
           <Text modifiers={[font({ size: 13, weight: "bold" }), foregroundStyle(row.mine ? "#E64863" : "#2B2724")]}>{`${row.position} ${row.name}`}</Text>
-          <Spacer />
-          <Text modifiers={[font({ size: 11 }), foregroundStyle("#8A8078")]}>{row.xp}</Text>
         </HStack>
       ))}
       <Text modifiers={[font({ size: 12, weight: "bold" }), foregroundStyle("#E64863")]}>{ranking.mine}</Text>

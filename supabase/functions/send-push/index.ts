@@ -18,7 +18,7 @@ type Token = { token: string; language: string; prefs: Record<string, boolean> |
 
 const CATEGORY: Record<string, string> = {
   message: "messages", meeting: "messages", relation: "messages", adoption: "messages",
-  like: "social", super_like: "social", match: "social", level_up: "social", adoption_listed: "social", adoption_interest: "social", reminder: "social",
+  like: "social", super_like: "social", match: "social", adoption_listed: "social", adoption_interest: "social", reminder: "social",
   thread: "news", store: "news", news: "news", care: "care",
 };
 
@@ -70,8 +70,6 @@ function describe(type: string, data: Row, actor: string, me: string, en: boolea
     }
     case "match":
       return { title: tx(`${hot ? "❤️" : "🐾"} Match ${mood} avec ${actor} !`, `${hot ? "❤️" : "🐾"} ${mood} match with ${actor}!`), body: tx(`${me} et ${actor} se sont plu. Dis-lui bonjour !`, `${me} and ${actor} like each other. Say hello!`) };
-    case "level_up":
-      return { title: tx(`🏆 ${me} passe niveau ${data.level ?? ""}`, `🏆 ${me} reached level ${data.level ?? ""}`), body: tx("Un nouveau rang à découvrir sur son profil.", "A new rank to discover on their profile.") };
     // Reminders (migration 020) carry their texts in both languages.
     case "reminder":
       return { title: `${data.icon ? `${data.icon} ` : ""}${tx(data.titleFr ?? "GRRRR", data.titleEn ?? data.titleFr ?? "GRRRR")}`, body: tx(data.bodyFr ?? "", data.bodyEn ?? data.bodyFr ?? "") };
@@ -115,7 +113,7 @@ const CHANNEL: Record<string, string> = {
   message: "messages",
   meeting: "outings",
   relation: "adoption", adoption: "adoption", adoption_listed: "adoption", adoption_interest: "adoption",
-  like: "social", super_like: "social", match: "social", level_up: "social",
+  like: "social", super_like: "social", match: "social",
   thread: "news", store: "news", news: "news", care: "news",
   reminder: "social",
 };
@@ -145,7 +143,7 @@ async function notificationMessages(row: Row) {
   return ((tokens ?? []) as Token[]).filter((token) => allowed(token, row.type)).flatMap((token) => {
     const text = describe(row.type, { ...(row.data ?? {}), pending }, actor?.pet_name ?? (token.language === "en" ? "A companion" : "Un compagnon"), pet.pet_name, token.language === "en");
     if (!text) return [];
-    // The sender's avatar as the picture; my own pet's for its own news (level up). Never a liker's,
+    // The sender's avatar as the picture; my own pet's for its own news (a birthday). Never a liker's,
     // nor that of someone waiting without a pet of their own (anonymous, migration 024).
     const image = isLike || row.data?.anonymous ? null : actor?.photo_url || (row.actor_pet_id ? null : pet.photo_url) || null;
     const category = categoryOf(row.type, row.data ?? {});

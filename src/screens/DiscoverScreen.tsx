@@ -73,7 +73,8 @@ export default function DiscoverScreen() {
 
   // Everyone is shown, best fits first: pets that liked mine, real accounts before test bots
   // (newest first, as loaded), then same species, closest (city, country, world),
-  // same mood (PLAY / HOT), most compatible. Only HOT mode hides same-gender pets of the same species.
+  // same mood (PLAY / HOT), highest level (XP from real activity, never shown in the app: it is our
+  // ranking, seen only on the admin dashboard), most compatible. Only HOT mode hides same-gender pets of the same species.
   const recommendations = useMemo(() => {
     const fresh = communityPets.filter((pet) => !pet.dbId || !swipedIds.has(pet.dbId));
     // Demo profiles when signed out, or when the database has nobody left to show.
@@ -91,6 +92,7 @@ export default function DiscoverScreen() {
         sameSpecies(a) - sameSpecies(b) ||
         proximityRank(a, activePet) - proximityRank(b, activePet) ||
         sameMood(a) - sameMood(b) ||
+        (b.level ?? 1) - (a.level ?? 1) ||
         computeMatch(b, mode, activePet).pct - computeMatch(a, mode, activePet).pct
       );
   }, [activePet, communityPets, likers, mode, session, swipedIds]);

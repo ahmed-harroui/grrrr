@@ -37,8 +37,6 @@ export function describeNotification(notification: AppNotification, language: La
       return { icon: "⭐", title: tx(`Super like de ${actor} !`, `Super like from ${actor}!`), body: tx(`${myPetName} lui a tapé dans l'œil · like en retour dans Discover.`, `${myPetName} caught their eye · like back in Discover.`) };
     case "match":
       return { icon: hot ? "❤️" : "🐾", title: tx(`Match ${mood} avec ${actor} !`, `${mood} match with ${actor}!`), body: tx(`${myPetName} et ${actor} se sont plu. Dis-lui bonjour !`, `${myPetName} and ${actor} like each other. Say hello!`) };
-    case "level_up":
-      return { icon: "🏆", title: tx(`${myPetName} passe niveau ${data.level ?? ""}`, `${myPetName} reached level ${data.level ?? ""}`), body: tx("Un nouveau rang à découvrir sur son profil.", "A new rank to discover on their profile.") };
     case "birthday":
       return { icon: "🎂", title: tx(`Joyeux anniversaire ${myPetName} !`, `Happy birthday ${myPetName}!`), body: tx("Une friandise et une belle balade pour fêter ça.", "A treat and a nice walk to celebrate.") };
     case "welcome":
