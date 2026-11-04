@@ -61,7 +61,7 @@ export default function ExploreScreen() {
                 ) : (
                   <>
                     <Text style={styles.careTitle}>{tx(`Santé de ${activePet.name}`, `${activePet.name}'s health`)}</Text>
-                    <Text style={styles.careAdvice}>{tx("Ajoute vaccins, visites et poids dans Care pour voir son score santé et gagner jusqu'à 1 080 XP.", "Add vaccines, visits and weight in Care to see their health score and earn up to 1,080 XP.")}</Text>
+                    <Text style={styles.careAdvice}>{tx("Ajoute vaccins, visites et poids dans Care pour voir son score santé.", "Add vaccines, visits and weight in Care to see their health score.")}</Text>
                     <Text style={styles.careLink}>{tx("Compléter dans Care ↗", "Complete in Care ↗")}</Text>
                   </>
                 )}
