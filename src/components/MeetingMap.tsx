@@ -378,16 +378,9 @@ export default function MeetingMap() {
               )}
             </>
           )}
-          {/* Always in sight on the small map: the full-screen map is one touch away */}
-          {!placing && (
-            <Pressable onPress={handleOpenMapClick} style={styles.fullscreenFab} hitSlop={6} accessibilityRole="button" accessibilityLabel={tx("Agrandir la carte", "Enlarge the map")}>
-              <Text style={styles.fullscreenFabIcon}>⤢</Text>
-              <Text style={styles.fullscreenFabText}>{tx("Agrandir", "Enlarge")}</Text>
-            </Pressable>
-          )}
           {!selectedPet && (
             <View style={styles.mapControlsHint} pointerEvents="none">
-              <Text style={styles.mapControlsText}>{tx("Glisse pour explorer · ⤢ pour agrandir", "Drag to explore · ⤢ to enlarge")}</Text>
+              <Text style={styles.mapControlsText}>{tx("Glisse pour explorer", "Drag to explore")}</Text>
             </View>
           )}
           {!mapExpanded && placingControls()}
@@ -479,11 +472,7 @@ function getStyles(colors: Colors) {
     markerChoices: { flexDirection: "row", gap: 4 },
     expandButton: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: colors.coral, borderRadius: radii.pill, paddingHorizontal: 13, paddingVertical: 9, marginRight: 2, shadowColor: colors.coralDark, shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
     expandIcon: { fontFamily: fonts.bodyBold, fontSize: 14, color: "#FFFFFF", lineHeight: 16 },
-    expandText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#FFFFFF" },
-    fullscreenFab: { position: "absolute", top: 10, right: 10, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 11, paddingVertical: 7, borderRadius: radii.pill, backgroundColor: "rgba(255,255,255,0.96)", borderWidth: 1.5, borderColor: colors.coral, shadowColor: colors.dark, shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
-    fullscreenFabIcon: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.coralDark, lineHeight: 16 },
-    fullscreenFabText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.coralDark },
-    mapWrap: { height: 230, width: "100%", position: "relative" },
+    expandText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#FFFFFF" },    mapWrap: { height: 230, width: "100%", position: "relative" },
     map: { flex: 1, width: "100%" },
     webMap: { flex: 1, backgroundColor: "#E9F1EC", alignItems: "center", justifyContent: "center", padding: 12, position: "relative", overflow: "hidden" },
     webMapEmoji: { fontSize: 26, color: colors.friend },
