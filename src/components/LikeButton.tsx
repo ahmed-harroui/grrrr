@@ -3,15 +3,13 @@ import { Animated, Image, Pressable, StyleSheet, View } from "react-native";
 
 interface Props {
   onLike: () => void;
-  mode: number;
 }
 
 const BROKEN_LOGO = require("../../assets/like_after_hold.png");
-const PLAY_PAW = require("../../assets/bleue_clic.png");
 const HOT_PAW = require("../../assets/pink_clic.png");
 const INITIAL_LOGO = require("../../assets/initiale_log.png");
 
-export default function LikeButton({ onLike, mode }: Props) {
+export default function LikeButton({ onLike }: Props) {
   const [isBreaking, setIsBreaking] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -28,7 +26,7 @@ export default function LikeButton({ onLike, mode }: Props) {
     }, 1000);
   };
 
-  const pawLogo = mode >= 50 ? HOT_PAW : PLAY_PAW;
+  const pawLogo = HOT_PAW;
 
   return (
     <Pressable style={styles.button} onPress={handlePress} disabled={isBreaking}>

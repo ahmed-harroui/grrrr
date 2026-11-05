@@ -16,7 +16,6 @@ import type { Pet } from "@/data/mockPets";
 import { timeAgo } from "@/utils/notificationText";
 
 const HOT = "#FF5D73";
-const FRIEND = "#2FBDB4";
 const ADOPT = "#FFB35C";
 const BUY = "#2FBDB4";
 
@@ -180,8 +179,7 @@ function WaitingTile({ interest, petName, onPress, onRemove, styles }: { interes
 // A pet that liked mine: photo and identity stay blurred until the like back.
 function MysteryTile({ liker, petName, onPress, styles }: { liker: Liker; petName: string; onPress: () => void; styles: ReturnType<typeof getStyles> }) {
   const { tx } = useTranslation();
-  const hot = liker.intent === "HOT";
-  const tint = hot ? HOT : FRIEND;
+  const tint = HOT;
   return (
     <Pressable style={[styles.card, { borderColor: tint }]} onPress={onPress}>
       <View style={styles.mysteryAvatar}>
@@ -194,7 +192,6 @@ function MysteryTile({ liker, petName, onPress, styles }: { liker: Liker; petNam
       <View style={styles.info}>
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={1}>{liker.adopter_only ? tx("Veut adopter", "Wants to adopt") : liker.pet_name ?? tx("Un pet", "A pet")}</Text>
-          <Text style={[styles.intentPill, { backgroundColor: tint }]}>{hot ? "✦ Hot" : "🐾 Friend"}</Text>
           {liker.super_like && <Text style={styles.superLike}>⭐</Text>}
         </View>
         {!liker.adopter_only && !!liker.breed && <Text style={styles.detailLine} numberOfLines={1}>{liker.breed}</Text>}

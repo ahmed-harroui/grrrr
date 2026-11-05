@@ -33,7 +33,7 @@ const PetLayout = ({ snapshot }: Props) => {
       <VStack alignment="leading" spacing={3}>
         <Text modifiers={[font({ size: 18, weight: "bold", design: "rounded" }), foregroundStyle("#2B2724")]}>{pet.name}</Text>
         <Text modifiers={[font({ size: 11, weight: "bold" }), foregroundStyle("#2B2724")]}>{pet.treats}</Text>
-        <Text modifiers={[font({ size: 11, weight: "bold" }), foregroundStyle("#E64863")]}>{`${pet.streak} · ${pet.mood}`}</Text>
+        <Text modifiers={[font({ size: 11, weight: "bold" }), foregroundStyle("#E64863")]}>{pet.streak}</Text>
       </VStack>
     </HStack>
   );

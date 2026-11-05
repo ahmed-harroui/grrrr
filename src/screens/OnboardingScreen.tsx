@@ -34,14 +34,6 @@ const SLIDES = [
     subtitleEn: "Add photos, bio, breed and personality.",
   },
   {
-    icon: "❤️",
-    title: "De quoi ton compagnon a-t-il besoin ?",
-    titleEn: "What does your pet need?",
-    subtitle: "Glisse entre les deux humeurs pour changer ce que GRRRR recherche.",
-    subtitleEn: "Slide between the two moods to change what GRRRR looks for.",
-    showModeDemo: true,
-  },
-  {
     icon: "🐶",
     title: "Trouvons-lui le match parfait !",
     titleEn: "Let's find their perfect match!",
@@ -93,17 +85,6 @@ export default function OnboardingScreen({ onDone }: Props) {
             <Text style={styles.icon}>{item.icon}</Text>
             <Text style={styles.title}>{tx(item.title, item.titleEn)}</Text>
             <Text style={styles.subtitle}>{tx(item.subtitle, item.subtitleEn)}</Text>
-            {item.showModeDemo && (
-              <View style={styles.modeDemo}>
-                <View style={[styles.pill, { backgroundColor: "#E4F7F5" }]}>
-                  <Text style={[styles.pillText, { color: colors.friend }]}>🐾 FRIEND</Text>
-                </View>
-                <Text style={styles.arrow}>←──────→</Text>
-                <View style={[styles.pill, { backgroundColor: "#FFEEDC" }]}>
-                  <Text style={[styles.pillText, { color: colors.hot }]}>🔥 HOT</Text>
-                </View>
-              </View>
-            )}
           </View>
         )}
       />
@@ -131,10 +112,6 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     icon: { fontSize: 56, marginBottom: 22 },
     title: { fontFamily: fonts.display, fontSize: 23, color: colors.dark, marginBottom: 10, textAlign: "center" },
     subtitle: { fontFamily: fonts.body, fontSize: 14, color: colors.grey, textAlign: "center", lineHeight: 21, maxWidth: 260 },
-    modeDemo: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 22 },
-    pill: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radii.pill },
-    pillText: { fontFamily: fonts.displaySemi, fontSize: 13 },
-    arrow: { color: colors.grey, fontSize: 13 },
     footer: { paddingHorizontal: 24, paddingBottom: 26, paddingTop: 18 },
     dotsRow: { flexDirection: "row", justifyContent: "center", gap: 7, marginBottom: 18 },
     dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.line },

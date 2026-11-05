@@ -15,7 +15,7 @@ const DEFAULT_PET: PetRecord = {
   city: "",
   bio: "",
   energy: 2,
-  mode: 50,
+  mode: 0,
   photo_url: "",
   owner_id: "",
   species: "dog",
@@ -45,11 +45,6 @@ const ENERGY: { value: 1 | 2 | 3 | 4; icon: string; fr: string; en: string }[] =
   { value: 2, icon: "😊", fr: "Calme", en: "Calm" },
   { value: 3, icon: "⚡", fr: "Actif", en: "Active" },
   { value: 4, icon: "🔥", fr: "Très actif", en: "Very active" },
-];
-const MODES: { value: number; icon: string; fr: string; en: string; hint: string; hintEn: string }[] = [
-  { value: 0, icon: "🐾", fr: "Friend", en: "Friend", hint: "Copains de jeu", hintEn: "Playmates" },
-  { value: 50, icon: "✦", fr: "Les deux", en: "Both", hint: "Ouvert à tout", hintEn: "Open to all" },
-  { value: 100, icon: "❤️", fr: "Hot", en: "Hot", hint: "L'âme sœur", hintEn: "A soulmate" },
 ];
 
 export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }) {
@@ -110,7 +105,7 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
     const traits = (profile.tags ?? []).map((tag) => tag.replace(/^\S+\s/, "").toLowerCase());
     const who = [name || tx("Ton compagnon", "Your companion"), profile.age ? tx(`${profile.age} an${profile.age > 1 ? "s" : ""}`, `${profile.age} year${profile.age > 1 ? "s" : ""} old`) : "", profile.breed].filter(Boolean).join(", ");
     const personality = traits.length ? tx(` Plutôt ${traits.join(", ")}.`, ` Rather ${traits.join(", ")}.`) : "";
-    const looking = profile.mode >= 75 ? tx(" Cherche l'âme sœur ❤️", " Looking for a soulmate ❤️") : profile.mode <= 25 ? tx(" Cherche des copains de balade 🐾", " Looking for walking buddies 🐾") : tx(" Ouvert aux belles rencontres ✦", " Open to great meetups ✦");
+    const looking = tx(" Cherche des copains de balade 🐾", " Looking for walking buddies 🐾");
     update({ bio: `${who}.${personality}${looking}` });
   };
 
@@ -204,7 +199,6 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
   const ageStage = profile.age < 1 ? tx("Bébé 🍼", "Baby 🍼") : profile.age < 3 ? tx("Jeune 🌱", "Young 🌱") : profile.age < 8 ? tx("Adulte 💪", "Adult 💪") : tx("Senior 🎖️", "Senior 🎖️");
   const meta = [profile.breed.trim(), profile.age || step === "age" ? ageLabel : "", profile.city.trim()].filter(Boolean).join(" · ");
   const energy = ENERGY.find((item) => item.value === profile.energy);
-  const mode = MODES.find((item) => item.value === profile.mode);
   const breedSuggestions = BREEDS[profile.species] ?? [tx("Croisé", "Mixed"), tx("Inconnue", "Unknown")];
 
   const titles: Record<Step, [string, string]> = {
@@ -221,7 +215,7 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
   const subtitles: Record<Step, [string, string]> = {
     species: ["Touche son espèce.", "Tap their species."],
     name: [name ? `Enchanté ${name} ! 🐾` : "Son petit nom, celui qu'il reconnaît.", name ? `Nice to meet you ${name}! 🐾` : "The name they answer to."],
-    gender: ["Utile pour les rencontres Hot et les relations.", "Useful for Hot meetups and relationships."],
+    gender: ["Utile pour les relations et les portées.", "Useful for relationships and litters."],
     breed: ["Touche une suggestion ou écris-la.", "Tap a suggestion or type it."],
     age: ["Utilise − et +.", "Use − and +."],
     city: ["Pour te proposer des rencontres près de chez toi.", "To suggest meetups near you."],
@@ -265,7 +259,6 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
           <Text style={styles.previewMeta} numberOfLines={1}>{meta || speciesLabel(species, language)}</Text>
           <View style={styles.previewChips}>
             {stepIndex >= STEPS.indexOf("energy") && energy && <Text style={styles.previewChip}>{energy.icon} {tx(energy.fr, energy.en)}</Text>}
-            {stepIndex >= STEPS.indexOf("energy") && mode && <Text style={styles.previewChip}>{mode.icon} {tx(mode.fr, mode.en)}</Text>}
             {(profile.tags ?? []).slice(0, 3).map((tag) => <Text key={tag} style={styles.previewChip}>{tag}</Text>)}
           </View>
         </View>
@@ -364,16 +357,6 @@ export default function PetProfileSetupScreen({ onDone }: { onDone: () => void }
                   <Tile key={item.value} active={profile.energy === item.value} onPress={() => update({ energy: item.value })} style={styles.energyTile}>
                     <Text style={styles.tileIcon}>{item.icon}</Text>
                     <Text style={[styles.tileText, profile.energy === item.value && styles.tileTextActive]}>{tx(item.fr, item.en)}</Text>
-                  </Tile>
-                ))}
-              </View>
-              <Text style={styles.label}>{tx("IL CHERCHE", "LOOKING FOR")}</Text>
-              <View style={styles.row}>
-                {MODES.map((item) => (
-                  <Tile key={item.value} active={profile.mode === item.value} onPress={() => update({ mode: item.value })} style={styles.modeTile}>
-                    <Text style={styles.tileIcon}>{item.icon}</Text>
-                    <Text style={[styles.tileText, profile.mode === item.value && styles.tileTextActive]}>{tx(item.fr, item.en)}</Text>
-                    <Text style={styles.tileHint}>{tx(item.hint, item.hintEn)}</Text>
                   </Tile>
                 ))}
               </View>
@@ -491,7 +474,6 @@ const styles = StyleSheet.create({
   tileHint: { fontFamily: fonts.body, fontSize: 10, color: colors.grey, marginTop: 2, textAlign: "center" },
   speciesTile: { width: "23%" },
   energyTile: { width: "48%" },
-  modeTile: { flex: 1 },
   bigTile: { flex: 1 },
   bigTileIcon: { fontFamily: fonts.displayExtra, fontSize: 44, color: colors.coralDark },
   linkButton: { alignSelf: "flex-start", paddingVertical: 10 },

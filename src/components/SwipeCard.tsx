@@ -23,7 +23,6 @@ export interface SwipeCardHandle {
 interface Props {
   pet: Pet;
   activePet: Pet;
-  mode: number;
   isTop: boolean;
   depth: number;
   /** Set when this pet already liked mine: liking back makes the match */
@@ -32,7 +31,7 @@ interface Props {
 }
 
 const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
-  { pet, mode, isTop, depth, likedMe, onSwiped },
+  { pet, isTop, depth, likedMe, onSwiped },
   ref
 ) {
   const colors = useThemedColors();
@@ -115,9 +114,9 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
 
 
       {likedMe && (
-        <View style={[styles.likedMeBadge, { backgroundColor: likedMe.intent === "HOT" ? "rgba(255,93,115,0.95)" : "rgba(47,189,180,0.95)" }]} pointerEvents="none">
+        <View style={[styles.likedMeBadge, { backgroundColor: "rgba(255,93,115,0.95)" }]} pointerEvents="none">
           <Text style={styles.likedMeText}>
-            {likedMe.super_like ? "⭐ " : "💌 "}{tx("T'a liké", "Liked you")} · {likedMe.intent === "HOT" ? "✦ Hot" : "🐾 Friend"}
+            {likedMe.super_like ? "⭐ " : "💌 "}{tx("T'a liké", "Liked you")}
           </Text>
         </View>
       )}
@@ -145,7 +144,7 @@ const SwipeCard = forwardRef<SwipeCardHandle, Props>(function SwipeCard(
         </Text>
       </View>
 
-      <LinearGradient colors={["transparent", "transparent", mode < 50 ? "rgba(47,189,180,0.92)" : "rgba(255,93,115,0.92)"]} locations={[0, 0.4, 1]} style={styles.gradientOverlay} pointerEvents="none" />
+      <LinearGradient colors={["transparent", "transparent", "rgba(255,93,115,0.92)"]} locations={[0, 0.4, 1]} style={styles.gradientOverlay} pointerEvents="none" />
 
       <View style={styles.bodyOverlay}>
         <View style={styles.bodyContent}>

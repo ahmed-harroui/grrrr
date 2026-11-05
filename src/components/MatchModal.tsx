@@ -72,9 +72,8 @@ export default function MatchModal({ visible, pet, onKeepSwiping }: Props) {
             </Animated.View>
           </View>
           <Text style={styles.title}>{tx("C'est un Match !", "It’s a Match!")}</Text>
-          <Text style={styles.matchType}>{(pet as any).matchType === "Hot" ? "💕 HOT MATCH" : "🐾 FRIEND MATCH"}</Text>
           <Text style={styles.subtitle}>{tx(`${activePet.name} et ${pet.name} se sont likés mutuellement.`, `${activePet.name} and ${pet.name} liked each other.`)}</Text>
-          <Text style={styles.matchDetail}>{(pet as any).matchType === "Hot" ? tx("Une belle rencontre amoureuse vous attend !", "A lovely romance awaits!") : tx("Une amitié fantastique commence !", "A fantastic friendship begins!")}</Text>
+          <Text style={styles.matchDetail}>{tx("Une amitié fantastique commence !", "A fantastic friendship begins!")}</Text>
           <Text style={styles.tapHint}>{tx("Touchez l’écran pour fermer", "Tap the screen to close")}</Text>
         </Animated.View>
       </Pressable>
@@ -131,7 +130,6 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     themCircle: { marginLeft: -16 },
     photoImg: { width: "100%", height: "100%" },
     title: { fontFamily: fonts.displayExtra, fontSize: 40, lineHeight: 42, color: "#fff", textAlign: "center" },
-    matchType: { fontFamily: fonts.displaySemi, fontSize: 18, color: "#fff", textAlign: "center", marginTop: 6, letterSpacing: 1.2 },
     subtitle: { fontFamily: fonts.bodyMedium, fontSize: 14, color: "#FFE6ED", marginTop: 12, textAlign: "center" },
     matchDetail: { fontFamily: fonts.body, fontSize: 12, color: "#FFE6ED", marginTop: 6, textAlign: "center" },
     tapHint: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#fff", opacity: 0.92, marginTop: 24 },

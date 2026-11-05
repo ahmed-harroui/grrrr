@@ -12,7 +12,6 @@ import { proximityRank } from "@/utils/discovery";
 import { useAppState } from "@/context/AppState";
 import { useThemedColors } from "@/hooks/useThemedColors";
 import { useTranslation } from "@/i18n/useTranslation";
-import ModeSlider from "@/components/ModeSlider";
 import SwipeCard, { SwipeCardHandle, SwipeDirection } from "@/components/SwipeCard";
 import Header from "@/components/Header";
 import LikeButton from "@/components/LikeButton";
@@ -25,9 +24,8 @@ const DISCOVER_ICON = require("../../assets/navbar/descover.png");
 export default function DiscoverScreen() {
   const colors = useThemedColors();
   const { t, tx } = useTranslation();
-  const { activePet, mode, setMode, likePet } = useAppState();
+  const { activePet, likePet } = useAppState();
   const [cursor, setCursor] = useState(0);
-  const [pendingMode, setPendingMode] = useState<number | null>(null);
   const topCardRef = useRef<SwipeCardHandle>(null);
   const { session } = useAuth();
   const [communityPets, setCommunityPets] = useState<Pet[]>([]);
@@ -72,30 +70,27 @@ export default function DiscoverScreen() {
   );
 
   // Everyone is shown, best fits first: pets that liked mine, real accounts before test bots
-  // (newest first, as loaded), then same species, closest (city, country, world),
-  // same mood (PLAY / HOT), highest level (XP from real activity, never shown in the app: it is our
-  // ranking, seen only on the admin dashboard), most compatible. Only HOT mode hides same-gender pets of the same species.
+  // (newest first, as loaded), then same species, closest (city, country, world), highest level
+  // (XP from real activity, never shown in the app: it is our ranking, seen only on the admin
+  // dashboard), most compatible.
   const recommendations = useMemo(() => {
     const fresh = communityPets.filter((pet) => !pet.dbId || !swipedIds.has(pet.dbId));
     // Demo profiles when signed out, or when the database has nobody left to show.
     const pool = session && fresh.length > 0 ? fresh : PETS;
     const sameSpecies = (pet: Pet) => (pet.species === activePet.species ? 0 : 1);
-    const sameMood = (pet: Pet) => ((mode < 50) === (pet.mode < 50) ? 0 : 1);
     const likedMe = (pet: Pet) => (pet.dbId && likers.has(pet.dbId) ? 0 : 1);
     const realAccount = (pet: Pet) => (pet.isBot ? 1 : 0);
     return pool
-      // A pet that already liked mine is always shown, so the like can be answered.
-      .filter((pet) => pet.id !== activePet.id && (likedMe(pet) === 0 || !(mode >= 50 && pet.species === activePet.species && pet.gender === activePet.gender)))
+      .filter((pet) => pet.id !== activePet.id)
       .sort((a, b) =>
         likedMe(a) - likedMe(b) ||
         realAccount(a) - realAccount(b) ||
         sameSpecies(a) - sameSpecies(b) ||
         proximityRank(a, activePet) - proximityRank(b, activePet) ||
-        sameMood(a) - sameMood(b) ||
         (b.level ?? 1) - (a.level ?? 1) ||
-        computeMatch(b, mode, activePet).pct - computeMatch(a, mode, activePet).pct
+        computeMatch(b, activePet).pct - computeMatch(a, activePet).pct
       );
-  }, [activePet, communityPets, likers, mode, session, swipedIds]);
+  }, [activePet, communityPets, likers, session, swipedIds]);
   const visible = recommendations.slice(cursor, cursor + 3);
 
   const handleSwiped = (direction: SwipeDirection) => {
@@ -144,13 +139,9 @@ export default function DiscoverScreen() {
           </View>
         ) : (
           <>
-            {adopterMode ? (
+            {adopterMode && (
               <View style={styles.modeSliderOverlay}>
                 <Text style={styles.adopterBanner}>{tx("🍼 Mode adoption · glisse vers le haut les compagnons dont tu veux un bébé", "🍼 Adoption mode · swipe up the companions you would like a baby from")}</Text>
-              </View>
-            ) : (
-              <View style={styles.modeSliderOverlay}>
-                <ModeSlider value={mode} onChange={(nextMode) => nextMode !== mode && setPendingMode(nextMode)} />
               </View>
             )}
             {visible
@@ -162,7 +153,6 @@ export default function DiscoverScreen() {
                   ref={depth === 0 ? topCardRef : undefined}
                   pet={pet}
                   activePet={activePet}
-                  mode={mode}
                   isTop={depth === 0}
                   depth={depth}
                   likedMe={pet.dbId ? likers.get(pet.dbId) : undefined}
@@ -176,7 +166,7 @@ export default function DiscoverScreen() {
               <Pressable style={[styles.actBtn, styles.adoptBtn]} onPress={() => topCardRef.current?.triggerSwipe("adopt")}>
                 <Image source={DISCOVER_ICON} style={styles.adoptIcon} resizeMode="contain" />
               </Pressable>
-              {!adopterMode && <LikeButton mode={mode} onLike={() => topCardRef.current?.triggerSwipe("right")} />}
+              {!adopterMode && <LikeButton onLike={() => topCardRef.current?.triggerSwipe("right")} />}
             </View>
           </>
         )}
@@ -208,19 +198,6 @@ export default function DiscoverScreen() {
               </Pressable>
             </View>
           )}
-        </View>
-      </Modal>
-
-      <Modal visible={pendingMode !== null} transparent animationType="fade" onRequestClose={() => setPendingMode(null)}>
-        <View style={[styles.confirmOverlay, { backgroundColor: "rgba(43,39,36,0.48)" }]}>
-          <View style={[styles.confirmCard, { backgroundColor: colors.cream, borderColor: colors.line }]}>
-            <Text style={[styles.confirmTitle, { color: colors.dark }]}>{pendingMode === 0 ? t.discover.switchPlay : t.discover.switchHot}</Text>
-            <Text style={[styles.confirmText, { color: colors.grey }]}>{activePet.name} {t.discover.willBeDisplayed} {pendingMode === 0 ? "Friend / PLAY" : "Hot"}. {t.discover.profilesWillReorder}</Text>
-            <Pressable style={[styles.confirmButton, pendingMode === 0 ? { backgroundColor: colors.friend } : { backgroundColor: colors.coral }]} onPress={() => { if (pendingMode !== null) setMode(pendingMode); setPendingMode(null); }}>
-              <Text style={styles.confirmButtonText}>{t.common.confirm}</Text>
-            </Pressable>
-            <Pressable style={styles.cancelButton} onPress={() => setPendingMode(null)}><Text style={[styles.cancelButtonText, { color: colors.grey }]}>{t.common.cancel}</Text></Pressable>
-          </View>
         </View>
       </Modal>
     </SafeAreaView>

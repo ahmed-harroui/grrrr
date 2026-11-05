@@ -8,9 +8,8 @@ import { useTranslation } from "@/i18n/useTranslation";
 import { getPetLikers, Liker } from "@/data/api/likes";
 
 const HOT = "#FF5D73";
-const FRIEND = "#2FBDB4";
 
-// One-sided likes: shown blurred and anonymous, with the mood they were sent in (Hot / Friend).
+// One-sided likes: shown blurred and anonymous.
 // It's not a match until my pet meets them in Discover and likes back.
 export default function LikedYouTeaser() {
   const { activePet } = useAppState();
@@ -32,7 +31,6 @@ export default function LikedYouTeaser() {
 
   if (likers.length === 0) return null;
   const count = likers.length;
-  const hotCount = likers.filter((liker) => liker.intent === "HOT").length;
   const openDiscover = () => navigation.navigate("Discover");
 
   return (
@@ -43,9 +41,6 @@ export default function LikedYouTeaser() {
             💌 {count > 1 ? tx(`${count} pets ont liké ${activePet.name}`, `${count} pets liked ${activePet.name}`) : tx(`Un pet a liké ${activePet.name}`, `Someone liked ${activePet.name}`)}
           </Text>
           <Text style={styles.hint}>
-            {hotCount > 0 && hotCount < count
-              ? tx(`${hotCount} en Hot, ${count - hotCount} en Friend · `, `${hotCount} Hot, ${count - hotCount} Friend · `)
-              : ""}
             {tx("Pas encore un match : croise-les dans Discover et like en retour 👀", "Not a match yet: find them in Discover and like back 👀")}
           </Text>
         </View>
@@ -54,14 +49,12 @@ export default function LikedYouTeaser() {
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.list}>
         {likers.map((liker) => {
-          const hot = liker.intent === "HOT";
           return (
-            <Pressable key={liker.id} onPress={openDiscover} style={[styles.likerCard, { borderColor: hot ? HOT : FRIEND }]}>
+            <Pressable key={liker.id} onPress={openDiscover} style={[styles.likerCard, { borderColor: HOT }]}>
               <Image source={{ uri: liker.photo_url || undefined }} style={styles.likerPhoto} blurRadius={22} />
-              <View style={[styles.veil, { backgroundColor: hot ? "rgba(255,93,115,0.22)" : "rgba(47,189,180,0.22)" }]} />
+              <View style={[styles.veil, { backgroundColor: "rgba(255,93,115,0.22)" }]} />
               <Text style={styles.mystery}>?</Text>
               {liker.super_like && <Text style={styles.superLike}>⭐</Text>}
-              <Text style={[styles.intent, { backgroundColor: hot ? HOT : FRIEND }]}>{hot ? "✦ Hot" : "🐾 Friend"}</Text>
             </Pressable>
           );
         })}

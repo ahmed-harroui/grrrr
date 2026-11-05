@@ -57,7 +57,7 @@ export function useWidgetSync({ likes, lastLikerName, unread }: { likes: number;
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePet.dbId, activePet.name, activePet.photo, activePet.mode, language, lastLikerName, likes, matchCount, session?.user.id, treats, unread, outingsKey]);
+  }, [activePet.dbId, activePet.name, activePet.photo, language, lastLikerName, likes, matchCount, session?.user.id, treats, unread, outingsKey]);
 
   // Signed out: the widgets go back to their empty state.
   useEffect(() => {

@@ -66,7 +66,7 @@ function toPetItem(pet: Pet): PetItem {
 export default function MyPetScreen() {
   const colors = useThemedColors();
   const { session, signOut } = useAuth();
-  const { activePet, setActivePet, ownedPets, refreshOwnedPets, setMode, treats, petProgress } = useAppState();
+  const { activePet, setActivePet, ownedPets, refreshOwnedPets, treats, petProgress } = useAppState();
   const [profile, setProfile] = useState<PetProfileDraft>(DEFAULT_PROFILE);
   const styles = getStyles(colors);
   const { tx, language } = useTranslation();
@@ -89,7 +89,6 @@ export default function MyPetScreen() {
   const allPets = useMemo(() => (session ? ownedPets.map(toPetItem) : [...PETS, ...customPets].filter((pet) => !hiddenKeys.has(pet.key)).map((pet) => localEdits[pet.key] ?? pet)), [customPets, hiddenKeys, localEdits, ownedPets, session]);
   const petToDelete = allPets.find((pet) => pet.key === deleteKey) ?? null;
   const selectedPet = useMemo(() => allPets.find((pet) => pet.key === selectedKey) ?? allPets[0] ?? toPetItem(activePet), [activePet, allPets, selectedKey]);
-  const selectedMode = profile.mode;
   const gallery = useMemo(() => [profile.photo_url, ...(profile.photos ?? [])].filter(Boolean), [profile.photo_url, profile.photos]);
   const species = speciesInfo(selectedPet.species);
   const selectedDbId = session ? ownedPets.find((pet) => `db-${pet.id}` === selectedPet.key)?.dbId : undefined;
@@ -123,10 +122,6 @@ export default function MyPetScreen() {
       setProfile(nextPet.profile);
     }
   }, [activePet.name, allPets]);
-
-  useEffect(() => {
-    setProfile((current) => current.pet_name === activePet.name ? { ...current, mode: activePet.mode } : current);
-  }, [activePet.mode, activePet.name]);
 
   const createPet = async (pet: Pet, photoAsset?: LocalPhoto) => {
     const profile: PetProfileDraft = { pet_name: pet.name, breed: pet.breed, age: pet.age, city: "Paris", bio: pet.bio, energy: pet.energy, mode: pet.mode, photo_url: pet.photo };
@@ -261,7 +256,6 @@ export default function MyPetScreen() {
         return false;
       }
       await refreshOwnedPets();
-      if (ownedPet.id === activePet.id) setMode(draft.mode);
       // New photos / filled fields earn XP immediately (it ranks the profile in Discover).
       void refreshProgression();
       return true;
@@ -344,9 +338,6 @@ export default function MyPetScreen() {
               <Text style={styles.placeholderText}>{tx(`Ajoute des photos de ${profile.pet_name || "ton compagnon"}`, `Add photos of ${profile.pet_name || "your companion"}`)}</Text>
             </Pressable>
           )}
-          <View style={[styles.statusBadge, selectedMode >= 50 ? styles.hotBadge : styles.friendBadge]}>
-            <Text style={styles.statusBadgeText}>{selectedMode >= 50 ? "✦ Hot" : "🐾 Friend"}</Text>
-          </View>
           <Pressable onPress={() => setEditorOpen(true)} style={styles.photoEdit} hitSlop={6}><Text style={styles.photoEditText}>✎ Photos</Text></Pressable>
           {gallery.length > 1 && (
             <View style={styles.photoDots}>
@@ -366,7 +357,6 @@ export default function MyPetScreen() {
         <View style={styles.statsRow}>
           <Stat big={profile.energy >= 3 ? "⚡ High" : "🌿 Chill"} small={tx("ÉNERGIE", "ENERGY")} styles={styles} />
           <Stat big="🎾🏃" small={tx("ACTIVITÉS", "ACTIVITIES")} styles={styles} />
-          <Stat big={profile.mode >= 50 ? "Hot" : "Friend"} small={tx("STATUT", "STATUS")} styles={styles} />
         </View>
 
         <View style={styles.sectionHeader}>
@@ -389,7 +379,7 @@ export default function MyPetScreen() {
           <Text style={styles.sectionTitle}>💕 {tx(`Ce que ${profile.pet_name} recherche`, `What ${profile.pet_name} is looking for`)}</Text>
           <Text style={styles.infoLine}>🐾 {tx("Compagnon de balade", "Walking buddy")}</Text>
           <Text style={styles.infoLine}>🎾 {tx("Partenaire de jeu", "Playmate")}</Text>
-          <Text style={styles.infoLine}>{profile.mode >= 50 ? tx("✦ Faire une belle rencontre", "✦ Meet someone special") : tx("❤️ Se faire un nouvel ami", "❤️ Make a new friend")}</Text>
+          <Text style={styles.infoLine}>{tx("❤️ Se faire de nouveaux amis", "❤️ Make new friends")}</Text>
         </View>
 
         <View style={styles.statsCard}>
@@ -501,10 +491,6 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     habitsTitle: { marginTop: 16, marginBottom: 8 },
     tagAdd: { borderStyle: "dashed", borderColor: colors.coral, backgroundColor: "transparent" },
     tagAddText: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.coralDark },
-    statusBadge: { position: "absolute", top: 14, left: 14, paddingHorizontal: 12, paddingVertical: 7, borderRadius: radii.pill, borderWidth: 2, borderColor: colors.white, shadowColor: colors.dark, shadowOpacity: 0.12, shadowRadius: 5, elevation: 2 },
-    hotBadge: { backgroundColor: colors.coral },
-    friendBadge: { backgroundColor: colors.friend },
-    statusBadgeText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.white },
     photoDots: { position: "absolute", bottom: 14, alignSelf: "center", flexDirection: "row", gap: 5 },
     name: { fontFamily: fonts.displayExtra, fontSize: 26, color: colors.dark, textAlign: "center" },
     nameInput: { fontFamily: fonts.displayExtra, fontSize: 26, color: colors.dark, textAlign: "center", borderBottomWidth: 1, borderBottomColor: colors.coral, paddingVertical: 0 },
@@ -546,10 +532,6 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     optionActive: { backgroundColor: colors.coral, borderColor: colors.coral },
     optionText: { fontFamily: fonts.bodySemi, color: colors.grey },
     optionTextActive: { color: colors.white },
-    modeOption: { flex: 1, paddingVertical: 10, borderRadius: radii.sm, backgroundColor: colors.cream, alignItems: "center", borderWidth: 1, borderColor: colors.line },
-    modeOptionActive: { backgroundColor: colors.cream2, borderColor: colors.hot },
-    modeText: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.grey },
-    modeTextActive: { color: colors.dark },
     compat: { alignItems: "center", marginTop: 18 },
     compatLabel: { fontFamily: fonts.bodySemi, fontSize: 11, color: colors.grey },
     compatValue: { fontFamily: fonts.displayExtra, fontSize: 28, color: colors.coralDark, marginTop: 2 },

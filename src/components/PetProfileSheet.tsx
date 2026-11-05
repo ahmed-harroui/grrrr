@@ -32,16 +32,15 @@ function ProfileContent({ pet, onClose, action }: { pet: Pet; onClose: () => voi
   const colors = useThemedColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
   const { tx, language } = useTranslation();
-  const { activePet, mode } = useAppState();
+  const { activePet } = useAppState();
   const [pageWidth, setPageWidth] = useState(0);
   const [photoIndex, setPhotoIndex] = useState(0);
   const carouselRef = useRef<ScrollView>(null);
 
   const photos = useMemo(() => Array.from(new Set([pet.photo, ...(pet.photos ?? [])].filter(Boolean))), [pet]);
   const species = SPECIES.find((item) => item.key === pet.species);
-  const isHot = pet.mode >= 50;
   const isMine = pet.id === activePet.id;
-  const pct = computeMatch(pet, mode, activePet).pct;
+  const pct = computeMatch(pet, activePet).pct;
   const place = [pet.city, pet.country].filter(Boolean).join(", ");
   const health = pet.health;
 
@@ -63,7 +62,6 @@ function ProfileContent({ pet, onClose, action }: { pet: Pet; onClose: () => voi
     { label: tx("Âge", "Age"), value: `${pet.age} ${pet.age > 1 ? tx("ans", "yrs") : tx("an", "yr")}` },
     { label: tx("Genre", "Gender"), value: pet.gender === "F" ? tx("♀ Femelle", "♀ Female") : tx("♂ Mâle", "♂ Male") },
     { label: tx("Énergie", "Energy"), value: ENERGY_LABEL[pet.energy] },
-    { label: tx("Recherche", "Looking for"), value: pet.mode < 25 ? "🐾 Friend" : pet.mode > 75 ? "❤️ Hot" : "✨ Both" },
   ].filter((fact) => fact.value);
 
   // Health details the owner chose to fill in (the microchip number stays private).
@@ -119,7 +117,6 @@ function ProfileContent({ pet, onClose, action }: { pet: Pet; onClose: () => voi
           </View>
 
           <View style={styles.pills}>
-            <Text style={[styles.pill, { color: WHITE, backgroundColor: isHot ? colors.coral : colors.friend }]}>{isHot ? "✦ Hot" : "🐾 Friend"}</Text>
             {!isMine && <Text style={[styles.pill, styles.compatPill]}>❤️ {pct}% {tx("compatible avec", "compatible with")} {activePet.name}</Text>}
           </View>
 

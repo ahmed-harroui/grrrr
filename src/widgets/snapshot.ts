@@ -23,8 +23,6 @@ export interface WidgetSnapshot {
     icon: string;
     treats: string;
     streak: string;
-    mood: string;
-    hot: boolean;
   };
   social: {
     title: string;
@@ -130,7 +128,6 @@ export function buildWidgetSnapshot(input: SnapshotInput): WidgetSnapshot {
   const { language, pet } = input;
   const tx = (fr: string, en: string) => pick(language, fr, en);
   const now = input.now ?? new Date();
-  const hot = pet.mode >= 50;
 
   const position = input.ranking.findIndex((item) => (pet.dbId ? item.dbId === pet.dbId : item.id === pet.id));
   const rows = input.ranking.slice(0, 3).map((item, index) => ({
@@ -151,8 +148,6 @@ export function buildWidgetSnapshot(input: SnapshotInput): WidgetSnapshot {
       icon: SPECIES.find((item) => item.key === pet.species)?.icon ?? "🐾",
       treats: `🦴 ${formatNumber(input.treats, language)} ${tx("croquettes", "treats")}`,
       streak: input.weeksStreak > 0 ? `🔥 ${input.weeksStreak} ${tx(input.weeksStreak > 1 ? "semaines" : "semaine", input.weeksStreak > 1 ? "weeks" : "week")}` : tx("🔥 Série à lancer", "🔥 Start a streak"),
-      mood: hot ? "✦ Hot" : "🐾 Friend",
-      hot,
     },
     social: {
       title: tx(`Les rencontres de ${pet.name}`, `${pet.name}'s encounters`),

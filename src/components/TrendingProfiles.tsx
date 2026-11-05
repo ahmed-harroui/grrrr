@@ -41,7 +41,6 @@ function DecorBackground() {
 
 
 function TrendingCard({ pet, position, isMine, onPress, styles, colors }: { pet: Pet; position: number; isMine: boolean; onPress: () => void; styles: ReturnType<typeof getStyles>; colors: Colors }) {
-  const isHot = pet.mode >= 50;
   const { tx } = useTranslation();
   return (
     <Pressable style={[styles.card, isMine && { borderColor: colors.coral }]} onPress={onPress}>
@@ -49,27 +48,24 @@ function TrendingCard({ pet, position, isMine, onPress, styles, colors }: { pet:
       <View style={styles.cardTop}>
         <Text style={[styles.position, position === 1 && styles.positionFirst]}>{position === 1 ? "👑 #1" : `#${position}`}</Text>
       </View>
-      <View style={[styles.ring, { borderColor: isHot ? colors.coral : colors.friend }]}>
+      <View style={[styles.ring, { borderColor: colors.coral }]}>
         <Image source={{ uri: pet.photo }} style={styles.photo} />
         {isMine && <Text style={styles.mineBadge}>{tx("⭐ Toi", "⭐ You")}</Text>}
       </View>
       <View style={styles.panel}>
-        <Text style={styles.name} numberOfLines={1}>{pet.name}</Text>
-        <Text style={[styles.mode, { color: isHot ? colors.coralDark : colors.friend }]}>{isHot ? "✦ Hot" : "🐾 Friend"}</Text>
-      </View>
+        <Text style={styles.name} numberOfLines={1}>{pet.name}</Text>      </View>
     </Pressable>
   );
 }
 
 export default function TrendingProfiles() {
-  const { activePet, setMode } = useAppState();
+  const { activePet } = useAppState();
   const { session } = useAuth();
   const colors = useThemedColors();
   const styles = getStyles(colors);
   const { tx } = useTranslation();
   const [selectedTrend, setSelectedTrend] = useState<Pet | null>(null);
   const [speciesFilter, setSpeciesFilter] = useState<"all" | "dog" | "cat">("all");
-  const [intentFilter, setIntentFilter] = useState<"all" | "play" | "hot">("all");
   const [communityPets, setCommunityPets] = useState<Pet[]>([]);
 
   // The highest-XP pets in the database, refreshed each time the screen comes back into view.
@@ -86,12 +82,9 @@ export default function TrendingProfiles() {
   const sorted = useMemo(
     () => rankTrendingPets(
       // Demo pets only when the database has nothing to rank (signed out / offline).
-      (communityPets.length ? communityPets : PETS).filter((pet) =>
-        (speciesFilter === "all" || pet.species === speciesFilter) &&
-        (intentFilter === "all" || (intentFilter === "play" ? pet.mode < 50 : pet.mode >= 50 && (pet.id === activePet.id || pet.gender !== activePet.gender)))
-      )
+      (communityPets.length ? communityPets : PETS).filter((pet) => speciesFilter === "all" || pet.species === speciesFilter)
     ),
-    [activePet, communityPets, intentFilter, speciesFilter]
+    [communityPets, speciesFilter]
   );
 
   return (
@@ -101,17 +94,6 @@ export default function TrendingProfiles() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
         {([['all', tx('Tous', 'All')], ['dog', tx('🐶 Chiens', '🐶 Dogs')], ['cat', tx('🐱 Chats', '🐱 Cats')]] as const).map(([key, label]) => <Pressable key={key} onPress={() => setSpeciesFilter(key)} style={[styles.filterChip, speciesFilter === key && styles.filterChipActive]}><Text style={[styles.filterText, speciesFilter === key && styles.filterTextActive]}>{label}</Text></Pressable>)}
       </ScrollView>
-      <View style={styles.intentRow}>
-        <Pressable onPress={() => { setIntentFilter("play"); setMode(0); }} style={[styles.intentChoice, intentFilter === "play" && styles.playChoiceActive]}>
-          <Text style={[styles.intentText, intentFilter === "play" && styles.playChoiceTextActive]}>● PLAY</Text>
-        </Pressable>
-        <Pressable onPress={() => { setIntentFilter("hot"); setMode(100); }} style={[styles.intentChoice, intentFilter === "hot" && styles.hotChoiceActive]}>
-          <Text style={[styles.intentText, intentFilter === "hot" && styles.hotChoiceTextActive]}>✦ HOT</Text>
-        </Pressable>
-        <Pressable onPress={() => setIntentFilter("all")} style={[styles.intentAllChoice, intentFilter === "all" && styles.intentAllChoiceActive]}>
-          <Text style={[styles.intentAllText, intentFilter === "all" && styles.intentAllTextActive]}>{tx("Tous", "All")}</Text>
-        </Pressable>
-      </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trendingList}>
         {sorted.slice(0, 6).map((pet, index) => (
           <TrendingCard key={pet.id} pet={pet} position={index + 1} isMine={pet.id === activePet.id} onPress={() => setSelectedTrend(pet)} styles={styles} colors={colors} />
@@ -135,17 +117,6 @@ function getStyles(colors: Colors) {
     filterChipActive: { backgroundColor: colors.cream2, borderColor: colors.coral },
     filterText: { fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.grey },
     filterTextActive: { color: colors.coralDark, fontFamily: fonts.bodyBold },
-    intentRow: { flexDirection: "row", gap: 7, marginTop: 9 },
-    intentChoice: { flex: 1, minHeight: 34, alignItems: "center", justifyContent: "center", borderRadius: radii.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white },
-    playChoiceActive: { backgroundColor: "rgba(47,189,180,0.14)", borderColor: colors.friend },
-    hotChoiceActive: { backgroundColor: "rgba(255,93,115,0.14)", borderColor: colors.coral },
-    intentText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.grey },
-    playChoiceTextActive: { color: colors.friend },
-    hotChoiceTextActive: { color: colors.coralDark },
-    intentAllChoice: { paddingHorizontal: 12, alignItems: "center", justifyContent: "center", borderRadius: radii.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white },
-    intentAllChoiceActive: { backgroundColor: colors.cream2, borderColor: colors.coral },
-    intentAllText: { fontFamily: fonts.bodySemi, fontSize: 10, color: colors.grey },
-    intentAllTextActive: { color: colors.coralDark },
     trendingList: { gap: 12, paddingVertical: 12, marginTop: 4 },
     card: { width: CARD_WIDTH, height: CARD_HEIGHT, borderRadius: radii.md, overflow: "hidden", alignItems: "center", backgroundColor: "#FFD6E0", borderWidth: 2, borderColor: "rgba(255,255,255,0.9)", shadowColor: "#FF5D73", shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
     cardTop: { width: "100%", flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 8, paddingTop: 8 },
@@ -156,6 +127,5 @@ function getStyles(colors: Colors) {
     mineBadge: { position: "absolute", left: -12, bottom: -6, fontFamily: fonts.bodyBold, fontSize: 9, color: "#FFFFFF", backgroundColor: colors.coral, paddingHorizontal: 6, paddingVertical: 2, borderRadius: radii.pill, overflow: "hidden" },
     panel: { position: "absolute", left: 6, right: 6, bottom: 6, alignItems: "center", backgroundColor: "rgba(255,255,255,0.9)", borderRadius: radii.sm, paddingVertical: 6, paddingHorizontal: 4 },
     name: { fontFamily: fonts.display, fontSize: 15, lineHeight: 18, color: "#2B2724" },
-    mode: { fontFamily: fonts.bodyBold, fontSize: 10, marginTop: 1 },
   });
 }

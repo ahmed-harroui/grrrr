@@ -27,7 +27,7 @@ function dateAt(dayOffset: number, minutes: number) {
   return date;
 }
 
-// Proposes an outing to a match: the spot (tap the map), Hot or Friend, the day and the hour.
+// Proposes an outing to a match: the spot (tap the map), the day and the hour.
 // The other owner receives it in the chat and is the one who accepts or declines.
 export default function MeetingComposer({
   pet,
@@ -47,7 +47,7 @@ export default function MeetingComposer({
   const styles = getStyles(colors);
   const { tx, language } = useTranslation();
   const { activePet, refreshConversations, setMeetingTrace } = useAppState();
-  const [marker, setMarker] = useState<MeetingMarker>(initialMarker ?? "blue");
+  const [marker, setMarker] = useState<MeetingMarker>(initialMarker ?? "pink");
   const [coord, setCoord] = useState(initialCoord ?? { latitude: HOME_CITY_REGION.latitude, longitude: HOME_CITY_REGION.longitude });
   const [dayOffset, setDayOffset] = useState(0);
   const [minutes, setMinutes] = useState(18 * 60);
@@ -57,7 +57,7 @@ export default function MeetingComposer({
   // A new sheet starts from what it was opened with.
   useEffect(() => {
     if (!pet) return;
-    setMarker(initialMarker ?? "blue");
+    setMarker(initialMarker ?? "pink");
     setCoord(initialCoord ?? { latitude: HOME_CITY_REGION.latitude, longitude: HOME_CITY_REGION.longitude });
     setError(null);
     // Today if there is still time, otherwise tomorrow.
@@ -106,15 +106,6 @@ export default function MeetingComposer({
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.title}>📍 {tx(`Sortie avec ${pet.name}`, `Outing with ${pet.name}`)}</Text>
               <Text style={styles.subtitle}>{tx(`${pet.name} reçoit ta proposition et choisit d'accepter ou non.`, `${pet.name} receives your proposal and chooses to accept or not.`)}</Text>
-
-              <View style={styles.markers}>
-                {(["blue", "pink"] as MeetingMarker[]).map((value) => (
-                  <Pressable key={value} style={[styles.markerChoice, marker === value && styles.markerChoiceActive]} onPress={() => setMarker(value)}>
-                    <Image source={value === "pink" ? PINK_PAW : BLUE_PAW} style={styles.markerImage} />
-                    <Text style={[styles.markerText, marker === value && styles.markerTextActive]}>{value === "pink" ? tx("Rendez-vous Hot ❤️", "Hot date ❤️") : tx("Sortie Friend 🐾", "Friend outing 🐾")}</Text>
-                  </Pressable>
-                ))}
-              </View>
 
               <Text style={styles.label}>{NATIVE_MAPS_AVAILABLE ? tx("LE LIEU · touche la carte", "THE SPOT · tap the map") : tx("LE LIEU", "THE SPOT")}</Text>
               {NATIVE_MAPS_AVAILABLE ? (
@@ -195,12 +186,6 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     handle: { alignSelf: "center", width: 42, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: 14 },
     title: { fontFamily: fonts.display, fontSize: 21, color: colors.dark },
     subtitle: { fontFamily: fonts.body, fontSize: 12, lineHeight: 17, color: colors.grey, marginTop: 3 },
-    markers: { flexDirection: "row", gap: 8, marginTop: 14 },
-    markerChoice: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, padding: 9, borderRadius: radii.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.white },
-    markerChoiceActive: { borderColor: colors.coral, backgroundColor: colors.cream2 },
-    markerImage: { width: 26, height: 26 },
-    markerText: { flexShrink: 1, fontFamily: fonts.bodySemi, fontSize: 11, color: colors.dark },
-    markerTextActive: { color: colors.coralDark },
     label: { fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.8, color: colors.grey, marginTop: 16, marginBottom: 7 },
     mapWrap: { height: 170, borderRadius: radii.md, overflow: "hidden", borderWidth: 1, borderColor: colors.line },
     map: { flex: 1 },

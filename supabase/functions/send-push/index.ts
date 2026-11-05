@@ -27,8 +27,6 @@ const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPAB
 // Same texts as the app (src/utils/notificationText.ts).
 function describe(type: string, data: Row, actor: string, me: string, en: boolean): { title: string; body: string } | null {
   const tx = (fr: string, english: string) => (en ? english : fr);
-  const hot = data.intent === "HOT" || data.match_type === "LOVE";
-  const mood = hot ? "Hot ✦" : "Friend 🐾";
   switch (type) {
     case "message":
       return { title: `💬 ${actor}`, body: data.preview ?? tx("Nouveau message", "New message") };
@@ -69,7 +67,7 @@ function describe(type: string, data: Row, actor: string, me: string, en: boolea
       };
     }
     case "match":
-      return { title: tx(`${hot ? "❤️" : "🐾"} Match ${mood} avec ${actor} !`, `${hot ? "❤️" : "🐾"} ${mood} match with ${actor}!`), body: tx(`${me} et ${actor} se sont plu. Dis-lui bonjour !`, `${me} and ${actor} like each other. Say hello!`) };
+      return { title: tx(`🐾 Match avec ${actor} !`, `🐾 Match with ${actor}!`), body: tx(`${me} et ${actor} se sont plu. Dis-lui bonjour !`, `${me} and ${actor} like each other. Say hello!`) };
     // Reminders (migration 020) carry their texts in both languages.
     case "reminder":
       return { title: `${data.icon ? `${data.icon} ` : ""}${tx(data.titleFr ?? "GRRRR", data.titleEn ?? data.titleFr ?? "GRRRR")}`, body: tx(data.bodyFr ?? "", data.bodyEn ?? data.bodyFr ?? "") };

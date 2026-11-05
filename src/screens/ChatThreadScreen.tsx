@@ -202,7 +202,7 @@ export default function ChatThreadScreen() {
                   <Image source={meeting.marker === "pink" ? require("../../assets/pink_clic.png") : require("../../assets/bleue_clic.png")} style={styles.organizedHeroPaw} />
                   <View style={styles.organizedHeroCopy}>
                     <View style={styles.organizedHeroRow}>
-                      <Text style={styles.organizedHeroTitle}>{meeting.marker === "pink" ? tx("Rendez-vous Hot ❤️", "Hot date ❤️") : tx("Sortie Friend 🐾", "Friend outing 🐾")}</Text>
+                      <Text style={styles.organizedHeroTitle}>{tx("Sortie 🐾", "Outing 🐾")}</Text>
                       <View style={[styles.statusTag, meeting.status === "accepted" ? styles.statusTagConfirmed : styles.statusTagPending]}>
                         <Text style={styles.statusTagText}>{meeting.status === "accepted" ? tx("Confirmée ✅", "Confirmed ✅") : mustAnswer ? tx("À toi de répondre", "Your answer") : tx("En attente ⏳", "Pending ⏳")}</Text>
                       </View>

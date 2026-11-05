@@ -10,7 +10,6 @@ export type AndroidWidgetName = (typeof ANDROID_WIDGETS)[number];
 
 const CORAL = "#FF5D73";
 const CORAL_DARK = "#E64863";
-const FRIEND = "#2FBDB4";
 const CREAM = "#FFF7EF";
 const CREAM2 = "#FFEEE0";
 const DARK = "#2B2724";
@@ -37,7 +36,6 @@ function PetWidget({ snapshot }: { snapshot: WidgetSnapshot }) {
       <FlexWidget style={{ flex: 1, flexDirection: "column" }}>
         <FlexWidget style={{ width: "match_parent", flexDirection: "row", alignItems: "center", flexGap: 6 }}>
           <TextWidget text={`${pet.icon} ${pet.name}`} style={{ fontSize: 18, fontWeight: "bold", color: DARK }} maxLines={1} truncate="END" />
-          <TextWidget text={pet.mood} style={{ fontSize: 10, fontWeight: "bold", color: WHITE, backgroundColor: pet.hot ? CORAL : FRIEND, borderRadius: 9, paddingHorizontal: 7, paddingVertical: 2 }} />
         </FlexWidget>
         <FlexWidget style={{ width: "match_parent", flexDirection: "row", flexGap: 10, marginTop: 5 }}>
           <TextWidget text={pet.treats} style={{ fontSize: 11, fontWeight: "bold", color: DARK }} maxLines={1} />

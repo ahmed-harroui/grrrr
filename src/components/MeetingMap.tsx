@@ -116,7 +116,7 @@ export default function MeetingMap() {
   const { partners } = usePartners(placesCentre);
   const mapRef = useRef<MapView>(null);
   const [selectedPetId, setSelectedPetId] = useState<number | null>(matches[0]?.id ?? null);
-  const [selectedMarker, setSelectedMarker] = useState<MeetingMarker>("pink");
+  const selectedMarker: MeetingMarker = "pink";
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   const [mapExpanded, setMapExpanded] = useState(false);
   const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
@@ -362,11 +362,6 @@ export default function MeetingMap() {
           </View>
           <View style={styles.markerChoices}>
             <Pressable onPress={handleOpenMapClick} style={styles.expandButton}><Text style={styles.expandText}>{tx("Ouvrir", "Open")}</Text></Pressable>
-            {(["pink", "blue"] as MeetingMarker[]).map((marker) => (
-              <Pressable key={marker} onPress={() => setSelectedMarker(marker)} style={[styles.markerChoice, selectedMarker === marker && styles.markerChoiceActive]}>
-                <Image source={marker === "pink" ? PINK_PAW : BLUE_PAW} style={styles.markerChoiceImage} />
-              </Pressable>
-            ))}
           </View>
         </View>
         <View style={styles.mapWrap}>
@@ -474,9 +469,6 @@ function getStyles(colors: Colors) {
     markerChoices: { flexDirection: "row", gap: 4 },
     expandButton: { backgroundColor: colors.cream2, borderRadius: radii.pill, paddingHorizontal: 10, paddingVertical: 6, marginRight: 3 },
     expandText: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.coralDark },
-    markerChoice: { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderRadius: 16 },
-    markerChoiceActive: { backgroundColor: colors.cream2 },
-    markerChoiceImage: { width: 26, height: 26 },
     mapWrap: { height: 230, width: "100%", position: "relative" },
     map: { flex: 1, width: "100%" },
     webMap: { flex: 1, backgroundColor: "#E9F1EC", alignItems: "center", justifyContent: "center", padding: 12, position: "relative", overflow: "hidden" },

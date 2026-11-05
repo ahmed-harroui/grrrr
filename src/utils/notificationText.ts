@@ -7,8 +7,6 @@ export function describeNotification(notification: AppNotification, language: La
   const tx = (fr: string, en: string) => pick(language, fr, en);
   const { data } = notification;
   const actor = notification.actor?.name || tx("Un compagnon", "A companion");
-  const hot = data.intent === "HOT" || data.match_type === "LOVE";
-  const mood = hot ? "Hot ✦" : "Friend 🐾";
 
   switch (notification.type) {
     case "message":
@@ -32,11 +30,11 @@ export function describeNotification(notification: AppNotification, language: La
     case "adoption_listed":
       return { icon: "🍼", title: tx(`${actor} a des bébés à adopter !`, `${actor} has babies to adopt!`), body: tx("Ta demande est partie chez les deux parents : réponds-leur dans Messages.", "Your request went to both parents: answer them in Messages.") };
     case "like":
-      return { icon: "💌", title: tx(`${actor} a liké ${myPetName}`, `${actor} liked ${myPetName}`), body: tx(`Un like ${mood} · like en retour dans Discover.`, `A ${mood} like · like back in Discover.`) };
+      return { icon: "💌", title: tx(`${actor} a liké ${myPetName}`, `${actor} liked ${myPetName}`), body: tx("Like en retour dans Discover.", "Like back in Discover.") };
     case "super_like":
       return { icon: "⭐", title: tx(`Super like de ${actor} !`, `Super like from ${actor}!`), body: tx(`${myPetName} lui a tapé dans l'œil · like en retour dans Discover.`, `${myPetName} caught their eye · like back in Discover.`) };
     case "match":
-      return { icon: hot ? "❤️" : "🐾", title: tx(`Match ${mood} avec ${actor} !`, `${mood} match with ${actor}!`), body: tx(`${myPetName} et ${actor} se sont plu. Dis-lui bonjour !`, `${myPetName} and ${actor} like each other. Say hello!`) };
+      return { icon: "🐾", title: tx(`Match avec ${actor} !`, `Match with ${actor}!`), body: tx(`${myPetName} et ${actor} se sont plu. Dis-lui bonjour !`, `${myPetName} and ${actor} like each other. Say hello!`) };
     case "birthday":
       return { icon: "🎂", title: tx(`Joyeux anniversaire ${myPetName} !`, `Happy birthday ${myPetName}!`), body: tx("Une friandise et une belle balade pour fêter ça.", "A treat and a nice walk to celebrate.") };
     case "welcome":

@@ -134,31 +134,6 @@ function getEnergyScore(me: Pet, pet: Pet): number {
   return Math.max(0, 1 - Math.abs(pet.energy - me.energy) / 3);
 }
 
-/**
- * Compatibilité du sexe.
- *
- * FRIEND : le sexe n'est pas important.
- * LOVE : préférence pour le sexe opposé.
- */
-function getGenderScore(
-  me: Pet,
-  pet: Pet,
-  modeValue: number
-): number {
-  if (modeValue < 50) {
-    return 1;
-  }
-
-  return pet.gender !== me.gender ? 1 : 0.35;
-}
-
-/**
- * Compatibilité FRIEND ↔ LOVE.
- */
-function getModeScore(pet: Pet, modeValue: number): number {
-  return Math.max(0, 1 - Math.abs(pet.modePreference - modeValue) / 100);
-}
-
 function getSpeciesScore(me: Pet, pet: Pet): number {
   return me.species === pet.species ? 1 : 0.15;
 }
@@ -171,12 +146,10 @@ function getSpeciesScore(me: Pet, pet: Pet): number {
  * Distance   20%
  * Âge        15%
  * Énergie    15%
- * Sexe       10%
- * Mode       10%
+ * (le sexe ne compte pas : plus de mode Friend / Hot)
  */
 export function computeMatch(
   pet: MatchPet,
-  modeValue: number,
   me: MatchPet = MOCK_ME
 ): MatchResult {
   // Sécurité : évite le crash si un profil est manquant.
@@ -201,8 +174,6 @@ export function computeMatch(
   const distScore = getDistanceScore(distance);
   const ageScore = getAgeScore(normalizedMe, normalizedPet);
   const energyScore = getEnergyScore(normalizedMe, normalizedPet);
-  const genderScore = getGenderScore(normalizedMe, normalizedPet, modeValue);
-  const modeScore = getModeScore(normalizedPet, modeValue);
 
   // IMPORTANT :
   // Chaque score est normalisé entre 0 et 1.
@@ -213,8 +184,7 @@ export function computeMatch(
     distScore * 0.2 +
     ageScore * 0.1 +
     energyScore * 0.1 +
-    genderScore * 0.025 +
-    modeScore * 0.025;
+    0.05;
 
   const pct = Math.round(total * 100);
 
@@ -239,22 +209,6 @@ export function computeMatch(
     reasons.push("⚡ Même niveau d'énergie");
   }
 
-  if (modeScore > 0.7) {
-    reasons.push(
-      modeValue < 50
-        ? "🐾 Cherche aussi un ami"
-        : "❤️ Cherche aussi LOVE"
-    );
-  }
-
-  if (genderScore >= 1 && modeValue >= 50) {
-    reasons.push("❤️ Sexe compatible");
-  }
-
-  if (modeValue < 50) {
-    reasons.push("🐾 Sexe sans importance");
-  }
-
   if (ageScore > 0.7) {
     reasons.push("🎂 Âge compatible");
   }
@@ -270,6 +224,6 @@ export function computeMatch(
 }
 
 export function calculateCompatibility(currentPet: Pet, candidate: Pet) {
-  const result = computeMatch(candidate, currentPet.modePreference, currentPet);
+  const result = computeMatch(candidate, currentPet);
   return { total: result.pct, reasons: result.reasons };
 }

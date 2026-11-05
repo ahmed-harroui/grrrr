@@ -55,14 +55,6 @@ const ENERGY_CHOICES: { value: Pet["energy"]; icon: string; label: string; label
   { value: 4, icon: "🔥", label: "Infatigable", labelEn: "Tireless" },
 ];
 
-const MODE_CHOICES = [
-  { value: 0, icon: "🐾", label: "Friend", hint: "Se faire des amis", hintEn: "Make friends" },
-  { value: 50, icon: "✨", label: "Both", hint: "Ouvert à tout", hintEn: "Open to anything" },
-  { value: 100, icon: "❤️", label: "Hot", hint: "Belle rencontre", hintEn: "A special someone" },
-];
-
-const nearestMode = (mode: number) => (mode < 25 ? 0 : mode > 75 ? 100 : 50);
-
 export default function PetProfileEditor({ visible, initial, onClose, onSave }: Props) {
   const colors = useThemedColors();
   const styles = useMemo(() => getStyles(colors), [colors]);
@@ -305,22 +297,6 @@ export default function PetProfileEditor({ visible, initial, onClose, onSave }: 
               </View>
             </Section>
 
-            {/* Mode */}
-            <Section title={tx("Ce qu'il recherche", "Looking for")} styles={styles}>
-              <View style={styles.row}>
-                {MODE_CHOICES.map((choice) => {
-                  const active = nearestMode(draft.mode) === choice.value;
-                  return (
-                    <Pressable key={choice.value} onPress={() => set("mode", choice.value)} style={[styles.modeCard, active && (choice.value === 0 ? styles.modeFriend : styles.modeHot)]}>
-                      <Text style={styles.energyIcon}>{choice.icon}</Text>
-                      <Text style={[styles.modeLabel, active && styles.modeLabelActive]}>{choice.label}</Text>
-                      <Text style={[styles.modeHint, active && styles.modeLabelActive]}>{tx(choice.hint, choice.hintEn)}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </Section>
-
             {/* Health, shared with GRRRR Care */}
             {draft.health && (
               <Section title={tx("Santé", "Health")} hint={tx("Partagé avec GRRRR Care", "Shared with GRRRR Care")} styles={styles}>
@@ -467,12 +443,6 @@ function getStyles(colors: ReturnType<typeof useThemedColors>) {
     energyGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     energyCard: { width: "48.5%", alignItems: "center", paddingVertical: 12, borderRadius: radii.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.cream },
     energyIcon: { fontSize: 24 },
-    modeCard: { flex: 1, alignItems: "center", paddingVertical: 12, paddingHorizontal: 4, borderRadius: radii.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.cream },
-    modeFriend: { backgroundColor: colors.friend, borderColor: colors.friend },
-    modeHot: { backgroundColor: colors.coral, borderColor: colors.coral },
-    modeLabel: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.dark, marginTop: 4 },
-    modeHint: { fontFamily: fonts.body, fontSize: 10, color: colors.grey, marginTop: 2, textAlign: "center" },
-    modeLabelActive: { color: WHITE },
     tagsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
     tag: { borderRadius: radii.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.cream, paddingHorizontal: 12, paddingVertical: 6 },
     customTagRow: { flexDirection: "row", gap: 8, marginTop: 12 },

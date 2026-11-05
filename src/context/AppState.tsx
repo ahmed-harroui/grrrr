@@ -3,7 +3,6 @@ import { LIKED_BACK, ME, Pet } from "@/data/mockPets";
 import { awardTreats, loadTreatBalance } from "@/data/api/treats";
 import { getLiveMeetings, loadMeetingTraces, removeMeetingTrace, saveMeetingTrace, updateMeetingTraceStatus } from "@/data/api/meetings";
 import { getMatches, createMatch, getMatchType } from "@/data/api/matches";
-import type { MatchType } from "@/data/types/match";
 import { createSwipe } from "@/data/api/swipes";
 import { getOwnedPetProfiles, getPetsByIds, petRecordToPet, stablePetId } from "@/data/api/profile";
 import { useAuth } from "@/context/AuthContext";
@@ -14,11 +13,6 @@ import { subscribeToNewMatches } from "@/data/api/likes";
 
 // Database pets are addressed by their UUID; demo pets by their numeric id.
 const apiPetId = (pet: Pet) => pet.dbId ?? String(pet.id);
-
-// LOVE (both liked in Hot) is a Hot match, FRIEND a Friend match. BOTH is a mixed-mood match,
-// or one made before likes had a mood: the pets' own modes decide.
-const matchLabel = (type: MatchType, me: Pet, other: Pet): "Hot" | "Friend" =>
-  type === "LOVE" ? "Hot" : type === "FRIEND" ? "Friend" : me.mode >= 50 && other.mode >= 50 ? "Hot" : "Friend";
 
 export interface ChatMessage {
   from: "me" | "them";
@@ -65,8 +59,6 @@ interface AppStateShape {
   /** Pets owned by the signed-in account (empty in demo/guest mode) */
   ownedPets: Pet[];
   refreshOwnedPets: () => Promise<Pet[]>;
-  mode: number; // 0..100, 0 = FRIEND, 100 = HOT/LOVE
-  setMode: (v: number) => void;
   matches: Pet[];
   chats: Chat[];
   pendingMatch: Pet | null;
@@ -101,7 +93,6 @@ const AUTO_REPLIES = [
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
   const [activePet, setActivePetState] = useState<Pet>(ME);
-  const [mode, setMode] = useState(ME.mode);
   const [matches, setMatches] = useState<Pet[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [pendingMatch, setPendingMatch] = useState<Pet | null>(null);
@@ -184,10 +175,10 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       const { data } = await getPetsByIds([otherId]);
       if (!data[0]) return;
       const other = petRecordToPet(data[0]);
-      setPendingMatch({ ...other, matchType: matchLabel(type, activePet, other) } as any);
+      setPendingMatch(other);
       void loadDbConversations(myDbId);
     });
-  }, [activePet.dbId, activePet.mode, loadDbConversations, session?.user.id]);
+  }, [activePet.dbId, loadDbConversations, session?.user.id]);
 
   // New messages from the other pets arrive in real time.
   React.useEffect(() => {
@@ -213,7 +204,6 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     const next = pets.find((pet) => pet.id === activePet.id) ?? pets[0];
     if (next) {
       setActivePetState(next);
-      if (next.id !== activePet.id) setMode(next.mode);
     }
     return pets;
   }, [activePet.id, session?.user.id]);
@@ -226,7 +216,6 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     }
     setOwnedPets([]);
     setActivePetState(ME);
-    setMode(ME.mode);
     setMatches([]);
     setChats([]);
     setPendingMatch(null);
@@ -297,7 +286,6 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     }));
     const savedSession = petSessions[pet.id];
     setActivePetState(pet);
-    setMode(pet.mode);
     setMatches(savedSession?.matches ?? []);
     setChats(savedSession?.chats ?? []);
     setMeetingMarkers(savedSession?.meetingMarkers ?? {});
@@ -306,35 +294,24 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     setPendingMatch(null);
   }, [activePet.id, chats, matches, meetingMarkers, meetingTraces, petSessions]);
 
-  const updateMode = useCallback((nextMode: number) => {
-    setMode(nextMode);
-    setActivePetState((current) => ({ ...current, mode: nextMode }));
-  }, []);
-
   const likePet = useCallback(async (pet: Pet, superLike = false) => {
     setLikedPetIds((current) => new Set(current).add(pet.id));
     if (pet.dbId) recentlyLikedRef.current.add(pet.dbId);
 
-    // The like carries the mood it's sent in (the Discover slider): the other pet sees it
-    // blurred as a Hot or Friend like. Demo pets match from a fixed list; database pets
-    // match only when the other pet likes back (or instantly for test bots).
-    const intent = mode >= 50 ? "HOT" : "FRIEND";
-    let dbType: MatchType | null = null;
+    // Demo pets match from a fixed list; database pets match only when the other pet likes
+    // back (or instantly for test bots). There is no more Friend / Hot: every like is sent as
+    // FRIEND, the value the database still expects.
     let isMatch = LIKED_BACK.has(pet.id);
     try {
-      await createSwipe(apiPetId(activePet), apiPetId(pet), superLike ? "SUPER_LIKE" : "LIKE", intent);
+      await createSwipe(apiPetId(activePet), apiPetId(pet), superLike ? "SUPER_LIKE" : "LIKE", "FRIEND");
       if (activePet.dbId && pet.dbId) {
-        dbType = await getMatchType(activePet.dbId, pet.dbId);
-        isMatch = dbType !== null;
+        isMatch = (await getMatchType(activePet.dbId, pet.dbId)) !== null;
       }
     } catch (error) {
       console.error("Error saving swipe:", error);
     }
     if (!isMatch) return;
 
-    const matchType = dbType ? matchLabel(dbType, activePet, pet) : mode >= 50 && pet.mode >= 50 ? "Hot" : "Friend";
-    const isHotMatch = matchType === "Hot";
-    const matchEmoji = isHotMatch ? "❤️" : "🐾";
     setMatches((prev) => (prev.find((p) => p.id === pet.id) ? prev : [...prev, pet]));
     setChats((prev) =>
       prev.find((c) => c.pet.id === pet.id)
@@ -343,12 +320,12 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
             ...prev,
             {
               pet,
-              messages: [{ from: "them", text: `Salut ! ${activePet.name} et ${pet.name} se sont plu 🐾\n\n${matchEmoji} Match ${matchType} ✦`, read: false }],
+              messages: [{ from: "them", text: `Salut ! ${activePet.name} et ${pet.name} se sont plu 🐾\n\n✦ C'est un match ✦`, read: false }],
               lastAt: now(),
             },
           ]
     );
-    setPendingMatch({ ...pet, matchType } as any);
+    setPendingMatch(pet);
     updateProgress(activePet.id, { matches: petProgress.matches + 1 });
     // Treats are rare: 1 per match (the database caps it too, migration 018).
     void collectTreats(1, "match", `match:${activePet.id}:${pet.id}`);
@@ -359,11 +336,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     try {
-      await createMatch(apiPetId(activePet), apiPetId(pet), 0, isHotMatch ? "LOVE" : "FRIEND");
+      await createMatch(apiPetId(activePet), apiPetId(pet), 0, "FRIEND");
     } catch (error) {
       console.error("Error creating match:", error);
     }
-  }, [activePet, collectTreats, mode, petProgress.matches, updateProgress]);
+  }, [activePet, collectTreats, petProgress.matches, updateProgress]);
 
   const clearPendingMatch = useCallback(() => setPendingMatch(null), []);
 
@@ -502,8 +479,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   }, [activePet.id, session?.user.id]);
 
   const value = useMemo(
-    () => ({ activePet, setActivePet, ownedPets, refreshOwnedPets, mode, setMode: updateMode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, refreshConversations, meetingMarkers, setMeetingMarker, meetingTraces, setMeetingTrace, confirmMeetingTrace, deleteMeetingTrace, treats, refreshTreats, petProgress, progressByPet }),
-    [activePet, setActivePet, ownedPets, refreshOwnedPets, mode, updateMode, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, refreshConversations, meetingMarkers, setMeetingMarker, meetingTraces, setMeetingTrace, confirmMeetingTrace, deleteMeetingTrace, treats, refreshTreats, petProgress, progressByPet]
+    () => ({ activePet, setActivePet, ownedPets, refreshOwnedPets, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, refreshConversations, meetingMarkers, setMeetingMarker, meetingTraces, setMeetingTrace, confirmMeetingTrace, deleteMeetingTrace, treats, refreshTreats, petProgress, progressByPet }),
+    [activePet, setActivePet, ownedPets, refreshOwnedPets, matches, chats, pendingMatch, clearPendingMatch, likePet, sendMessage, markChatRead, refreshConversations, meetingMarkers, setMeetingMarker, meetingTraces, setMeetingTrace, confirmMeetingTrace, deleteMeetingTrace, treats, refreshTreats, petProgress, progressByPet]
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
