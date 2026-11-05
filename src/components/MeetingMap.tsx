@@ -361,7 +361,10 @@ export default function MeetingMap() {
             <Text style={styles.mapHint}>{tx("Explore les lieux et les compagnons autour de toi", "Explore the places and pets around you")}</Text>
           </View>
           <View style={styles.markerChoices}>
-            <Pressable onPress={handleOpenMapClick} style={styles.expandButton}><Text style={styles.expandText}>{tx("Ouvrir", "Open")}</Text></Pressable>
+            <Pressable onPress={handleOpenMapClick} style={styles.expandButton} hitSlop={6} accessibilityRole="button" accessibilityLabel={tx("Ouvrir la carte en grand", "Open the full map")}>
+              <Text style={styles.expandIcon}>⤢</Text>
+              <Text style={styles.expandText}>{tx("Ouvrir la carte", "Open map")}</Text>
+            </Pressable>
           </View>
         </View>
         <View style={styles.mapWrap}>
@@ -375,9 +378,16 @@ export default function MeetingMap() {
               )}
             </>
           )}
+          {/* Always in sight on the small map: the full-screen map is one touch away */}
+          {!placing && (
+            <Pressable onPress={handleOpenMapClick} style={styles.fullscreenFab} hitSlop={6} accessibilityRole="button" accessibilityLabel={tx("Agrandir la carte", "Enlarge the map")}>
+              <Text style={styles.fullscreenFabIcon}>⤢</Text>
+              <Text style={styles.fullscreenFabText}>{tx("Agrandir", "Enlarge")}</Text>
+            </Pressable>
+          )}
           {!selectedPet && (
             <View style={styles.mapControlsHint} pointerEvents="none">
-              <Text style={styles.mapControlsText}>{tx("Glisse pour explorer", "Drag to explore")}</Text>
+              <Text style={styles.mapControlsText}>{tx("Glisse pour explorer · ⤢ pour agrandir", "Drag to explore · ⤢ to enlarge")}</Text>
             </View>
           )}
           {!mapExpanded && placingControls()}
@@ -467,8 +477,12 @@ function getStyles(colors: Colors) {
     mapTitle: { fontFamily: fonts.displaySemi, fontSize: 15, color: colors.dark },
     mapHint: { fontFamily: fonts.body, fontSize: 10, color: colors.grey, marginTop: 2 },
     markerChoices: { flexDirection: "row", gap: 4 },
-    expandButton: { backgroundColor: colors.cream2, borderRadius: radii.pill, paddingHorizontal: 10, paddingVertical: 6, marginRight: 3 },
-    expandText: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.coralDark },
+    expandButton: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: colors.coral, borderRadius: radii.pill, paddingHorizontal: 13, paddingVertical: 9, marginRight: 2, shadowColor: colors.coralDark, shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
+    expandIcon: { fontFamily: fonts.bodyBold, fontSize: 14, color: "#FFFFFF", lineHeight: 16 },
+    expandText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#FFFFFF" },
+    fullscreenFab: { position: "absolute", top: 10, right: 10, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 11, paddingVertical: 7, borderRadius: radii.pill, backgroundColor: "rgba(255,255,255,0.96)", borderWidth: 1.5, borderColor: colors.coral, shadowColor: colors.dark, shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 },
+    fullscreenFabIcon: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.coralDark, lineHeight: 16 },
+    fullscreenFabText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.coralDark },
     mapWrap: { height: 230, width: "100%", position: "relative" },
     map: { flex: 1, width: "100%" },
     webMap: { flex: 1, backgroundColor: "#E9F1EC", alignItems: "center", justifyContent: "center", padding: 12, position: "relative", overflow: "hidden" },
